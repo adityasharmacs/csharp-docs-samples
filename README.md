@@ -1,6 +1,17 @@
-# C# Docs Samples
+# .NET Docs Samples
 
-A collection of samples that demonstrate how to call Google Cloud services from C#.
+A collection of samples that demonstrate how to call some
+Google Cloud services from C#.
+
+[Google API Client Libraries page](https://developers.google.com/api-client-library/dotnet/apis/)
+lists all the APIs you can call from .NET.
+
+The samples in this repo cover only a _small fraction_ of the total APIs that you can call from .NET.
+ - [Auth](auth)
+ - [Big Query](bigquery)
+ - [Storage](storage)
+
+The [Auth](auth) sample will probably be useful no matter which API you call.
 
 [![Build Status](https://jenkins.on2flixcloud.tv/buildStatus/icon?job=csharp-doc-samples)](https://jenkins.on2flixcloud.tv/job/csharp-doc-samples/)
 
@@ -15,3 +26,7 @@ scaffolding for other frameworks and use cases.
 ## Licensing
 
 * See [LICENSE](LICENSE)
+
+## Testing
+
+* See [TESTING.md](TESTING.md)
