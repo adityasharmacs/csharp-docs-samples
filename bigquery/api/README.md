@@ -7,7 +7,7 @@ A sample demonstrating how to invoke BigQuery from C#.
 - [What is BigQuery?](https://cloud.google.com/bigquery/what-is-bigquery)
 - [BigQuery Reference Docs](https://developers.google.com/api-client-library/dotnet/apis/bigquery/v2)
 
-## Building and Running
+## Build and Run
 
 1.  **Create a project in the Google Cloud Platform Console**.
     If you haven't already created a project, create one now. Projects enable
@@ -43,7 +43,7 @@ A sample demonstrating how to invoke BigQuery from C#.
     git clone https://github.com/GoogleCloudPlatform/csharp-docs-samples
     ```
 
-6.  Open [GettingStarted/BigQuerySample.sln](GettingStarted/BigQuerySample.sln) with
+6.  Open [GettingStarted/BigquerySample.sln](GettingStarted/BigquerySample.sln) with
     Microsoft Visual Studio version 2012 or later.
 7.  Build the Solution.
 8.  Run it from the command line with your project id:

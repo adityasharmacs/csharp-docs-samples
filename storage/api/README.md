@@ -6,7 +6,7 @@ A sample demonstrating how to invoke Google Cloud Storage from C#.
 
 - [Cloud Storage Reference Docs](https://developers.google.com/api-client-library/dotnet/apis/storage/v1)
 
-## Building and Running
+## Build and Run
 
 1.  **Create a project in the Google Cloud Platform Console**.
     If you haven't already created a project, create one now. Projects enable

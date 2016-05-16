@@ -52,6 +52,7 @@ from C#. The sample authenticates and then makes an API request to the Cloud Sto
 6.  Open [AuthSample.sln](AuthSample.sln) with Microsoft Visual Studio version 2012 or later.
 7.  Build the Solution.
 8.  From the command line, set environment variables and run:
+
     ```sh
     C:\...\bin\Debug> set GOOGLE_PROJECT_ID=your project id displayed on the Google Developers Console.
     C:\...\bin\Debug> AuthSample <the name of the Google Cloud Storage bucket you created>
