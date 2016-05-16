@@ -8,8 +8,8 @@ lists all the APIs you can call from .NET.
 
 The samples in this repo cover only a _small fraction_ of the total APIs that you can call from .NET.
  - [Auth](auth)
- - [Big Query](bigquery)
- - [Storage](storage)
+ - [Big Query](bigquery/api)
+ - [Storage](storage/api)
 
 The [Auth](auth) sample will probably be useful no matter which API you call.
 
