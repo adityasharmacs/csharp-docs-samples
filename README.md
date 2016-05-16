@@ -13,7 +13,7 @@ The samples in this repo cover only a _small fraction_ of the total APIs that yo
 
 The [Auth](auth) sample will probably be useful no matter which API you call.
 
-[![Build Status](https://jenkins.on2flixcloud.tv/buildStatus/icon?job=csharp-doc-samples)](https://jenkins.on2flixcloud.tv/job/csharp-doc-samples/)
+[![Build Status](https://jenkins.on2flixcloud.tv/buildStatus/icon?job=dotnet-docs-samples)](https://jenkins.on2flixcloud.tv/job/dotnet-docs-samples/)
 
 See our other [Google Cloud Platform github
 repos](https://github.com/GoogleCloudPlatform) for sample applications and

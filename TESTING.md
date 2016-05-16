@@ -32,7 +32,7 @@
 5.  Download or clone this repo with
 
     ```sh
-    git clone https://github.com/GoogleCloudPlatform/csharp-docs-samples
+    git clone https://github.com/GoogleCloudPlatform/dotnet-docs-samples
     ```
 
 6.  Set the environment variables:

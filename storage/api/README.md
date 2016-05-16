@@ -49,7 +49,7 @@ A sample demonstrating how to invoke Google Cloud Storage from C#.
 6.  Download or clone this repo with
 
     ```sh
-    git clone https://github.com/GoogleCloudPlatform/csharp-docs-samples
+    git clone https://github.com/GoogleCloudPlatform/dotnet-docs-samples
     ```
 
 6.  Open [storage.sln](storage.sln) with Microsoft Visual Studio version 2012 or later.

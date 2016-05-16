@@ -40,7 +40,7 @@ A sample demonstrating how to invoke BigQuery from C#.
 5.  Download or clone this repo with
 
     ```sh
-    git clone https://github.com/GoogleCloudPlatform/csharp-docs-samples
+    git clone https://github.com/GoogleCloudPlatform/dotnet-docs-samples
     ```
 
 6.  Open [GettingStarted/BigquerySample.sln](GettingStarted/BigquerySample.sln) with
