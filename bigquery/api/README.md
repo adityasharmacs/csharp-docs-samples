@@ -4,8 +4,8 @@ A sample demonstrating how to invoke BigQuery from C#.
 
 ## Links
 
-- [What is Big Query](https://cloud.google.com/bigquery/what-is-bigquery)
-- [Big Query Reference Docs](https://developers.google.com/api-client-library/dotnet/apis/bigquery/v2)
+- [What is BigQuery?](https://cloud.google.com/bigquery/what-is-bigquery)
+- [BigQuery Reference Docs](https://developers.google.com/api-client-library/dotnet/apis/bigquery/v2)
 
 ## Building and Running
 
@@ -35,18 +35,18 @@ A sample demonstrating how to invoke BigQuery from C#.
 
 4.  **Enable APIs for your project**.
     [Click here](https://console.cloud.google.com/flows/enableapi?apiid=bigquery&showconfirmation=true)
-    to visit Cloud Platform Console and enable the Big Query API.
+    to visit Cloud Platform Console and enable the BigQuery API.
 
-5.  Download or glone this repo with
+5.  Download or clone this repo with
 
     ```sh
     git clone https://github.com/GoogleCloudPlatform/csharp-docs-samples
     ```
 
-4.  Open [GettingStarted/BigQuery.sln](GettingStarted/BigQuery.sln) with
+6.  Open [GettingStarted/BigQuerySample.sln](GettingStarted/BigQuerySample.sln) with
     Microsoft Visual Studio version 2012 or later.
-5.  Build the Solution.
-6.  Run it from the command line with your project id:
+7.  Build the Solution.
+8.  Run it from the command line with your project id:
 
     ```sh
     C:\...\bin\Debug> GettingStarted my_project_id

@@ -1,43 +1,70 @@
-# Google Cloud Storage Sample
+# Cloud Storage Sample
 
-Sample code to issue several basic Google Cloud Store (GCS) operations
-using the Google Client Libraries.
-For more information, see documentation for Compute Storage .NET client
-https://cloud.google.com/storage/docs/json_api/v1/json-api-dotnet-samples
+A sample demonstrating how to invoke Google Cloud Storage from C#.
 
-See our other [Google Cloud Platform github
-repos](https://github.com/GoogleCloudPlatform) for sample applications and
-scaffolding for other frameworks and use cases.
+## Links
 
-## Build and Run
-0.  On your Windows development machine,
-1.  In the [Google Developers Console](https://console.developers.google.com/),
-    create a new project or choose an existing project.
-2.  In the [Google Developers Console](https://console.developers.google.com/),
-    click **APIs & auth**, then click APIs.  Wait for a list of APIs to
-    appear, then click Cloud Storage.  If Cloud Storage is not already enabled,
-    click the Enable API button.
-3.  In the [Google Developers Console](https://console.developers.google.com/),
-    under **APIs & auth**, click Credentials.  Click the button to "Generate
-    a new JSON key."  Set the environment variable
-    `GOOGLE_APPLICATION_CREDENTIALS` to the path of the JSON key you
-    downloaded.
-3.  Clone this repo with
+- [Cloud Storage Reference Docs](https://developers.google.com/api-client-library/dotnet/apis/storage/v1)
+
+## Building and Running
+
+1.  **Create a project in the Google Cloud Platform Console**.
+    If you haven't already created a project, create one now. Projects enable
+    you to manage all Google Cloud Platform resources for your app, including
+    deployment, access control, billing, and services.
+    1.  Open the [Cloud Platform Console](https://console.cloud.google.com/).
+    2.  In the drop-down menu at the top, select Create a project.
+    3.  Click Show advanced options. Under App Engine location, select a
+        United States location.
+    4.  Give your project a name.
+    5.  Make a note of the project ID, which might be different from the project
+        name. The project ID is used in commands and in configurations.
+
+2.  **Enable billing for your project**.
+    If you haven't already enabled billing for your project,
+    [enable billing now](https://console.cloud.google.com/project/_/settings).
+    Enabling billing allows the application to consume billable resources such
+    as running instances and storing data.
+
+3.  **Install the Google Cloud SDK**.
+    If you haven't already installed the Google Cloud SDK, [install and
+    initialize the Google Cloud SDK](https://cloud.google.com/sdk/docs/) now.
+    The SDK contains tools and libraries that enable you to create and manage
+    resources on Google Cloud Platform.
+
+4.  **Enable APIs for your project**.
+    [Click here](https://console.cloud.google.com/flows/enableapi?apiid=storage_api&showconfirmation=true)
+    to visit Cloud Platform Console and enable the Cloud Storage API.
+
+5.  **Create a Cloud Storage bucket for your project**.
+    Cloud Storage allows you to store and serve binary data.
+    A bucket is a high-level container for binary objects.
+    At a command prompt, type:
+
+    ```sh
+    C:\> gsutil mb gs://<your-project-id>
+    C:\> gsutil defacl set public-read gs://<your-project-id>
+    ```
+
+6.  Download or clone this repo with
 
     ```sh
     git clone https://github.com/GoogleCloudPlatform/csharp-docs-samples
     ```
-4.  Open csharp-docs-samples/cloudstorage/cloudstorage.sln with
-    Microsoft Visual Studio version 2012 or later.
-5.  Build the Solution.
-6.  Run it locally by pressing F5 or choosing "Debug -> Start Debugging" from
-    Microsoft Visual Studio's Menu.
 
+6.  Open [storage.sln](storage.sln) with Microsoft Visual Studio version 2012 or later.
+7.  Build the Solution.
+8.  From the command line, set environment variables and run:
+    ```sh
+    C:\...\bin\Debug> set GOOGLE_PROJECT_ID=your project id displayed on the Google Developers Console.
+    C:\...\bin\Debug> set GOOGLE_BUCKET=the name of the Google Cloud Storage bucket you created.
+    C:\...\bin\Debug> storage
+    ```
 
 ## Contributing changes
 
-* See [CONTRIBUTING.md](../CONTRIBUTING.md)
+* See [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
 ## Licensing
 
-* See [LICENSE](../LICENSE)
+* See [LICENSE](../../LICENSE)
