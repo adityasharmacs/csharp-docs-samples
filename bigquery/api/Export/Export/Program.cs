@@ -4,11 +4,11 @@ using Google.Apis.Bigquery.v2;
 using Google.Apis.Services;
 using System;
 using Google.Apis.Bigquery.v2.Data;
+using CommandLine.Text;
 
-
-namespace Export
+namespace GoogleCloudSamples
 {
-    class Options
+    public class Options
     {
         [Option('p', "ProjectId", Required = true,
           HelpText = "The id of your Google Cloud Project.")]
@@ -34,9 +34,17 @@ namespace Export
         [Option('c', "Compression", DefaultValue = "NONE", 
             HelpText = "Format to compress result with.  One of NONE or GZIP")]
         public string Compression { get; set; }
+
+        [HelpOption]
+        public string GetUsage()
+        {
+            return HelpText.AutoBuild(this,
+              (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
+        }
+
     }
 
-    class Program
+    public class Program
     {
         static void Main(string[] args)
         {
@@ -48,14 +56,14 @@ namespace Export
             }
             else
             {
-                Console.WriteLine(CommandLine.Text.HelpText.AutoBuild(options).ToString());
+                Console.WriteLine(options.GetUsage());
             }
             Console.WriteLine("Press any key...");
             Console.ReadKey();
         }
 
         // [START ExportTable]
-        static Job ExportTable(Options options)
+        public static Job ExportTable(Options options)
         {
             var bigquery = CreateAuthorizedClient();
             var jobId = Guid.NewGuid().ToString();
