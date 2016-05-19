@@ -11,14 +11,15 @@
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 // License for the specific language governing permissions and limitations under
 // the License.
-
+//
+// See https://cloud.google.com/bigquery/exporting-data-from-bigquery
 using CommandLine;
+using CommandLine.Text;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2;
+using Google.Apis.Bigquery.v2.Data;
 using Google.Apis.Services;
 using System;
-using Google.Apis.Bigquery.v2.Data;
-using CommandLine.Text;
 
 namespace GoogleCloudSamples
 {
