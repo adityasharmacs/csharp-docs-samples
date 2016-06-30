@@ -15,38 +15,20 @@
 param([string]$sourcePath, [string] $destPath, [switch] $force)
 
 
-function Get-ItemToCopy([string] $path) {
-    if (Test-Path -Path $Path) {
-        $path
-        if (Test-Path -Path $sourcePath -PathType Container) {
-            Get-ChildItem -Recurse $path
-        }
-    } else {
-        throw [System.IO.FileNotFoundException] "$sourcePath not found."
-    }    
-}
-
 function Split-GcsPath([string] $path) {
+    $path = $path.replace('\', '/')  # It's easy to use the wrong slashes.
     if ($path -match '^gs://([^/]+)(/.*)') {
         $matches[1], $matches[2]
     }
 }
 
+function Append-Slash([string] $path, [string]$slash = '\') {
+    if ($path.EndsWith($slash)) { $path } else { "$path$slash" }
+}
+
 function Upload-Dir([string] $sourcePath, [string] $destPath,
         [string] $bucket) {
-    # Should yield same result
-    # Copy-Dir c:\Users\Jeff\Downloads gs://JeffsBucket/home/
-    # Copy-Dir c:\Users\Jeff\Downloads\ gs://JeffsBucket/home/Downloads
-    if (-not $bucket) {
-        $bucket, $destPath = Split-GcsPath $destPath
-    }
-    $sourceDir = if ($sourcePath.EndsWith('\')) {
-        $sourcePath
-    } else {
-        "$sourcePath\"
-    }
-
-    # assume $destPath in correct form gs://bucket/a/b/
+    $sourceDir = Append-Slash($sourcePath)
     $destDir = if ($destPath.EndsWith('/')) {
         "$destPath$(Split-Path -Leaf $sourcePath)/"
     } else {
@@ -70,27 +52,46 @@ function Upload-Dir([string] $sourcePath, [string] $destPath,
 
 function Download-Dir([string] $sourcePath, [string] $destPath, 
         [string] $bucket) {
-    # Should yield same result
-    # Copy-Dir gs://JeffsBucket/home/ c:\Users\Jeff\Downloads
-    if (-not $bucket) {
-        $bucket, $sourcePath = Split-GcsPath $sourcePath
-    }
-    $sourceDir = if ($sourcePath.EndsWith('/')) { 
-        $sourcePath 
-    } else {
-        "$sourcePath/"
-    }
+    $sourceDir = Append-Slash $sourcePath '/'
     foreach ($object in (Find-GcsObject -Bucket $bucket -Prefix $sourceDir)) {
         $relPath = $object.Name.Substring(
             $sourceDir.Length, $object.Name.Length - $sourceDir.Length)
         $destFilePath = (Join-Path $destPath $relPath)
         $destDirPath = (Split-Path -Path $destFilePath)
         $destDir = New-Item -ItemType Directory -Force -Path $destDirPath
-        Read-GcsObject -Bucket $bucket -ObjectName $object.Name -OutFile $destFilePath
+        Read-GcsObject -Bucket $bucket -ObjectName $object.Name `
+            -OutFile $destFilePath -Force:$force
         Get-Item $destFilePath
     }
 }
 
+function Main {
+    if (-not ($sourcePath -and $destPath)) {
+        Write-Error "Usage:
 
-Download-Dir gs://asqnet/projects/wc 'C:\Users\Jeffrey Rennie\Documents\Visual Studio 2015\Projects\wc2'
+Copy-Dir.ps1 [-sourcePath] <String> [-destPath] <String> [-Force]
 
+Google Cloud Storage paths look like:
+gs://bucket/a/b/c.txt
+
+Note that the concept of a directory does not exist in Cloud Storage, so in
+the example above, the object name is a/b/c.txt.
+"
+        return
+    }
+    $destBucketAndPath = Split-GcsPath $destPath
+    $sourceBucketAndPath = Split-GcsPath $sourcePath
+    if ($sourceBucketAndPath) {
+        if ($destBucketAndPath) {
+            "Not yet implemented."
+        } else {
+            Download-Dir $sourceBucketAndPath[1] $destPath $sourceBucketAndPath[0]
+        }
+    } else {
+        if ($destBucketAndPath) {
+            Upload-Dir $sourcePath $destBucketAndPath[1] $destBucketAndPath[0]
+        }
+    }        
+}
+
+Main
