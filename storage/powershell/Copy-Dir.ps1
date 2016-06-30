@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-param([string]$sourcePath, [string] $destPath, [switch] $force)
+param([string]$sourcePath, [string] $destPath, [switch] $force, [switch] $recurse)
 
 
 function Split-GcsPath([string] $path) {
@@ -22,26 +22,71 @@ function Split-GcsPath([string] $path) {
     }
 }
 
+function Test-GcsObject([string] $Bucket, [string] $ObjectName) {
+    try { 
+        Get-GcsObject -Bucket $Bucket -ObjectName $ObjectName
+        return $True
+    } catch {
+        if ($_.Exception.HttpStatusCode -eq "NotFound") {
+            return $False
+        }
+        throw
+    }
+}
+
 function Append-Slash([string] $path, [string]$slash = '\') {
     if ($path.EndsWith($slash)) { $path } else { "$path$slash" }
 }
 
-function Upload-Dir([string] $sourcePath, [string] $destPath,
+function Upload-Item([string] $sourcePath, [string] $destPath,
         [string] $bucket) {
-    $sourceDir = Append-Slash($sourcePath)
-    $destDir = if ($destPath.EndsWith('/')) {
-        "$destPath$(Split-Path -Leaf $sourcePath)/"
+    $destDir = Append-Slash $destPath '/'
+    if (Test-Path -Path $sourcePath -PathType Leaf) {
+        # It's a file.
+        if (Test-GcsObject $bucket $destDir) {
+            # Copying a single file to a directory.
+            New-GcsObject -Bucket $bucket `
+                -ObjectName "$destDir$(Split-Path $sourcePath -Leaf)" `
+                -File $sourcePath -Force:$force
+        } elseif ($destPath.EndsWith('/')) {
+            throw [System.IO.DirectoryNotFoundException] `
+                "Destination $destPath does not exist."
+        } else {
+            # Copying a single file to a file name.
+            New-GcsObject -Bucket $bucket -ObjectName $destPath `
+                -File $sourcePath -Force:$force
+        }
+    } elseif (Test-Path -Path $sourcePath -PathType Container) {
+        # It's a directory.
+        if (-not $recurse) {
+            throw [System.IO.FileNotFoundException] `
+                "Use the -Recurse flag to copy directories."
+        }
+        if (Test-GcsObject $bucket $destDir) {
+            # Copying a directory to an existing directory.
+            $destDir = "$destDir$($item.Name)"
+        } elseif ($destPath.EndsWith('/')) {
+            throw [System.IO.DirectoryNotFoundException] `
+                "Destination $destPath does not exist."
+        }
+        New-GcsObject -Bucket $bucket -ObjectName $destDir -Contents "" `
+            -Force:$force
+        Upload-Dir $sourcePath $destDir $bucket
     } else {
-        "$destPath/"
+        throw [System.IO.FileNotFoundException] `
+        "$sourcePath does not exist."
     }
-    if (-not (Test-Path -Path $sourcePath -PathType Container)) {
-        throw [System.IO.DirectoryNotFoundException] `
-            "$sourcePath does not exist or is not a directory."
-    }
+}
+
+function Upload-Dir([string] $sourcePath, [string] $destDir,
+        [string] $bucket) {
+    $sourceDir = Append-Slash $sourcePath '\'
     $items = Get-ChildItem $sourceDir | Sort-Object -Property Mode,Name
     foreach ($item in $items) {
         if (Test-Path -Path $item.FullName -PathType Container) {
-            Upload-Dir "$sourceDir$($item.Name)" "$destDir$($item.Name)" `
+            New-GcsObject -Bucket $bucket -ObjectName "$destDir$($item.Name)/" `
+                -Contents "" -Force:$force
+            Upload-Dir "$sourceDir$($item.Name)" "$destDir$($item.Name)/" `
                 $bucket
         } else {
             New-GcsObject -Bucket $bucket -ObjectName "$destDir$($item.Name)" `
@@ -74,8 +119,8 @@ Copy-Dir.ps1 [-sourcePath] <String> [-destPath] <String> [-Force]
 Google Cloud Storage paths look like:
 gs://bucket/a/b/c.txt
 
-Note that the concept of a directory does not exist in Cloud Storage, so in
-the example above, the object name is a/b/c.txt.
+Note that the concept of a directory does not exist in Cloud Storage, so
+empty directories will not be copied to Cloud Storage.
 "
         return
     }
@@ -89,9 +134,14 @@ the example above, the object name is a/b/c.txt.
         }
     } else {
         if ($destBucketAndPath) {
-            Upload-Dir $sourcePath $destBucketAndPath[1] $destBucketAndPath[0]
+            Upload-Item $sourcePath $destBucketAndPath[1] $destBucketAndPath[0]
+        } else {
+            # Both paths are local.  Let the local file system do it.
+            Copy-Item -Path $sourcePath -Destination $destPath -Force:$force -Recurse:$recurse
         }
     }        
 }
 
 Main
+
+
