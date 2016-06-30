@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-param([string]$sourcePath, [string] $destPath)
+param([string]$sourcePath, [string] $destPath, [switch] $force)
 
 
 function Get-ItemToCopy([string] $path) {
@@ -32,7 +32,8 @@ function Split-GcsPath([string] $path) {
     }
 }
 
-function Upload-Dir([string] $sourcePath, [string] $destPath, [string] $bucket) {
+function Upload-Dir([string] $sourcePath, [string] $destPath,
+        [string] $bucket) {
     # Should yield same result
     # Copy-Dir c:\Users\Jeff\Downloads gs://JeffsBucket/home/
     # Copy-Dir c:\Users\Jeff\Downloads\ gs://JeffsBucket/home/Downloads
@@ -58,12 +59,38 @@ function Upload-Dir([string] $sourcePath, [string] $destPath, [string] $bucket) 
     $items = Get-ChildItem $sourceDir | Sort-Object -Property Mode,Name
     foreach ($item in $items) {
         if (Test-Path -Path $item.FullName -PathType Container) {
-            Upload-Dir "$sourceDir$($item.Name)" "$destDir$($item.Name)" $bucket
+            Upload-Dir "$sourceDir$($item.Name)" "$destDir$($item.Name)" `
+                $bucket
         } else {
-            "gs://$bucket$destDir$($item.Name)"
-            #New-GcsObject -Bucket $bucket -ObjectName "$destDir$($item.Name)" `
-            #    -File $item.FullName
+            New-GcsObject -Bucket $bucket -ObjectName "$destDir$($item.Name)" `
+                -File $item.FullName -Force:$force
         }
     }
 }
+
+function Download-Dir([string] $sourcePath, [string] $destPath, 
+        [string] $bucket) {
+    # Should yield same result
+    # Copy-Dir gs://JeffsBucket/home/ c:\Users\Jeff\Downloads
+    if (-not $bucket) {
+        $bucket, $sourcePath = Split-GcsPath $sourcePath
+    }
+    $sourceDir = if ($sourcePath.EndsWith('/')) { 
+        $sourcePath 
+    } else {
+        "$sourcePath/"
+    }
+    foreach ($object in (Find-GcsObject -Bucket $bucket -Prefix $sourceDir)) {
+        $relPath = $object.Name.Substring(
+            $sourceDir.Length, $object.Name.Length - $sourceDir.Length)
+        $destFilePath = (Join-Path $destPath $relPath)
+        $destDirPath = (Split-Path -Path $destFilePath)
+        $destDir = New-Item -ItemType Directory -Force -Path $destDirPath
+        Read-GcsObject -Bucket $bucket -ObjectName $object.Name -OutFile $destFilePath
+        Get-Item $destFilePath
+    }
+}
+
+
+Download-Dir gs://asqnet/projects/wc 'C:\Users\Jeffrey Rennie\Documents\Visual Studio 2015\Projects\wc2'
 
