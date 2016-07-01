@@ -220,7 +220,7 @@ function Download-Object([string] $SourcePath, [string] $DestPath,
         -and (Test-GcsObject $Bucket $SourcePath)) {
         # Source path is a simple file.
         Read-GcsObject -Bucket $Bucket -ObjectName $SourcePath `
-            -OutFile $outFile -Force:$Force
+            -OutFile ([System.IO.Path]::GetFullPath($outFile)) -Force:$Force
     } else {
         # Source is a directory.
         if (-not $Recurse) {
@@ -263,7 +263,8 @@ function Download-Dir([string] $SourcePath, [string] $DestPath,
             # It's a file
             $DestDir = New-Item -ItemType Directory -Force -Path $DestDirPath
             Read-GcsObject -Bucket $Bucket -ObjectName $object.Name `
-                -OutFile $destFilePath -Force:$Force
+                -OutFile ([System.IO.Path]::GetFullPath($destFilePath)) `
+                -Force:$Force
             Get-Item $destFilePath
         }
     }
@@ -294,5 +295,8 @@ function Main {
     }        
 }
 
+# Synchronize the powershell current working directory and the .NET current
+# working directory.
+[System.IO.Directory]::SetCurrentDirectory((Get-Location).Path)
 Main
 
