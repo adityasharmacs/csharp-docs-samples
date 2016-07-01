@@ -62,12 +62,9 @@ function Upload-Item([string] $sourcePath, [string] $destPath,
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
-        if (Test-GcsObject $bucket $destDir) {
+        if ((Test-GcsObject $bucket $destDir) -or $destPath.EndsWith('/')) {
             # Copying a directory to an existing directory.
             $destDir = "$destDir$($item.Name)"
-        } elseif ($destPath.EndsWith('/')) {
-            throw [System.IO.DirectoryNotFoundException] `
-                "Destination $destPath does not exist."
         }
         New-GcsObject -Bucket $bucket -ObjectName $destDir -Contents "" `
             -Force:$force
