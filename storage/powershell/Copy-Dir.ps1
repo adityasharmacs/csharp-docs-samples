@@ -278,8 +278,9 @@ function Main {
         if ($destBucketAndPath) {
             # Copying from Cloud Storage to Cloud Storage.
             # Download, then upload.
-            $sourceName = Split-Path $SourcePath
-            $tempPath = Join-Path $env:TEMP GcsCopies (Get-Random) $sourceName
+            $sourceName = Split-Path $SourcePath -Leaf
+            $tempPath = [System.IO.Path]::Combine(
+                $env:TEMP, 'GcsCopies', (Get-Random), $sourceName)
             $localFiles = Download-Object $sourcePath $tempPath $sourceBucket
             Upload-Item $tempPath $destBucketAndPath[1] $destBucketAndPath[0]
         } else {
