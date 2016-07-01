@@ -17,6 +17,8 @@
 # Copies files to or from Google Cloud Storage.
 #
 #.DESCRIPTION
+#
+# Requires the Google Cloud SDK be installed.
 # 
 # Google Cloud Storage paths look like:
 # gs://bucket/a/b/c.txt
@@ -312,8 +314,14 @@ function Main {
     }        
 }
 
-# Synchronize the powershell current working directory and the .NET current
-# working directory.
-[System.IO.Directory]::SetCurrentDirectory((Get-Location).Path)
-Main
+if (Get-Command Find-GcsObject) {
+    # Synchronize the powershell current working directory and the .NET current
+    # working directory.
+    [System.IO.Directory]::SetCurrentDirectory((Get-Location).Path)
+    Main
+} else {
+    Write-Warning "Requires the Google Cloud SDK.  Download it from:
+https://cloud.google.com/sdk"
+}
+
 
