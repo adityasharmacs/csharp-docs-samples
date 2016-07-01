@@ -251,8 +251,12 @@ function Download-Object([string] $SourcePath, [string] $DestPath,
 function Download-Dir([string] $SourcePath, [string] $DestPath, 
         [string] $Bucket, [switch]$ShowProgress) {
     $sourceDir = Append-Slash $SourcePath '/'
+    if ($ShowProgress) {
+        $progress = 0
+        Write-Progress -Activity "Downloading objects" `
+            -CurrentOperation "Finding objects" -PercentComplete 0
+    }
     $objects = Find-GcsObject -Bucket $Bucket -Prefix $sourceDir
-    $progress = 0
     foreach ($object in $objects) {
         if ($ShowProgress) {
             Write-Progress -Activity "Downloading objects" `
