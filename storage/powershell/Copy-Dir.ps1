@@ -12,18 +12,72 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-param([string][Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()]$sourcePath, 
-    [string][Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()] $destPath,
-    [switch] $force, [switch] $recurse)
+##############################################################################
+#.SYNOPSIS
+# Copies files to or from Google Cloud Storage.
+#
+#.DESCRIPTION
+# 
+# Google Cloud Storage paths look like:
+# gs://bucket/a/b/c.txt
+#
+# Does not support wildcards like * or ?.
+# Does not support paths with . or ..
+#
+#.PARAMETER SourcePath
+# The file or directory to copy.
+#
+#.PARAMETER DestPath
+# The location to copy to.
+#
+#.PARAMETER Force
+# Copy over existing files.
+#
+#.PARAMETER Recurse
+# Recursively copy the files in directories.
+#
+#.OUTPUTS
+# The newly created files.
+##############################################################################
+param(
+    [string][Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()]$SourcePath, 
+    [string][Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()] $DestPath,
+    [switch] $Force, [switch] $Recurse)
 
 
-function Split-GcsPath([string] $path) {
-    $path = $path.replace('\', '/')  # It's easy to use the wrong slashes.
-    if ($path -match '^gs://([^/]+)(/.*)') {
+##############################################################################
+#.SYNOPSIS
+# Splits a Cloud Storage path into its bucket name and object name.
+#
+#.PARAMETER Path
+# A Google Cloud Storage path, or not.  Slashes can be forward or backward.
+#
+#.OUTPUTS
+# If Path is a valid Cloud Storage path, outputs two items:
+#   bucket name
+#   object name
+# Otherwise, outputs nothing.
+##############################################################################
+function Split-GcsPath([string] $Path) {
+    $Path = $Path.replace('\', '/')
+    if ($Path -match '^[gG][sS]://([^/]+)(/.*)') {
         $matches[1], $matches[2]
     }
 }
 
+##############################################################################
+#.SYNOPSIS
+# Tests whether a Cloud Storage object with the give object name exists.
+#
+#.PARAMETER Bucket
+# The name of the Google Cloud Storage bucket.
+#
+#.PARAMETER ObjectName
+# The name of the Google Cloud Storage object.
+#
+#.OUTPUTS
+# True or False
+##############################################################################
 function Test-GcsObject([string] $Bucket, [string] $ObjectName) {
     try { 
         Get-GcsObject -Bucket $Bucket -ObjectName $ObjectName
@@ -36,140 +90,206 @@ function Test-GcsObject([string] $Bucket, [string] $ObjectName) {
     }
 }
 
-function Append-Slash([string] $path, [string]$slash = '\') {
-    if ($path.EndsWith($slash)) { $path } else { "$path$slash" }
+##############################################################################
+#.SYNOPSIS
+# Appends a slash to the path if it doesn't already end in a slash.
+#
+#.PARAMETER Path
+# The path to append.
+#
+#.PARAMETER Slash
+# The slash character to append.
+#
+#.OUTPUTS
+# A path that always ends with a Slash.
+##############################################################################
+function Append-Slash([string] $Path, [string]$Slash = '\') {
+    if ($Path.EndsWith($Slash)) { $Path } else { "$Path$Slash" }
 }
 
-function Upload-Item([string] $sourcePath, [string] $destPath,
-        [string] $bucket) {
+##############################################################################
+#.SYNOPSIS
+# Uploads an item from the local file system to Google Cloud Storage.
+#
+#.PARAMETER SourcePath
+# The local file system path to upload.
+#
+#.PARAMETER DestPath
+# The prefix of the Cloud Storage object name to be created.
+#
+#.PARAMETER Bucket
+# The Cloud Storage bucket to upload to.
+#
+#.OUTPUTS
+# The list of Cloud Storage objects created.
+##############################################################################
+function Upload-Item([string] $SourcePath, [string] $DestPath,
+        [string] $Bucket) {
     # Is the source path a file or a directory?  Does the
     # destination directory already exist?  It takes a lot of logic
     # to match the behavior of cp and copy.
-    $destDir = Append-Slash $destPath '/'
-    if (Test-Path -Path $sourcePath -PathType Leaf) {
+    $DestDir = Append-Slash $DestPath '/'
+    if (Test-Path -Path $SourcePath -PathType Leaf) {
         # It's a file.
-        if ((Test-GcsObject $bucket $destDir) -or $destPath.EndsWith('/')) {
+        if ((Test-GcsObject $Bucket $DestDir) -or $DestPath.EndsWith('/')) {
             # Copying a single file to a directory.
-            New-GcsObject -Bucket $bucket `
-                -ObjectName "$destDir$(Split-Path $sourcePath -Leaf)" `
-                -File $sourcePath -Force:$force
+            New-GcsObject -Bucket $Bucket `
+                -ObjectName "$DestDir$(Split-Path $SourcePath -Leaf)" `
+                -File $SourcePath -Force:$Force
         } else {
             # Copying a single file to a file name.
-            New-GcsObject -Bucket $bucket -ObjectName $destPath `
-                -File $sourcePath -Force:$force
+            New-GcsObject -Bucket $Bucket -ObjectName $DestPath `
+                -File $SourcePath -Force:$Force
         }
-    } elseif (Test-Path -Path $sourcePath -PathType Container) {
+    } elseif (Test-Path -Path $SourcePath -PathType Container) {
         # It's a directory.
-        if (-not $recurse) {
+        if (-not $Recurse) {
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
-        if ((Test-GcsObject $bucket $destDir) -or $destPath.EndsWith('/')) {
+        if ((Test-GcsObject $Bucket $DestDir) -or $DestPath.EndsWith('/')) {
             # Copying a directory to an existing directory.
-            $destDir = "$destDir$($item.Name)"
+            $DestDir = "$DestDir$($item.Name)"
         }
-        New-GcsObject -Bucket $bucket -ObjectName $destDir -Contents "" `
-            -Force:$force
-        Upload-Dir $sourcePath $destDir $bucket
+        New-GcsObject -Bucket $Bucket -ObjectName $DestDir -Contents "" `
+            -Force:$Force
+        Upload-Dir $SourcePath $DestDir $Bucket
     } else {
         throw [System.IO.FileNotFoundException] `
-        "$sourcePath does not exist."
+        "$SourcePath does not exist."
     }
 }
 
-function Upload-Dir([string] $sourcePath, [string] $destDir,
-        [string] $bucket) {
-    $sourceDir = Append-Slash $sourcePath '\'
+##############################################################################
+#.SYNOPSIS
+# Uploads a directory local file system to Google Cloud Storage.
+#
+#.PARAMETER SourcePath
+# The local file system directory to upload.
+#
+#.PARAMETER DestDir
+# The prefix of the Cloud Storage object name to be created.  Must end in /.
+#
+#.PARAMETER Bucket
+# The Cloud Storage bucket to upload to.
+#
+#.OUTPUTS
+# The list of Cloud Storage objects created.
+##############################################################################
+function Upload-Dir([string] $SourcePath, [string] $DestDir,
+        [string] $Bucket) {
+    $sourceDir = Append-Slash $SourcePath '\'
     $items = Get-ChildItem $sourceDir | Sort-Object -Property Mode,Name
     foreach ($item in $items) {
         if (Test-Path -Path $item.FullName -PathType Container) {
-            New-GcsObject -Bucket $bucket -ObjectName "$destDir$($item.Name)/" `
-                -Contents "" -Force:$force
-            Upload-Dir "$sourceDir$($item.Name)" "$destDir$($item.Name)/" `
-                $bucket
+            New-GcsObject -Bucket $Bucket -ObjectName "$DestDir$($item.Name)/" `
+                -Contents "" -Force:$Force
+            Upload-Dir "$sourceDir$($item.Name)" "$DestDir$($item.Name)/" `
+                $Bucket
         } else {
-            New-GcsObject -Bucket $bucket -ObjectName "$destDir$($item.Name)" `
-                -File $item.FullName -Force:$force
+            New-GcsObject -Bucket $Bucket -ObjectName "$DestDir$($item.Name)" `
+                -File $item.FullName -Force:$Force
         }
     }
 }
 
-function Download-Object([string] $sourcePath, [string] $destPath,
-        [string] $bucket) {
-    $outFile = if (Test-Path -Path $destPath -PathType Container) {
-        Join-Path $destPath (Split-Path $sourcePath -Leaf)
+##############################################################################
+#.SYNOPSIS
+# Downloads an object from Google Cloud Storage to the local file system.
+#
+#.PARAMETER SourcePath
+# The prefix of the Cloud Storage object name to be downloaded.
+#
+#.PARAMETER DestPath
+# The local file system path to create.
+#
+#.PARAMETER Bucket
+# The Cloud Storage bucket to download from.
+#
+#.OUTPUTS
+# The list of local files created.
+##############################################################################
+function Download-Object([string] $SourcePath, [string] $DestPath,
+        [string] $Bucket) {
+    $outFile = if (Test-Path -Path $DestPath -PathType Container) {
+        Join-Path $DestPath (Split-Path $SourcePath -Leaf)
     } else {
-        $destPath
+        $DestPath
     }
-    if (-not $sourcePath.EndsWith('/') `
-        -and (Test-GcsObject $bucket $sourcePath)) {
+    if (-not $SourcePath.EndsWith('/') `
+        -and (Test-GcsObject $Bucket $SourcePath)) {
         # Source path is a simple file.
-        Read-GcsObject -Bucket $bucket -ObjectName $sourcePath `
-            -OutFile $outFile -Force:$force
+        Read-GcsObject -Bucket $Bucket -ObjectName $SourcePath `
+            -OutFile $outFile -Force:$Force
     } else {
         # Source is a directory.
-        if (-not $recurse) {
+        if (-not $Recurse) {
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
-        Download-Dir $sourcePath $outFile $bucket
+        Download-Dir $SourcePath $outFile $Bucket
     }
 }
 
 
-function Download-Dir([string] $sourcePath, [string] $destPath, 
-        [string] $bucket) {
-    $sourceDir = Append-Slash $sourcePath '/'
-    foreach ($object in (Find-GcsObject -Bucket $bucket -Prefix $sourceDir)) {
+##############################################################################
+#.SYNOPSIS
+# Downloads a directory from Google Cloud Storage to the local file system.
+#
+#.PARAMETER SourcePath
+# The prefix of the Cloud Storage object name to be downloaded.
+#
+#.PARAMETER DestPath
+# The local file system path to create.
+#
+#.PARAMETER Bucket
+# The Cloud Storage bucket to download from.
+#
+#.OUTPUTS
+# The list of local files created.
+##############################################################################
+function Download-Dir([string] $SourcePath, [string] $DestPath, 
+        [string] $Bucket) {
+    $sourceDir = Append-Slash $SourcePath '/'
+    foreach ($object in (Find-GcsObject -Bucket $Bucket -Prefix $sourceDir)) {
         $relPath = $object.Name.Substring(
             $sourceDir.Length, $object.Name.Length - $sourceDir.Length)
-        $destFilePath = (Join-Path $destPath $relPath)
-        $destDirPath = (Split-Path -Path $destFilePath)
+        $destFilePath = (Join-Path $DestPath $relPath)
+        $DestDirPath = (Split-Path -Path $destFilePath)
         if ($relPath.EndsWith('/')) {
             # It's a directory
             New-Item -ItemType Directory -Force -Path $destFilePath
         } else {
             # It's a file
-            $destDir = New-Item -ItemType Directory -Force -Path $destDirPath
-            Read-GcsObject -Bucket $bucket -ObjectName $object.Name `
-                -OutFile $destFilePath -Force:$force
+            $DestDir = New-Item -ItemType Directory -Force -Path $DestDirPath
+            Read-GcsObject -Bucket $Bucket -ObjectName $object.Name `
+                -OutFile $destFilePath -Force:$Force
             Get-Item $destFilePath
         }
     }
 }
 
-$usage = "Usage:
-
-.\Copy-Dir.ps1 [-sourcePath] <String> [-destPath] <String> [-Force]
-
-Google Cloud Storage paths look like:
-gs://bucket/a/b/c.txt
-
-Note that the concept of a directory does not exist in Cloud Storage, so
-empty directories will not be copied to Cloud Storage.
-
-Does not support wildcards like * or ?.
-
-Does not support multiple source paths.
-In other words, this will not work:
-.\Copy-Dir.ps1
-"
-
 function Main {
-    $destBucketAndPath = Split-GcsPath $destPath
-    $sourceBucketAndPath = Split-GcsPath $sourcePath
+    $destBucketAndPath = Split-GcsPath $DestPath
+    $sourceBucketAndPath = Split-GcsPath $SourcePath
     if ($sourceBucketAndPath) {
+        $sourceBucket, $sourcePath = $sourceBucketAndPath
         if ($destBucketAndPath) {
-            "Not yet implemented."
+            # Copying from Cloud Storage to Cloud Storage.
+            # Download, then upload.
+            $sourceName = Split-Path $SourcePath
+            $tempPath = Join-Path $env:TEMP GcsCopies (Get-Random) $sourceName
+            $localFiles = Download-Object $sourcePath $tempPath $sourceBucket
+            Upload-Item $tempPath $destBucketAndPath[1] $destBucketAndPath[0]
         } else {
-            Download-Object $sourceBucketAndPath[1] $destPath $sourceBucketAndPath[0]
+            Download-Object $sourcePath $DestPath $sourceBucket
         }
     } else {
         if ($destBucketAndPath) {
-            Upload-Item $sourcePath $destBucketAndPath[1] $destBucketAndPath[0]
+            Upload-Item $SourcePath $destBucketAndPath[1] $destBucketAndPath[0]
         } else {
             # Both paths are local.  Let the local file system do it.
-            Copy-Item -Path $sourcePath -Destination $destPath -Force:$force -Recurse:$recurse
+            Copy-Item -Path $SourcePath -Destination $DestPath -Force:$Force -Recurse:$Recurse
         }
     }        
 }
