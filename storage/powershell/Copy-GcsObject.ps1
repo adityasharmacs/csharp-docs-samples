@@ -62,7 +62,7 @@ param(
 ##############################################################################
 function Split-GcsPath([string] $Path) {
     $Path = $Path.replace('\', '/')
-    if ($Path -match '^[gG][sS]://([^/]+)(/.*)') {
+    if ($Path -match '^[gG][sS]://([^/]+)/(.*)') {
         $matches[1], $matches[2]
     }
 }
