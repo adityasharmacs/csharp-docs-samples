@@ -40,6 +40,9 @@ function Append-Slash([string] $path, [string]$slash = '\') {
 
 function Upload-Item([string] $sourcePath, [string] $destPath,
         [string] $bucket) {
+    # Is the source path a file or a directory?  Does the
+    # destination directory already exist?  It takes a lot of logic
+    # to match the behavior of cp and copy.
     $destDir = Append-Slash $destPath '/'
     if (Test-Path -Path $sourcePath -PathType Leaf) {
         # It's a file.
@@ -95,6 +98,29 @@ function Upload-Dir([string] $sourcePath, [string] $destDir,
     }
 }
 
+function Download-Object([string] $sourcePath, [string] $destPath,
+        [string] $bucket) {
+    $outFile = if (Test-Path -Path $destPath -PathType Container) {
+        Join-Path $destPath (Split-Path $sourcePath -Leaf)
+    } else {
+        $destPath
+    }
+    if (-not $sourcePath.EndsWith('/') `
+        -and (Test-GcsObject $bucket $sourcePath)) {
+        # Source path is a simple file.
+        Read-GcsObject -Bucket $bucket -ObjectName $sourcePath `
+            -OutFile $outFile -Force:$force
+    } else {
+        # Source is a directory.
+        if (-not $recurse) {
+            throw [System.IO.FileNotFoundException] `
+                "Use the -Recurse flag to copy directories."
+        }
+        Download-Dir $sourcePath $outFile $bucket
+    }
+}
+
+
 function Download-Dir([string] $sourcePath, [string] $destPath, 
         [string] $bucket) {
     $sourceDir = Append-Slash $sourcePath '/'
@@ -103,10 +129,16 @@ function Download-Dir([string] $sourcePath, [string] $destPath,
             $sourceDir.Length, $object.Name.Length - $sourceDir.Length)
         $destFilePath = (Join-Path $destPath $relPath)
         $destDirPath = (Split-Path -Path $destFilePath)
-        $destDir = New-Item -ItemType Directory -Force -Path $destDirPath
-        Read-GcsObject -Bucket $bucket -ObjectName $object.Name `
-            -OutFile $destFilePath -Force:$force
-        Get-Item $destFilePath
+        if ($relPath.EndsWith('/')) {
+            # It's a directory
+            New-Item -ItemType Directory -Force -Path $destFilePath
+        } else {
+            # It's a file
+            $destDir = New-Item -ItemType Directory -Force -Path $destDirPath
+            Read-GcsObject -Bucket $bucket -ObjectName $object.Name `
+                -OutFile $destFilePath -Force:$force
+            Get-Item $destFilePath
+        }
     }
 }
 
@@ -130,7 +162,7 @@ empty directories will not be copied to Cloud Storage.
         if ($destBucketAndPath) {
             "Not yet implemented."
         } else {
-            Download-Dir $sourceBucketAndPath[1] $destPath $sourceBucketAndPath[0]
+            Download-Object $sourceBucketAndPath[1] $destPath $sourceBucketAndPath[0]
         }
     } else {
         if ($destBucketAndPath) {
