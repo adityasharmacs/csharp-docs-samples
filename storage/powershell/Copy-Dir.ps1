@@ -46,14 +46,11 @@ function Upload-Item([string] $sourcePath, [string] $destPath,
     $destDir = Append-Slash $destPath '/'
     if (Test-Path -Path $sourcePath -PathType Leaf) {
         # It's a file.
-        if (Test-GcsObject $bucket $destDir) {
+        if ((Test-GcsObject $bucket $destDir) -or $destPath.EndsWith('/')) {
             # Copying a single file to a directory.
             New-GcsObject -Bucket $bucket `
                 -ObjectName "$destDir$(Split-Path $sourcePath -Leaf)" `
                 -File $sourcePath -Force:$force
-        } elseif ($destPath.EndsWith('/')) {
-            throw [System.IO.DirectoryNotFoundException] `
-                "Destination $destPath does not exist."
         } else {
             # Copying a single file to a file name.
             New-GcsObject -Bucket $bucket -ObjectName $destPath `
