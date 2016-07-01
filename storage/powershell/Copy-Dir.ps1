@@ -210,7 +210,7 @@ function Upload-Dir([string] $SourcePath, [string] $DestDir,
 # The list of local files created.
 ##############################################################################
 function Download-Object([string] $SourcePath, [string] $DestPath,
-        [string] $Bucket) {
+        [string] $Bucket, [switch] $ShowProgress) {
     $outFile = if (Test-Path -Path $DestPath -PathType Container) {
         Join-Path $DestPath (Split-Path $SourcePath -Leaf)
     } else {
@@ -227,7 +227,7 @@ function Download-Object([string] $SourcePath, [string] $DestPath,
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
-        Download-Dir $SourcePath $outFile $Bucket
+        Download-Dir $SourcePath $outFile $Bucket -ShowProgress:$ShowProgress
     }
 }
 
@@ -249,9 +249,17 @@ function Download-Object([string] $SourcePath, [string] $DestPath,
 # The list of local files created.
 ##############################################################################
 function Download-Dir([string] $SourcePath, [string] $DestPath, 
-        [string] $Bucket) {
+        [string] $Bucket, [switch]$ShowProgress) {
     $sourceDir = Append-Slash $SourcePath '/'
-    foreach ($object in (Find-GcsObject -Bucket $Bucket -Prefix $sourceDir)) {
+    $objects = Find-GcsObject -Bucket $Bucket -Prefix $sourceDir
+    $progress = 0
+    foreach ($object in $objects) {
+        if ($ShowProgress) {
+            Write-Progress -Activity "Downloading objects" `
+                -CurrentOperation "Downloading $($object.Name)" `
+                -PercentComplete (++$progress * 100 / $objects.Length) `
+                -Completed:($progress -eq $objects.Length)
+        }
         $relPath = $object.Name.Substring(
             $sourceDir.Length, $object.Name.Length - $sourceDir.Length)
         $destFilePath = (Join-Path $DestPath $relPath)
@@ -277,11 +285,14 @@ function Main {
         $sourceBucket, $sourcePath = $sourceBucketAndPath
         if ($destBucketAndPath) {
             # Copying from Cloud Storage to Cloud Storage.
-            # Download, then upload.
+            # Download to a temp directory, then upload.
             $sourceName = Split-Path $SourcePath -Leaf
-            $tempPath = [System.IO.Path]::Combine(
-                $env:TEMP, 'GcsCopies', (Get-Random), $sourceName)
-            $localFiles = Download-Object $sourcePath $tempPath $sourceBucket
+            $tempParentPath = [System.IO.Path]::Combine(
+                $env:TEMP, 'GcsCopies', (Get-Random))
+            $tempParentDir = New-Item -ItemType Directory -Path $tempParentPath
+            $tempPath = [System.IO.Path]::Combine($tempParentPath, $sourceName)
+            $localFiles = Download-Object $sourcePath $tempPath $sourceBucket `
+                -ShowProgress
             Upload-Item $tempPath $destBucketAndPath[1] $destBucketAndPath[0]
         } else {
             Download-Object $sourcePath $DestPath $sourceBucket
@@ -291,7 +302,8 @@ function Main {
             Upload-Item $SourcePath $destBucketAndPath[1] $destBucketAndPath[0]
         } else {
             # Both paths are local.  Let the local file system do it.
-            Copy-Item -Path $SourcePath -Destination $DestPath -Force:$Force -Recurse:$Recurse
+            Copy-Item -Path $SourcePath -Destination $DestPath -Force:$Force `
+                -Recurse:$Recurse
         }
     }        
 }
