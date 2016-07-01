@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-param([string]$sourcePath, [string] $destPath, [switch] $force, [switch] $recurse)
+param([string][Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()]$sourcePath, 
+    [string][Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()] $destPath,
+    [switch] $force, [switch] $recurse)
 
 
 function Split-GcsPath([string] $path) {
@@ -136,20 +138,24 @@ function Download-Dir([string] $sourcePath, [string] $destPath,
     }
 }
 
-function Main {
-    if (-not ($sourcePath -and $destPath)) {
-        Write-Error "Usage:
+$usage = "Usage:
 
-Copy-Dir.ps1 [-sourcePath] <String> [-destPath] <String> [-Force]
+.\Copy-Dir.ps1 [-sourcePath] <String> [-destPath] <String> [-Force]
 
 Google Cloud Storage paths look like:
 gs://bucket/a/b/c.txt
 
 Note that the concept of a directory does not exist in Cloud Storage, so
 empty directories will not be copied to Cloud Storage.
+
+Does not support wildcards like * or ?.
+
+Does not support multiple source paths.
+In other words, this will not work:
+.\Copy-Dir.ps1
 "
-        return
-    }
+
+function Main {
     $destBucketAndPath = Split-GcsPath $destPath
     $sourceBucketAndPath = Split-GcsPath $sourcePath
     if ($sourceBucketAndPath) {
@@ -169,5 +175,4 @@ empty directories will not be copied to Cloud Storage.
 }
 
 Main
-
 
