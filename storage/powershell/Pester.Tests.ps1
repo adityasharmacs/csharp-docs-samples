@@ -32,19 +32,27 @@ function Join-Output {
     ($input | ForEach-Object { $_ }) -join "`n"
 }
 
-Describe "pester" {
+Describe "Copy-GcsObject" {
     It "does something useful" {
         $true | Should Be $false
     }
 
     It "uploads a new directory." {
         Clear-GcsTestDir
-        $objectNames = (Upload-Testdata -PassThru).Name
-        $objectNames | Join-Output| Should Be (Groom-Expected "testdata/
-        testdata/hello.txt
-        testdata/a/
-        testdata/a/b/
-        testdata/a/b/c.txt
-        testdata/a/empty/")
+        (Upload-Testdata -PassThru).Name | Join-Output | Should Be (Groom-Expected `
+            "testdata/
+            testdata/hello.txt
+            testdata/a/
+            testdata/a/b/
+            testdata/a/b/c.txt
+            testdata/a/empty/")
     }
+
+    It "uploads a single file to a directory." {
+        Clear-GcsTestDir
+        Upload-Testdata
+        (.\Copy-GcsObject.ps1 testdata/hello.txt gs://$env:GOOGLE_BUCKET/testdata/a `
+            ).Name | Should Be "testdata/a/hello.txt"
+    }
+
 }
