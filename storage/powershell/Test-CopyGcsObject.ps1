@@ -14,15 +14,25 @@
 
 
 # Clear out all existing test data.
-$objects = Find-GcsObject -Bucket $env:GOOGLE_BUCKET -Prefix test/
-Write-Progress -Activity "Removing old objects" `
-    -CurrentOperation "Finding objects" -PercentComplete 0
-foreach ($object in $objects) {
+function Clear-GcsTestDir {
+    $objects = Find-GcsObject -Bucket $env:GOOGLE_BUCKET -Prefix testdata/
     Write-Progress -Activity "Removing old objects" `
-        -CurrentOperation "Removing $($object.Name)" `
-        -PercentComplete (++$progress * 100 / $objects.Length) `
-        -Completed:($progress -eq $objects.Length)
-    $ignore = Remove-GcsObject -Bucket $env:GOOGLE_BUCKET -ObjectName $object.Name
+        -CurrentOperation "Finding objects" -PercentComplete 0
+    foreach ($object in $objects) {
+        Write-Progress -Activity "Removing old objects" `
+            -CurrentOperation "Removing $($object.Name)" `
+            -PercentComplete (++$progress * 100 / $objects.Length) `
+            -Completed:($progress -eq $objects.Length)
+        $ignore = Remove-GcsObject -Bucket $env:GOOGLE_BUCKET `
+            -ObjectName $object.Name
+    }
+}
+
+function Upload-Testdata ([switch]$PassThru) {
+    $output = .\Copy-GcsObject.ps1 testdata gs://$env:GOOGLE_BUCKET/testdata -Recurse
+    if ($PassThru) {
+        $output
+    }
 }
 
 $failCount = 0
@@ -33,7 +43,8 @@ function Expect-Equal($expected, $observed, $invocation) {
             $invocation = $MyInvocation
         }
         $failCount += 1
-        Write-Warning ("Expectation failed: {0}:{1}`n{2}`nExpected: {3}`nObserved: {4}" -f @(
+        Write-Warning ("Expectation failed: {0}:{1}`n{2}`n" `
+            + "Expected: {3}`nObserved: {4}" -f @(
             (Split-Path $invocation.ScriptName -Leaf), 
             $invocation.ScriptLineNumber,
             $invocation.Line.Trim(),
@@ -48,23 +59,28 @@ function Expect-Output([string]$expected) {
     Expect-Equal $tidyExpected $output $MyInvocation
 }    
 
-# Test uploading a new directory.
-(.\Copy-GcsObject.ps1 testdata gs://$env:GOOGLE_BUCKET/test/UploadDir `
-    -Recurse).Name | Expect-Output "test/UploadDir/
-test/UploadDir/hello.txt
-test/UploadDir/a/
-test/UploadDir/a/b/
-test/UploadDir/a/b/c.txt
-test/UploadDir/a/empty/"
+Write-Warning "Test uploading a new directory."
+Clear-GcsTestDir
+(Upload-Testdata -PassThru).Name | Expect-Output "testdata/
+testdata/hello.txt
+testdata/a/
+testdata/a/b/
+testdata/a/b/c.txt
+testdata/a/empty/"
 
-# Test uploading a single file to a directory.
-(.\Copy-GcsObject.ps1 testdata/hello.txt gs://$env:GOOGLE_BUCKET/test/UploadDir/a `
-    ).Name | Expect-Output "test/UploadDir/a/hello.txt"
+Write-Warning "Test uploading a single file to a directory."
+Clear-GcsTestDir
+Upload-Testdata
+(.\Copy-GcsObject.ps1 testdata/hello.txt gs://$env:GOOGLE_BUCKET/testdata/a `
+    ).Name | Expect-Output "testdata/a/hello.txt"
 
-# Test uploading a single file to a file name.
-(.\Copy-GcsObject.ps1 testdata/hello.txt gs://$env:GOOGLE_BUCKET/test/UploadDir/a/b/bye.txt `
-    ).Name | Expect-Output "test/UploadDir/a/b/bye.txt"
+Write-Warning "Test uploading a single file to a file name."
+Clear-GcsTestDir
+(.\Copy-GcsObject.ps1 testdata/hello.txt gs://$env:GOOGLE_BUCKET/testdata/a/b/bye.txt `
+    ).Name | Expect-Output "testdata/a/b/bye.txt"
 
-# Test uploading a directory into an existing directory structure.
-(.\Copy-GcsObject.ps1 testdata/a/b gs://$env:GOOGLE_BUCKET/test/UploadDir/ `
+Write-Warning "Test uploading a directory into an existing directory structure."
+Clear-GcsTestDir
+Upload-Testdata
+(.\Copy-GcsObject.ps1 testdata/a/b gs://$env:GOOGLE_BUCKET/testdata/ `
     -Recurse).Name

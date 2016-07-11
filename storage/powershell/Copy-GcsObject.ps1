@@ -82,8 +82,8 @@ function Split-GcsPath([string] $Path) {
 ##############################################################################
 function Test-GcsObject([string] $Bucket, [string] $ObjectName) {
     try { 
-        Get-GcsObject -Bucket $Bucket -ObjectName $ObjectName
-        return $True
+        $obj = Get-GcsObject -Bucket $Bucket -ObjectName $ObjectName
+        return $obj
     } catch {
         if ($_.Exception.HttpStatusCode -eq "NotFound") {
             return $False
@@ -107,6 +107,38 @@ function Test-GcsObject([string] $Bucket, [string] $ObjectName) {
 ##############################################################################
 function Append-Slash([string] $Path, [string]$Slash = '\') {
     if ($Path.EndsWith($Slash)) { $Path } else { "$Path$Slash" }
+}
+
+##############################################################################
+#.SYNOPSIS
+# Creates a directory on cloud storage.
+#
+#.DESCRIPTION
+# There is no concept of a directory in Google Cloud Storage.  To simulate a
+# directory, we create a zero-length file that ends in a /.
+#
+# First checks to see if a directory by the same name already exists, and
+# reports no error if it does.
+#
+#.PARAMETER Path
+# The directory name.
+#
+#.PARAMETER Bucket
+# The Cloud Storage bucket.
+#
+#.OUTPUTS
+# The Cloud Storage object created.
+##############################################################################
+function Make-GcsDirectory([string] $Path, [string] $Bucket, [switch] $Force) {
+    $dir = Append-Slash $Path '/'
+    if (-not $Force) {
+        $existing = Test-GcsObject -Bucket $Bucket -ObjectName $dir
+        if ($existing -and $existing.Size -eq 0) {
+            return # Directory already exists.
+        }
+    }
+    New-GcsObject -Bucket $Bucket -ObjectName $dir `
+        -Contents "" -Force:$Force
 }
 
 ##############################################################################
@@ -153,8 +185,7 @@ function Upload-Item([string] $SourcePath, [string] $DestPath,
             # Copying a directory to an existing directory.
             $DestDir = "$DestDir$($item.Name)"
         }
-        New-GcsObject -Bucket $Bucket -ObjectName $DestDir -Contents "" `
-            -Force:$Force
+        Make-GcsDirectory -Bucket $Bucket -Path $DestDir -Force $Force
         Upload-Dir $SourcePath $DestDir $Bucket
     } else {
         throw [System.IO.FileNotFoundException] `
@@ -184,8 +215,8 @@ function Upload-Dir([string] $SourcePath, [string] $DestDir,
     $items = Get-ChildItem $sourceDir | Sort-Object -Property Mode,Name
     foreach ($item in $items) {
         if (Test-Path -Path $item.FullName -PathType Container) {
-            New-GcsObject -Bucket $Bucket -ObjectName "$DestDir$($item.Name)/" `
-                -Contents "" -Force:$Force
+            Make-GcsDirectory -Bucket $Bucket -Path "$DestDir$($item.Name)/" `
+                -Force $Force
             Upload-Dir "$sourceDir$($item.Name)" "$DestDir$($item.Name)/" `
                 $Bucket
         } else {
