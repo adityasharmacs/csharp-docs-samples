@@ -183,7 +183,7 @@ function Upload-Item([string] $SourcePath, [string] $DestPath,
         }
         if ((Test-GcsObject $Bucket $DestDir) -or $DestPath.EndsWith('/')) {
             # Copying a directory to an existing directory.
-            $DestDir = "$DestDir$($item.Name)"
+            $DestDir = "$DestDir$(Split-Path $SourcePath -Leaf)/"
         }
         Make-GcsDirectory -Bucket $Bucket -Path $DestDir -Force $Force
         Upload-Dir $SourcePath $DestDir $Bucket

@@ -83,4 +83,6 @@ Write-Warning "Test uploading a directory into an existing directory structure."
 Clear-GcsTestDir
 Upload-Testdata
 (.\Copy-GcsObject.ps1 testdata/a/b gs://$env:GOOGLE_BUCKET/testdata/ `
-    -Recurse).Name
+    -Recurse).Name | Expect-Output "testdata/b/
+testdata/b/c.txt
+"
