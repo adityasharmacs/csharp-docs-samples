@@ -260,6 +260,9 @@ function Download-Object([string] $SourcePath, [string] $DestPath,
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
+        if (-not (Test-Path -Path $DestPath -PathType Container)) {
+            New-Item -Path $outFile -ItemType Directory
+        }
         Download-Dir $SourcePath $outFile $Bucket -ShowProgress:$ShowProgress
     }
 }
@@ -299,6 +302,9 @@ function Download-Dir([string] $SourcePath, [string] $DestPath,
         }
         $relPath = $object.Name.Substring(
             $sourceDir.Length, $object.Name.Length - $sourceDir.Length)
+        if ($relPath.Length -eq 0) {
+            continue
+        }
         $destFilePath = (Join-Path $DestPath $relPath)
         $DestDirPath = (Split-Path -Path $destFilePath)
         if ($relPath.EndsWith('/')) {

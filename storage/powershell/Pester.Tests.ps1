@@ -105,12 +105,18 @@ Describe "Uploads" {
 Describe "Downloads" {
     BeforeEach {
         Clear-GcsTestDir
+        Upload-Testdata
+        $tempDir = [System.IO.Path]::GetFullPath(
+            [System.IO.Path]::Combine($env:TEMP, 'Pester.Test', (Get-Random)))
     }
 
-    It "downloads the testdata directory." {
-        Upload-Testdata
-        $tempDir = [System.IO.Path]::Combine($env:TEMP, 'Pester.Test', 
-            (Get-Random))
-        .\Copy-GcsObject.ps1 gs://$env:GOOGLE?BUCKET/testdata $tempDir -Recurse
+    It "downloads the testdata directory." {        
+        .\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata $tempDir -Recurse `
+            | Join-Output | Should Be (Groom-Expected "$tempDir
+                $tempDir\a
+                $tempDir\a\b
+                $tempDir\a\b\c.txt
+                $tempDir\a\empty
+                $tempDir\hello.txt")
     }
 }
