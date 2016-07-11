@@ -23,11 +23,12 @@ function Upload-Testdata([switch]$PassThru) {
     }
 }
 
-function Groom-Output($output) {
-    $output.Split("`n") | ForEach-Object { $_.Trim() }
+function Groom-Expected($expected) {
+    $groomedLines = $expected.Split("`n") | ForEach-Object { $_.Trim() }
+    [string]::Join("`n", $groomedLines)
 }
 
-function Groom-Input {
+function Join-Output {
     ($input | ForEach-Object { $_ }) -join "`n"
 }
 
@@ -39,7 +40,7 @@ Describe "pester" {
     It "uploads a new directory." {
         Clear-GcsTestDir
         $objectNames = (Upload-Testdata -PassThru).Name
-        , $objectNames | Should Be (Groom-Output "testdata/
+        $objectNames | Join-Output| Should Be (Groom-Expected "testdata/
         testdata/hello.txt
         testdata/a/
         testdata/a/b/
