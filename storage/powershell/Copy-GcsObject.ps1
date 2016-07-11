@@ -254,13 +254,14 @@ function Download-Object([string] $SourcePath, [string] $DestPath,
         # Source path is a simple file.
         Read-GcsObject -Bucket $Bucket -ObjectName $SourcePath `
             -OutFile ([System.IO.Path]::GetFullPath($outFile)) -Force:$Force
+        Get-Item $outFile
     } else {
         # Source is a directory.
         if (-not $Recurse) {
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
-        if (-not (Test-Path -Path $DestPath -PathType Container)) {
+        if (-not (Test-Path -Path $outFile -PathType Container)) {
             New-Item -Path $outFile -ItemType Directory
         }
         Download-Dir $SourcePath $outFile $Bucket -ShowProgress:$ShowProgress

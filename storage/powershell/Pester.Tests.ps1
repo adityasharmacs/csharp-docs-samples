@@ -106,17 +106,39 @@ Describe "Downloads" {
     BeforeEach {
         Clear-GcsTestDir
         Upload-Testdata
-        $tempDir = [System.IO.Path]::GetFullPath(
+        $tempPath = [System.IO.Path]::GetFullPath(
             [System.IO.Path]::Combine($env:TEMP, 'Pester.Test', (Get-Random)))
     }
 
     It "downloads the testdata directory." {        
-        .\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata $tempDir -Recurse `
-            | Join-Output | Should Be (Groom-Expected "$tempDir
-                $tempDir\a
-                $tempDir\a\b
-                $tempDir\a\b\c.txt
-                $tempDir\a\empty
-                $tempDir\hello.txt")
+        .\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata $tempPath -Recurse `
+            | Join-Output | Should Be (Groom-Expected "$tempPath
+                $tempPath\a
+                $tempPath\a\b
+                $tempPath\a\b\c.txt
+                $tempPath\a\empty
+                $tempPath\hello.txt")
+    }
+
+    It "downloads the testdata directory to an existing directory." {        
+        New-Item -ItemType Directory -Path $tempPath
+        .\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata $tempPath -Recurse `
+            | Join-Output | Should Be (Groom-Expected "$tempPath\testdata
+                $tempPath\testdata\a
+                $tempPath\testdata\a\b
+                $tempPath\testdata\a\b\c.txt
+                $tempPath\testdata\a\empty
+                $tempPath\testdata\hello.txt")
+    }
+
+    It "downloads hello.txt to a file." {        
+        .\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata/hello.txt $tempPath `
+            | Should Be "$tempPath"
+    }
+
+    It "downloads hello.txt to a directory." {
+        New-Item -ItemType Directory -Path $tempPath
+        .\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata/hello.txt $tempPath `
+            | Should Be "$tempPath\hello.txt"
     }
 }
