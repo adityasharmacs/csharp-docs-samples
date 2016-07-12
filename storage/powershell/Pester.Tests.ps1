@@ -20,8 +20,8 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 #.SYNOPSIS
 # Cleans out Google Cloud Storage directory.
 ##############################################################################
-function Clear-GcsTestDir {
-    $objects = Find-GcsObject -Bucket $env:GOOGLE_BUCKET -Prefix testdata/
+function Clear-GcsTestDir([string]$TestDir = 'testdata/') {
+    $objects = Find-GcsObject -Bucket $env:GOOGLE_BUCKET -Prefix $TestDir
     Write-Progress -Activity "Removing old objects" `
         -CurrentOperation "Finding objects" -PercentComplete 0
     foreach ($object in $objects) {
@@ -142,3 +142,23 @@ Describe "Downloads" {
             | Should Be "$tempPath\hello.txt"
     }
 }
+
+Describe "Copies" {
+    BeforeEach {
+        Clear-GcsTestDir
+        Clear-GcsTestDir testdata2/
+        Upload-Testdata
+    }
+
+    It "copies a whole directory." {        
+        (.\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata `
+            gs://$env:GOOGLE_BUCKET/testdata2 -Recurse).Name `
+            | Join-Output | Should Be (Groom-Expected "testdata2/
+                testdata2/hello.txt
+                testdata2/a/
+                testdata2/a/b/
+                testdata2/a/b/c.txt
+                testdata2/a/empty/")
+    }
+}
+

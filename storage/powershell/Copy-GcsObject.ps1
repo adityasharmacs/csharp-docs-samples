@@ -165,7 +165,7 @@ function Upload-Item([string] $SourcePath, [string] $DestPath,
     $DestDir = Append-Slash $DestPath '/'
     if (Test-Path -Path $SourcePath -PathType Leaf) {
         # It's a file.
-        if ((Test-GcsObject $Bucket $DestDir) -or $DestPath.EndsWith('/')) {
+        if (Test-GcsObject $Bucket $DestDir) {
             # Copying a single file to a directory.
             New-GcsObject -Bucket $Bucket `
                 -ObjectName "$DestDir$(Split-Path $SourcePath -Leaf)" `
@@ -181,7 +181,7 @@ function Upload-Item([string] $SourcePath, [string] $DestPath,
             throw [System.IO.FileNotFoundException] `
                 "Use the -Recurse flag to copy directories."
         }
-        if ((Test-GcsObject $Bucket $DestDir) -or $DestPath.EndsWith('/')) {
+        if (Test-GcsObject $Bucket $DestDir) {
             # Copying a directory to an existing directory.
             $DestDir = "$DestDir$(Split-Path $SourcePath -Leaf)/"
         }
