@@ -26,7 +26,7 @@ try {
     git clone https://github.com/pester/Pester.git
     Set-Location Pester
     # Checkout a known-good commit for stability and security.
-    git checkout 9517657b5af3aba9f272336a06371b4791f18b93
+    git checkout --detach 9517657b5af3aba9f272336a06371b4791f18b93
     if ($LASTEXITCODE) {
         throw "Failed to checkout known good Pester commit."
     }
