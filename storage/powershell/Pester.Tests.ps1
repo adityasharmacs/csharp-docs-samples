@@ -159,6 +159,31 @@ Describe "Copies" {
                 testdata2/a/b/
                 testdata2/a/b/c.txt
                 testdata2/a/empty/")
+
+        # Now that testdata2 exists, the same copy shoud copy
+        # to an inner directory
+        (.\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata `
+            gs://$env:GOOGLE_BUCKET/testdata2 -Recurse).Name `
+            | Join-Output | Should Be (Groom-Expected "testdata2/testdata/
+                testdata2/testdata/hello.txt
+                testdata2/testdata/a/
+                testdata2/testdata/a/b/
+                testdata2/testdata/a/b/c.txt
+                testdata2/testdata/a/empty/")
     }
+
+    It "copies one file." {        
+        (.\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata/hello.txt `
+            gs://$env:GOOGLE_BUCKET/testdata/bye.txt).Name `
+            | Should Be "testdata/bye.txt"
+    }
+
+    It "copies one file to an existing directory." {        
+        (.\Copy-GcsObject.ps1 gs://$env:GOOGLE_BUCKET/testdata/hello.txt `
+            gs://$env:GOOGLE_BUCKET/testdata/a).Name `
+            | Should Be "testdata/a/hello.txt"
+    }
+
+
 }
 
