@@ -328,7 +328,12 @@ function Run-TestScripts
         # 1. Throw an exception.
         # 2. The last command it executed failed. 
         Try {
-            Invoke-Expression (".\" + $script.Name)
+            $job = Start-Job -ArgumentList $script.Directory, ('.\"{0}"' -f $script.Name) {
+                Set-Location $args[0]
+                Invoke-Expression $args[1]
+            }
+            Wait-Job $job
+            Receive-Job $job
             if ($LASTEXITCODE) {
                 $failures += $relativePath
             } else {
