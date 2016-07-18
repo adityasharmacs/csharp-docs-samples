@@ -319,34 +319,29 @@ function Run-TestScripts
     # Array of strings: the relative path of the inner script.
     $successes = @()
     $failures = @()
+    $timeOuts = @()
     foreach ($script in $scripts) {
         $relativePath = Resolve-Path -Relative $script.FullName
         echo ("-" * 79)
         echo $relativePath
-        Set-Location $script.Directory
-        # A script can fail two ways.
-        # 1. Throw an exception.
-        # 2. The last command it executed failed. 
-        Try {
-            $job = Start-Job -ArgumentList $script.Directory, ('.\"{0}"' -f $script.Name) {
-                Set-Location $args[0]
-                Invoke-Expression $args[1]
-            }
-            Wait-Job $job
-            Receive-Job $job
+        $job = Start-Job -ArgumentList $script.Directory, ('.\"{0}"' -f $script.Name) {
+            Set-Location $args[0]
+            Invoke-Expression $args[1]
             if ($LASTEXITCODE) {
+                throw "FAILED with exit code $LASTEXITCODE"
+            }
+        }
+        if (Wait-Job $job -Timeout 300) {
+            Receive-Job $job
+            if ($job.State -eq 'Failed') {
                 $failures += $relativePath
             } else {
                 $successes += $relativePath
             }
+        } else {
+            $timeOuts += $relativePath
         }
-        Catch {
-            echo  $_.Exception.Message
-            $failures += $relativePath
-        }
-        Finally {
-            Set-Location $rootDir
-        }
+        Remove-Job $job
     }
     # Print a final summary.
     echo ("=" * 79)
@@ -356,9 +351,15 @@ function Run-TestScripts
     $failureCount = $failures.Count
     echo "$failureCount FAILED"
     echo $failures
+    $timeOutCount = $timeOuts.Count
+    echo "$timeOutCount TIMED OUT"
+    echo $timeOuts
     # Throw an exception to set ERRORLEVEL to 1 in the calling process.
     if ($failureCount) {
         throw "$failureCount FAILED"
+    }
+    if ($timeOutCount) {
+        throw "$timeOutCount TIMED OUT"
     }
 }
 
