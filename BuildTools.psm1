@@ -322,11 +322,13 @@ function Run-TestScripts
     $timeOuts = @()
     foreach ($script in $scripts) {
         $relativePath = Resolve-Path -Relative $script.FullName
-        echo ("-" * 79)
-        echo $relativePath
-        $job = Start-Job -ArgumentList $script.Directory, ('.\"{0}"' -f $script.Name) {
-            Set-Location $args[0]
-            Invoke-Expression $args[1]
+        echo "Starting $relativePath..."
+        $job = Start-Job -ArgumentList $relativePath, $script.Directory, `
+            ('.\"{0}"' -f $script.Name) {
+            echo ("-" * 79)
+            echo $args[0]
+            Set-Location $args[1]
+            Invoke-Expression $args[2]
             if ($LASTEXITCODE) {
                 throw "FAILED with exit code $LASTEXITCODE"
             }
