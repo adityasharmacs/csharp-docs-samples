@@ -16,6 +16,9 @@
 # Git can't keep an empty directory.  Make it if it doesn't exist already.
 mkdir -Force testdata\a\empty
 
+# Use default application credntials.
+gcloud auth activate-service-account --key-file $env:_GOOGLE_APPLICATION_CREDENTIALS
+
 # Fetch Pester test framework.
 $pesterDir = [System.IO.Path]::GetFullPath(
     [System.IO.Path]::Combine($env:TEMP, 'PesterRepo', (Get-Random)))
