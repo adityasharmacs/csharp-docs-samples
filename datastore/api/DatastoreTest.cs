@@ -115,7 +115,7 @@ namespace GoogleCloudSamples
             {
                 Key = _db.CreateKeyFactory("Task").CreateKey("taskOne"),
                 ["type"] = "Personal",
-                ["created"] = DateTime.UtcNow,
+                ["created"] = new DateTime(1999, 01, 01, 0, 0, 0, DateTimeKind.Utc),
                 ["done"] = false,
                 ["priority"] = 4,
                 ["percent_complete"] = 10.0,                
