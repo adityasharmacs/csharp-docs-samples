@@ -45,8 +45,8 @@ namespace GoogleCloudSamples
         public void TestIncompleteKey()
         {
             // [START incomplete_key]
-            var incompleteKey = _db.CreateKeyFactory("Task").CreateIncompleteKey();
-            var key = _db.AllocateId(incompleteKey);
+            Key incompleteKey = _db.CreateKeyFactory("Task").CreateIncompleteKey();
+            Key key = _db.AllocateId(incompleteKey);
             // [END incomplete_key]
             Assert.IsTrue(IsValidKey(key));
         }
@@ -54,11 +54,57 @@ namespace GoogleCloudSamples
         [TestMethod]
         public void TestNamedKey()
         {
-            // [START incomplete_key]
-            var key = _db.CreateKeyFactory("Task").CreateKey("sampleTask");
-            // [END incomplete_key]
+            // [START named_key]
+            Key key = _db.CreateKeyFactory("Task").CreateKey("sampleTask");
+            // [END named_key]
             Assert.IsTrue(IsValidKey(key));
         }
+
+        [TestMethod]
+        public void TestKeyWithParent()
+        {
+            // [START key_with_parent]
+            Key rootKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
+            Key key = new KeyFactory(rootKey, "Task").CreateKey("sampleTask");
+            // [END key_with_parent]
+            Assert.IsTrue(IsValidKey(key));
+        }
+
+        [TestMethod]
+        public void TestKeyWithMultilevelParent()
+        {
+            // [START key_with_multilevel_parent]
+            Key rootKey = _db.CreateKeyFactory("User").CreateKey("Alice");
+            Key taskListKey = new KeyFactory(rootKey, "TaskList").CreateKey("default");
+            Key key = new KeyFactory(taskListKey, "Task").CreateKey("sampleTask");
+            // [END key_with_multilevel_parent]
+            Assert.IsTrue(IsValidKey(key));
+        }
+
+        private void AssertValidEntity(Entity original)
+        {
+            _db.Upsert(original);
+            Assert.AreEqual(original, _db.Lookup(original.Key));
+        }
+
+        [TestMethod]
+        public void TestEntityWithParent()
+        {
+            // [START entity_with_parent]
+            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
+            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("sampleTask");
+            Entity task = new Entity()
+            {
+                Key = taskKey,
+                ["type"] = "Personal",
+                ["done"] = false,
+                ["priority"] = 4,
+                ["description"] = "Learn Cloud Datastore"
+            };
+            // [END entity_with_parent]
+            AssertValidEntity(task);
+        }
+
 
     }
 }
