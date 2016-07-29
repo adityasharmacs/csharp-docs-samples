@@ -109,8 +109,6 @@ namespace GoogleCloudSamples
         public void TestProperties()
         {
             // [START properties]
-            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
-            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("sampleTask");
             Entity task = new Entity()
             {
                 Key = _db.CreateKeyFactory("Task").CreateKey("taskOne"),
@@ -125,5 +123,24 @@ namespace GoogleCloudSamples
             AssertValidEntity(task);
         }
 
+        [TestMethod]
+        public void TestArrayValue()
+        {
+            // [START array_value]
+            Entity task = new Entity()
+            {
+                Key = _db.CreateKeyFactory("Task").CreateKey("taskOne"),
+                ["tags"] = new ArrayValue(),
+                ["collaborators"] = new ArrayValue()
+            };
+            var tags = task["tags"].ArrayValue.Values;
+            tags.Add("fun");
+            tags.Add("programming");
+            var collaborators = task["collaborators"].ArrayValue.Values;
+            collaborators.Add("alice");
+            collaborators.Add("bob");
+            // [END array_value]
+            AssertValidEntity(task);
+        }
     }
 }
