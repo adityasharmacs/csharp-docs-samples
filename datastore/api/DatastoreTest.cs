@@ -105,6 +105,25 @@ namespace GoogleCloudSamples
             AssertValidEntity(task);
         }
 
+        [TestMethod]
+        public void TestProperties()
+        {
+            // [START properties]
+            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
+            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("sampleTask");
+            Entity task = new Entity()
+            {
+                Key = _db.CreateKeyFactory("Task").CreateKey("taskOne"),
+                ["type"] = "Personal",
+                ["created"] = DateTime.UtcNow,
+                ["done"] = false,
+                ["priority"] = 4,
+                ["percent_complete"] = 10.0,                
+            };
+            (task["description"] = "Learn Cloud Datastore").ExcludeFromIndexes = true;
+            // [END properties]
+            AssertValidEntity(task);
+        }
 
     }
 }
