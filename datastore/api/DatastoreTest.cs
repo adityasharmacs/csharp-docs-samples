@@ -111,7 +111,7 @@ namespace GoogleCloudSamples
             // [START properties]
             Entity task = new Entity()
             {
-                Key = _db.CreateKeyFactory("Task").CreateKey("taskOne"),
+                Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
                 ["type"] = "Personal",
                 ["created"] = new DateTime(1999, 01, 01, 0, 0, 0, DateTimeKind.Utc),
                 ["done"] = false,
@@ -129,7 +129,7 @@ namespace GoogleCloudSamples
             // [START array_value]
             Entity task = new Entity()
             {
-                Key = _db.CreateKeyFactory("Task").CreateKey("taskOne"),
+                Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
                 ["tags"] = new ArrayValue(),
                 ["collaborators"] = new ArrayValue()
             };
@@ -141,6 +141,61 @@ namespace GoogleCloudSamples
             collaborators.Add("bob");
             // [END array_value]
             AssertValidEntity(task);
+        }
+
+        [TestMethod]
+        public void TestBasicEntity()
+        {
+            // [START basic_entity]
+            Entity task = new Entity()
+            {
+                Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
+                ["type"] = "Personal",
+                ["done"] = false,
+                ["priority"] = 4,
+                ["description"] = "Learn Cloud Datastore"
+            };            
+            // [END basic_entity]
+            AssertValidEntity(task);
+        }
+
+        [TestMethod]
+        public void TestUpsert()
+        {
+            // [START upsert]
+            Entity task = new Entity()
+            {
+                Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
+            };
+            _db.Upsert(task);
+            // [END upsert]
+            Assert.AreEqual(task, _db.Lookup(task.Key));
+            // Make sure a second upsert doesn't throw an exception.
+            _db.Upsert(task);
+        }
+
+        [TestMethod]
+        public void TestInsert()
+        {
+            // [START insert]
+            Entity task = new Entity()
+            {
+                Key = _db.CreateKeyFactory("Task").CreateIncompleteKey()
+            };
+            task.Key = _db.Insert(task);
+            // [END insert]
+            Assert.AreEqual(task, _db.Lookup(task.Key));
+            // Make sure a second upsert doesn't throw an exception.
+            try
+            {
+                _db.Insert(task);
+                Assert.Fail("_db.Insert should throw an exception because an " +
+                    $"entity with the key {task.Key} already exits.");
+            }
+            catch (Grpc.Core.RpcException e)
+            {
+                Assert.AreEqual(Grpc.Core.StatusCode.InvalidArgument, e.Status.StatusCode);
+            }
         }
     }
 }
