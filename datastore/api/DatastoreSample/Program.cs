@@ -72,6 +72,7 @@ namespace DatastoreSample
                 {
                     credentials = credentials.CreateScoped(new[] {
                     DatastoreService.Scope.Datastore,
+                    DatastoreService.Scope.UserinfoEmail
                 });
                 }
                 // Create our connection to datastore.
