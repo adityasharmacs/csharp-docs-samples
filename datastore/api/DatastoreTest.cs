@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 using System;
+using Google.Datastore.V1Beta3;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GoogleCloudSamples
@@ -19,9 +20,45 @@ namespace GoogleCloudSamples
     [TestClass]
     public class DatastoreTest
     {
-        [TestMethod]
-        public void TestMethod1()
+        private readonly string _projectId;
+        private readonly DatastoreDb _db;
+
+        public DatastoreTest()
         {
+            _projectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
+            _db = DatastoreDb.Create(_projectId);
         }
+
+        private bool IsValidKey(Key key)
+        {
+            foreach (var element in key.Path)
+            {
+                if (element.Id == 0 && string.IsNullOrEmpty(element.Name))
+                    return false;
+                if (string.IsNullOrEmpty(element.Kind))
+                    return false;
+            }
+            return true;
+        }
+
+        [TestMethod]
+        public void TestIncompleteKey()
+        {
+            // [START incomplete_key]
+            var incompleteKey = _db.CreateKeyFactory("Task").CreateIncompleteKey();
+            var key = _db.AllocateId(incompleteKey);
+            // [END incomplete_key]
+            Assert.IsTrue(IsValidKey(key));
+        }
+
+        [TestMethod]
+        public void TestNamedKey()
+        {
+            // [START incomplete_key]
+            var key = _db.CreateKeyFactory("Task").CreateKey("sampleTask");
+            // [END incomplete_key]
+            Assert.IsTrue(IsValidKey(key));
+        }
+
     }
 }
