@@ -234,7 +234,7 @@ namespace GoogleCloudSamples
             Assert.IsNull(_db.Lookup(_sampleTask.Key));
         }
 
-        private Entity[] InsertBatch(Key taskKey1, Key taskKey2)
+        private Entity[] UpsertBatch(Key taskKey1, Key taskKey2)
         {
             var taskList = new[]
             {
@@ -293,13 +293,33 @@ namespace GoogleCloudSamples
         [TestMethod]
         public void TestBatchLookup()
         {
+            // [START batch_lookup]
             var keys = new Key[] { _keyFactory.CreateKey(1), _keyFactory.CreateKey(2) };
-            var expectedTasks = InsertBatch(keys[0], keys[1]);
+            // [END batch_lookup]
+            var expectedTasks = UpsertBatch(keys[0], keys[1]);
             // [START batch_lookup]
             var tasks = _db.Lookup(keys);
             // [END batch_lookup]
             Assert.AreEqual(expectedTasks[0], tasks[0]);
             Assert.AreEqual(expectedTasks[1], tasks[1]);
+        }
+
+        [TestMethod]
+        public void TestBatchDelete()
+        {
+            // [START batch_delete]
+            var keys = new Key[] { _keyFactory.CreateKey(1), _keyFactory.CreateKey(2) };
+            // [END batch_delete]
+            UpsertBatch(keys[0], keys[1]);
+            var lookups = _db.Lookup(keys);
+            Assert.IsNotNull(lookups[0]);
+            Assert.IsNotNull(lookups[1]);
+            // [START batch_delete]
+            _db.Delete(keys);
+            // [END batch_delete]
+            lookups = _db.Lookup(keys);
+            Assert.IsNull(lookups[0]);
+            Assert.IsNull(lookups[1]);
         }
     }
 }
