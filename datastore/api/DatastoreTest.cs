@@ -22,11 +22,19 @@ namespace GoogleCloudSamples
     {
         private readonly string _projectId;
         private readonly DatastoreDb _db;
+        private readonly Entity _sampleTask;
+        private readonly KeyFactory _keyFactory;
+
 
         public DatastoreTest()
         {
             _projectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
             _db = DatastoreDb.Create(_projectId);
+            _keyFactory = _db.CreateKeyFactory("Task");
+            _sampleTask = new Entity()
+            {
+                Key = _keyFactory.CreateKey("sampleTask"),
+            };
         }
 
         private bool IsValidKey(Key key)
@@ -116,7 +124,7 @@ namespace GoogleCloudSamples
                 ["created"] = new DateTime(1999, 01, 01, 0, 0, 0, DateTimeKind.Utc),
                 ["done"] = false,
                 ["priority"] = 4,
-                ["percent_complete"] = 10.0,                
+                ["percent_complete"] = 10.0,
             };
             (task["description"] = "Learn Cloud Datastore").ExcludeFromIndexes = true;
             // [END properties]
@@ -154,7 +162,7 @@ namespace GoogleCloudSamples
                 ["done"] = false,
                 ["priority"] = 4,
                 ["description"] = "Learn Cloud Datastore"
-            };            
+            };
             // [END basic_entity]
             AssertValidEntity(task);
         }
@@ -163,15 +171,11 @@ namespace GoogleCloudSamples
         public void TestUpsert()
         {
             // [START upsert]
-            Entity task = new Entity()
-            {
-                Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
-            };
-            _db.Upsert(task);
+            _db.Upsert(_sampleTask);
             // [END upsert]
-            Assert.AreEqual(task, _db.Lookup(task.Key));
+            Assert.AreEqual(_sampleTask, _db.Lookup(_sampleTask.Key));
             // Make sure a second upsert doesn't throw an exception.
-            _db.Upsert(task);
+            _db.Upsert(_sampleTask);
         }
 
         [TestMethod]
@@ -180,12 +184,12 @@ namespace GoogleCloudSamples
             // [START insert]
             Entity task = new Entity()
             {
-                Key = _db.CreateKeyFactory("Task").CreateIncompleteKey()
+                Key = _keyFactory.CreateIncompleteKey()
             };
             task.Key = _db.Insert(task);
             // [END insert]
             Assert.AreEqual(task, _db.Lookup(task.Key));
-            // Make sure a second upsert doesn't throw an exception.
+            // Make sure a second insert throws an exception.
             try
             {
                 _db.Insert(task);
@@ -196,6 +200,106 @@ namespace GoogleCloudSamples
             {
                 Assert.AreEqual(Grpc.Core.StatusCode.InvalidArgument, e.Status.StatusCode);
             }
+        }
+
+        [TestMethod]
+        public void TestLookup()
+        {
+            _db.Upsert(_sampleTask);
+            // [START lookup]
+            Entity task = _db.Lookup(_sampleTask.Key);
+            // [END lookup]
+            Assert.AreEqual(_sampleTask, task);
+        }
+
+
+        [TestMethod]
+        public void TestUpdate()
+        {
+            _db.Upsert(_sampleTask);
+            // [START update]
+            _sampleTask["priority"] = 5;
+            _db.Update(_sampleTask);
+            // [END update]
+            Assert.AreEqual(_sampleTask, _db.Lookup(_sampleTask.Key));
+        }
+
+        [TestMethod]
+        public void TestDelete()
+        {
+            _db.Upsert(_sampleTask);
+            // [START delete]
+            _db.Delete(_sampleTask.Key);
+            // [END delete]
+            Assert.IsNull(_db.Lookup(_sampleTask.Key));
+        }
+
+        private Entity[] InsertBatch(Key taskKey1, Key taskKey2)
+        {
+            var taskList = new[]
+            {
+                new Entity()
+                {
+                    Key = taskKey1,
+                    ["type"] = "Personal",
+                    ["done"] = false,
+                    ["priority"] = 4,
+                    ["description"] = "Learn Cloud Datastore"
+                },
+                new Entity()
+                {
+                    Key = taskKey2,
+                    ["type"] = "Personal",
+                    ["done"] = "false",
+                    ["priority"] = 5,
+                    ["description"] = "Integrate Cloud Datastore"
+                }
+            };
+            _db.Upsert(taskList);
+            return taskList;
+        }
+
+        [TestMethod]
+        public void TestBatchUpsert()
+        {
+            // [START batch_upsert]
+            var taskList = new[]
+            {
+                new Entity()
+                {
+                    Key = _keyFactory.CreateIncompleteKey(),
+                    ["type"] = "Personal",
+                    ["done"] = false,
+                    ["priority"] = 4,
+                    ["description"] = "Learn Cloud Datastore"
+                },
+                new Entity()
+                {
+                    Key = _keyFactory.CreateIncompleteKey(),
+                    ["type"] = "Personal",
+                    ["done"] = "false",
+                    ["priority"] = 5,
+                    ["description"] = "Integrate Cloud Datastore"
+                }
+            };
+            var keyList =_db.Upsert(taskList);
+            // [END batch_upsert]
+            taskList[0].Key = keyList[0];
+            taskList[1].Key = keyList[1];
+            Assert.AreEqual(taskList[0], _db.Lookup(keyList[0]));
+            Assert.AreEqual(taskList[1], _db.Lookup(keyList[1]));
+        }
+
+        [TestMethod]
+        public void TestBatchLookup()
+        {
+            var keys = new Key[] { _keyFactory.CreateKey(1), _keyFactory.CreateKey(2) };
+            var expectedTasks = InsertBatch(keys[0], keys[1]);
+            // [START batch_lookup]
+            var tasks = _db.Lookup(keys);
+            // [END batch_lookup]
+            Assert.AreEqual(expectedTasks[0], tasks[0]);
+            Assert.AreEqual(expectedTasks[1], tasks[1]);
         }
     }
 }
