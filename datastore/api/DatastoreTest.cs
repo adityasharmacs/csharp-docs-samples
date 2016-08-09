@@ -14,6 +14,7 @@
 using System;
 using Google.Datastore.V1Beta3;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 
 namespace GoogleCloudSamples
 {
@@ -24,7 +25,7 @@ namespace GoogleCloudSamples
         private readonly DatastoreDb _db;
         private readonly Entity _sampleTask;
         private readonly KeyFactory _keyFactory;
-
+        private readonly DateTime _includedDate = new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
         public DatastoreTest()
         {
@@ -320,6 +321,69 @@ namespace GoogleCloudSamples
             lookups = _db.Lookup(keys);
             Assert.IsNull(lookups[0]);
             Assert.IsNull(lookups[1]);
+        }
+
+        private void UpsertTaskList()
+        {
+            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
+            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("someTask");
+            Entity task = new Entity()
+            {
+                Key = taskKey,
+                ["type"] = "Personal",
+                ["done"] = false,
+                ["completed"] = false,
+                ["priority"] = 4,
+                ["created"] = _includedDate,
+                ["percent_complete"] = 10.0,
+                ["description"] = "Learn Cloud Datastore",
+                ["tag"] = new ArrayValue()
+            };
+            task["description"].ExcludeFromIndexes = true;
+            foreach (var tag in new[] { "fun", "l", "programming" })
+                task["tag"].ArrayValue.Values.Add(tag);
+            _db.Upsert(task);
+        }
+
+        [TestMethod]
+        public void TestBasicQuery()
+        {
+            UpsertTaskList();
+            // [START basic_query]
+            Query query = new Query("Task")
+            {
+                Filter = new Filter()
+                {
+                    CompositeFilter = new CompositeFilter()
+                    {
+                        Op = CompositeFilter.Types.Operator.And
+                    }
+                },
+            };
+            query.Filter.CompositeFilter.Filters.Add(new Filter()
+            {
+                PropertyFilter = new PropertyFilter()
+                {
+                    Op = PropertyFilter.Types.Operator.Equal,
+                    Property = new PropertyReference("done"),
+                    Value = false,
+                }
+            });
+            query.Filter.CompositeFilter.Filters.Add(new Filter()
+            {
+                PropertyFilter = new PropertyFilter()
+                {
+                    Op = PropertyFilter.Types.Operator.GreaterThanOrEqual,
+                    Property = new PropertyReference("priority"),
+                    Value = 4,
+                }
+            });
+            query.Order.Add(new PropertyOrder()
+            {
+                Property = new PropertyReference("priority")
+            });
+            // [END basic_query]
+            Assert.AreEqual(1,_db.RunQuery(query).Count());
         }
     }
 }
