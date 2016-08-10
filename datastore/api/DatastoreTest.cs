@@ -366,9 +366,90 @@ namespace GoogleCloudSamples
             UpsertTaskList();
             // [START run_query]
             Query query = new Query("Task");
+            DatastoreQueryResults tasks = _db.RunQuery(query);
             // [END run_query]
+            Assert.IsTrue(tasks.Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestPropertyFilter()
+        {
+            UpsertTaskList();
+            // [START property_filter]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.Equal("done", false)
+            };
+            // [END property_filter]
             var tasks = _db.RunQuery(query);
             Assert.IsTrue(tasks.Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestCompositeFilter()
+        {
+            UpsertTaskList();
+            // [START composite_filter]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.And(Filter.Equal("done", false),
+                    Filter.Equal("priority", 4)),
+            };
+            // [END composite_filter]
+            Assert.IsTrue(_db.RunQuery(query).Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestKeyFilter()
+        {
+            UpsertTaskList();
+            // [START key_filter]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.GreaterThan("__key__", _keyFactory.CreateKey("aTask"))
+            };
+            // [END key_filter]
+            Assert.IsTrue(_db.RunQuery(query).Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestAscendingSort()
+        {
+            UpsertTaskList();
+            // [START ascending_sort]
+            Query query = new Query("Task")
+            {
+                Order= { { "created", PropertyOrder.Types.Direction.Ascending } }
+            };
+            // [END ascending_sort]
+            Assert.IsTrue(_db.RunQuery(query).Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestDescendingSort()
+        {
+            UpsertTaskList();
+            // [START descending_sort]
+            Query query = new Query("Task")
+            {
+                Order = { { "created", PropertyOrder.Types.Direction.Descending } }
+            };
+            // [END descending_sort]
+            Assert.IsTrue(_db.RunQuery(query).Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestMultiSort()
+        {
+            UpsertTaskList();
+            // [START multi_sort]
+            Query query = new Query("Task")
+            {
+                Order = { { "priority", PropertyOrder.Types.Direction.Descending },
+                    { "created", PropertyOrder.Types.Direction.Ascending } }
+            };
+            // [END multi_sort]
+            Assert.IsTrue(_db.RunQuery(query).Count() > 0);
         }
     }
 }
