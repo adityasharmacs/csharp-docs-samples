@@ -143,8 +143,8 @@ namespace GoogleCloudSamples
             Entity task = new Entity()
             {
                 Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
-                ["tags"] = new ArrayValue() { Values = { "alice", "bob" } },
-                ["collaborators"] = new ArrayValue() { Values = { "fun", "programming"} }
+                ["collaborators"] = new ArrayValue() { Values = { "alice", "bob" } },
+                ["tags"] = new ArrayValue() { Values = { "fun", "programming"} }
             };
             // [END array_value]
             AssertValidEntity(task);
@@ -556,6 +556,19 @@ namespace GoogleCloudSamples
             };
             // [END array_value_equality]
             Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        public void TestLimit()
+        {
+            UpsertTaskList();
+            // [START limit]
+            Query query = new Query("Task")
+            {
+                Limit = 1,
+            };
+            // [END limit]
+            Assert.AreEqual(1, _db.RunQuery(query).Count());
         }
     }
 }
