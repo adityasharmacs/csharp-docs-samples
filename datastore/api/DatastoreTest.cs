@@ -26,7 +26,13 @@ namespace GoogleCloudSamples
         private readonly DatastoreDb _db;
         private readonly Entity _sampleTask;
         private readonly KeyFactory _keyFactory;
-        private readonly DateTime _includedDate = new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        private readonly DateTime _includedDate = 
+            new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        private readonly DateTime _startDate =
+            new DateTime(1998, 4, 18, 0, 0, 0, DateTimeKind.Utc);
+        private readonly DateTime _endDate =
+            new DateTime(2013, 4, 18, 0, 0, 0, DateTimeKind.Utc);
+
 
         public DatastoreTest()
         {
@@ -557,6 +563,96 @@ namespace GoogleCloudSamples
             };
             // [END array_value_equality]
             Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        public void TestInequalityRange()
+        {
+            UpsertTaskList();
+            // [START inequality_range]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.And(Filter.GreaterThan("created", _startDate),
+                    Filter.LessThan("created", _endDate))
+            };
+            // [END inequality_range]
+            Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(Grpc.Core.RpcException))]
+        public void TestInequalityInvalid()
+        {
+            UpsertTaskList();
+            // [START inequality_invalid]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.And(Filter.GreaterThan("created", _startDate),
+                    Filter.GreaterThan("priority", 3))
+            };
+            // [END inequality_invalid]
+            IsEmpty(_db.RunQuery(query));
+        }
+
+        [TestMethod]
+        public void TestEqualAndInequalityRange()
+        {
+            UpsertTaskList();
+            // [START equal_and_inequality_range]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.And(Filter.Equal("priority", 4),
+                    Filter.GreaterThan("created", _startDate),
+                    Filter.LessThan("created", _endDate))
+            };
+            // [END equal_and_inequality_range]
+            Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        public void TestInequalitySort()
+        {
+            UpsertTaskList();
+            // [START inequality_sort]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.GreaterThan("priority", 3),
+                Order = { { "priority", PropertyOrder.Types.Direction.Ascending},
+                    {"created", PropertyOrder.Types.Direction.Ascending } }
+            };
+            // [END inequality_sort]
+            Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(Grpc.Core.RpcException))]
+        public void TestInequalitySortInvalidNotSame()
+        {
+            UpsertTaskList();
+            // [START inequality_sort_invalid_not_same]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.GreaterThan("priority", 3),
+                Order = { {"created", PropertyOrder.Types.Direction.Ascending } }
+            };
+            // [END inequality_sort_invalid_not_same]
+            IsEmpty(_db.RunQuery(query));
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(Grpc.Core.RpcException))]
+        public void TestInequalitySortInvalidNotFirst()
+        {
+            UpsertTaskList();
+            // [START inequality_sort_invalid_not_first]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.GreaterThan("priority", 3),
+                Order = { {"created", PropertyOrder.Types.Direction.Ascending },
+                    { "priority", PropertyOrder.Types.Direction.Ascending} }
+            };
+            // [END inequality_sort_invalid_not_first]
+            IsEmpty(_db.RunQuery(query));
         }
 
         [TestMethod]
