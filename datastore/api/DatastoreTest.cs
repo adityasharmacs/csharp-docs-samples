@@ -516,5 +516,46 @@ namespace GoogleCloudSamples
                 break;
             };
         }
+
+        [TestMethod]
+        public void TestDistinctQuery()
+        {
+            UpsertTaskList();
+            // [START distinct_query]
+            Query query = new Query("Task")
+            {
+                DistinctOn = { "priority" }
+            };
+            // [END distinct_query]
+            Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        public void TestArrayValueInequalityRange()
+        {
+            UpsertTaskList();
+            // [START array_value_inequality_range]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.And(Filter.GreaterThan("tag", "learn"),
+                    Filter.LessThan("tag", "math"))
+            };
+            // [END array_value_inequality_range]
+            Assert.IsTrue(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        public void TestArrayValueEquality()
+        {
+            UpsertTaskList();
+            // [START array_value_equality]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.And(Filter.Equal("tag", "fun"),
+                    Filter.Equal("tag", "programming"))
+            };
+            // [END array_value_equality]
+            Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
+        }
     }
 }
