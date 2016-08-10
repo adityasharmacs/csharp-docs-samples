@@ -15,6 +15,7 @@ using System;
 using Google.Datastore.V1Beta3;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
+using Google.Protobuf;
 
 namespace GoogleCloudSamples
 {
@@ -144,7 +145,7 @@ namespace GoogleCloudSamples
             {
                 Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
                 ["collaborators"] = new ArrayValue() { Values = { "alice", "bob" } },
-                ["tags"] = new ArrayValue() { Values = { "fun", "programming"} }
+                ["tags"] = new ArrayValue() { Values = { "fun", "programming" } }
             };
             // [END array_value]
             AssertValidEntity(task);
@@ -281,7 +282,7 @@ namespace GoogleCloudSamples
                     ["description"] = "Integrate Cloud Datastore"
                 }
             };
-            var keyList =_db.Upsert(taskList);
+            var keyList = _db.Upsert(taskList[0], taskList[1]);
             // [END batch_upsert]
             taskList[0].Key = keyList[0];
             taskList[1].Key = keyList[1];
@@ -297,7 +298,7 @@ namespace GoogleCloudSamples
             // [END batch_lookup]
             var expectedTasks = UpsertBatch(keys[0], keys[1]);
             // [START batch_lookup]
-            var tasks = _db.Lookup(keys);
+            var tasks = _db.Lookup(keys[0], keys[1]);
             // [END batch_lookup]
             Assert.AreEqual(expectedTasks[0], tasks[0]);
             Assert.AreEqual(expectedTasks[1], tasks[1]);
@@ -316,7 +317,7 @@ namespace GoogleCloudSamples
             // [START batch_delete]
             _db.Delete(keys);
             // [END batch_delete]
-            lookups = _db.Lookup(keys);
+            lookups = _db.Lookup(keys[0], keys[1]);
             Assert.IsNull(lookups[0]);
             Assert.IsNull(lookups[1]);
         }
@@ -425,7 +426,7 @@ namespace GoogleCloudSamples
             // [START ascending_sort]
             Query query = new Query("Task")
             {
-                Order= { { "created", PropertyOrder.Types.Direction.Ascending } }
+                Order = { { "created", PropertyOrder.Types.Direction.Ascending } }
             };
             // [END ascending_sort]
             Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
@@ -465,7 +466,7 @@ namespace GoogleCloudSamples
             // [START kindless_query]
             Query query = new Query()
             {
-                Filter = Filter.GreaterThan("__key__", 
+                Filter = Filter.GreaterThan("__key__",
                     _keyFactory.CreateKey("aTask"))
             };
             // [END kindless_query]
@@ -569,6 +570,40 @@ namespace GoogleCloudSamples
             };
             // [END limit]
             Assert.AreEqual(1, _db.RunQuery(query).Count());
+        }
+
+        [TestMethod]
+        public void TestCursorPaging()
+        {
+            UpsertTaskList();
+            _db.Upsert(_sampleTask);
+            var pageOneCursor = CursorPaging(1, null);
+            Assert.IsNotNull(pageOneCursor);
+            var pageTwoCursor = CursorPaging(1, pageOneCursor);
+            Assert.IsNotNull(pageTwoCursor);
+            Assert.AreNotEqual(pageOneCursor, pageTwoCursor);
+        }
+
+        private string CursorPaging(int pageSize, string pageCursor)
+        {
+            // [START cursor_paging]
+            Query query = new Query("Task")
+            {
+                Limit = pageSize,
+            };
+            if (!string.IsNullOrEmpty(pageCursor))
+                query.StartCursor = ByteString.FromBase64(pageCursor);
+
+            ByteString finalCursor = null;
+            foreach (EntityResult result in _db.RunQuery(query)
+                .AsEntityResults())
+            {
+                var task = result.Entity;
+                // Do something with the task.
+                finalCursor = result.Cursor;
+            }
+            return finalCursor?.ToBase64();
+            // [END cursor_paging]
         }
     }
 }
