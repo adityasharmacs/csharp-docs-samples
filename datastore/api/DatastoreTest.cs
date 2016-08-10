@@ -352,39 +352,23 @@ namespace GoogleCloudSamples
             // [START basic_query]
             Query query = new Query("Task")
             {
-                Filter = new Filter()
-                {
-                    CompositeFilter = new CompositeFilter()
-                    {
-                        Op = CompositeFilter.Types.Operator.And
-                    }
-                },
+                Filter = Filter.And(Filter.Equal("done", false),
+                    Filter.GreaterThanOrEqual("priority", 4)),
+                Order = { { "priority", PropertyOrder.Types.Direction.Descending } }
             };
-            query.Filter.CompositeFilter.Filters.Add(new Filter()
-            {
-                PropertyFilter = new PropertyFilter()
-                {
-                    Op = PropertyFilter.Types.Operator.Equal,
-                    Property = new PropertyReference("done"),
-                    Value = false,
-                }
-            });
-            query.Filter.CompositeFilter.Filters.Add(new Filter()
-            {
-                PropertyFilter = new PropertyFilter()
-                {
-                    Op = PropertyFilter.Types.Operator.GreaterThanOrEqual,
-                    Property = new PropertyReference("priority"),
-                    Value = 4,
-                }
-            });
-            query.Order.Add(new PropertyOrder()
-            {
-                Property = new PropertyReference("priority"),
-                Direction = PropertyOrder.Types.Direction.Descending
-            });
             // [END basic_query]
-            Assert.AreEqual(1,_db.RunQuery(query).Count());
+            Assert.IsTrue(_db.RunQuery(query).Count() > 0);
+        }
+
+        [TestMethod]
+        public void TestRunQuery()
+        {
+            UpsertTaskList();
+            // [START run_query]
+            Query query = new Query("Task");
+            // [END run_query]
+            var tasks = _db.RunQuery(query);
+            Assert.IsTrue(tasks.Count() > 0);
         }
     }
 }
