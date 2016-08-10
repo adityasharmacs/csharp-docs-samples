@@ -702,4 +702,8 @@ namespace GoogleCloudSamples
             // [END cursor_paging]
         }
     }
+
+    // [START transactional_update]
+
+    // [END transactional_update]
 }
