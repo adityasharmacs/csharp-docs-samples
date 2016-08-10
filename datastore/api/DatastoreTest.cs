@@ -380,7 +380,8 @@ namespace GoogleCloudSamples
             });
             query.Order.Add(new PropertyOrder()
             {
-                Property = new PropertyReference("priority")
+                Property = new PropertyReference("priority"),
+                Direction = PropertyOrder.Types.Direction.Descending
             });
             // [END basic_query]
             Assert.AreEqual(1,_db.RunQuery(query).Count());
