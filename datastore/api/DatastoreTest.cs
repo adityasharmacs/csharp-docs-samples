@@ -499,5 +499,22 @@ namespace GoogleCloudSamples
             Assert.IsFalse(IsEmpty(_db.RunQuery(query)));
         }
 
+        [TestMethod]
+        public void TestKeysOnlyQuery()
+        {
+            UpsertTaskList();
+            // [START keys_only_query]
+            Query query = new Query("Task")
+            {
+                Projection = { "__key__" }
+            };
+            // [END keys_only_query]
+            foreach (Entity task in _db.RunQuery(query))
+            {
+                Assert.AreNotEqual(0, task.Key.Path[0].Id);
+                Assert.AreEqual(0, task.Properties.Count);
+                break;
+            };
+        }
     }
 }
