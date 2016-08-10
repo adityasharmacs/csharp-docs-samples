@@ -126,8 +126,12 @@ namespace GoogleCloudSamples
                 ["done"] = false,
                 ["priority"] = 4,
                 ["percent_complete"] = 10.0,
+                ["description"] = new Value()
+                {
+                    StringValue = "Learn Cloud Datastore",
+                    ExcludeFromIndexes = true
+                },
             };
-            (task["description"] = "Learn Cloud Datastore").ExcludeFromIndexes = true;
             // [END properties]
             AssertValidEntity(task);
         }
@@ -330,10 +334,13 @@ namespace GoogleCloudSamples
                 ["priority"] = 4,
                 ["created"] = _includedDate,
                 ["percent_complete"] = 10.0,
-                ["description"] = "Learn Cloud Datastore",
-                ["tag"] = new ArrayValue() {  Values = { "fun", "l", "programming" } }
+                ["description"] = new Value()
+                {
+                    StringValue = "Learn Cloud Datastore",
+                    ExcludeFromIndexes = true
+                },
+                ["tag"] = new ArrayValue() { Values = { "fun", "l", "programming" } }
             };
-            task["description"].ExcludeFromIndexes = true;
             _db.Upsert(task);
         }
 
