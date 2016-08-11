@@ -27,13 +27,16 @@ namespace GoogleCloudSamples
         private readonly DatastoreDb _db;
         private readonly Entity _sampleTask;
         private readonly KeyFactory _keyFactory;
-        private readonly DateTime _includedDate = 
+        private readonly DateTime _includedDate =
             new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
         private readonly DateTime _startDate =
             new DateTime(1998, 4, 18, 0, 0, 0, DateTimeKind.Utc);
         private readonly DateTime _endDate =
             new DateTime(2013, 4, 18, 0, 0, 0, DateTimeKind.Utc);
-
+        // [START retry]
+        private readonly int _retryCount = 3;
+        private readonly int _retryDelayMs = 500;
+        // [END retry]
 
         public DatastoreTest()
         {
@@ -634,7 +637,7 @@ namespace GoogleCloudSamples
             Query query = new Query("Task")
             {
                 Filter = Filter.GreaterThan("priority", 3),
-                Order = { {"created", PropertyOrder.Types.Direction.Ascending } }
+                Order = { { "created", PropertyOrder.Types.Direction.Ascending } }
             };
             // [END inequality_sort_invalid_not_same]
             IsEmpty(_db.RunQuery(query));
@@ -725,9 +728,9 @@ namespace GoogleCloudSamples
         // [START transactional_update]
         private void TransferFunds(Key fromKey, Key toKey, long amount)
         {
-            using (var transaction = _db.BeginTransaction()) 
+            using (var transaction = _db.BeginTransaction())
             {
-                var entities = _db.Lookup(fromKey, toKey);
+                var entities = transaction.Lookup(fromKey, toKey);
                 entities[0]["balance"].IntegerValue -= amount;
                 entities[1]["balance"].IntegerValue += amount;
                 transaction.Update(entities);
@@ -736,15 +739,91 @@ namespace GoogleCloudSamples
         }
         // [END transactional_update]
 
+        private void TransferFunds(Key fromKey, Key toKey, long amount,
+            DatastoreTransaction transaction)
+        {
+            var entities = transaction.Lookup(fromKey, toKey);
+            entities[0]["balance"].IntegerValue -= amount;
+            entities[1]["balance"].IntegerValue += amount;
+            transaction.Update(entities);
+        }
+
         [TestMethod]
         public void TestTransactionalUpdate()
         {
             var keys = UpsertBalances();
-            TransferFunds(keys[0], keys[1], 10);
+            using (var transaction = _db.BeginTransaction())
+            {
+                TransferFunds(keys[0], keys[1], 10, transaction);
+                transaction.Commit();
+            }
             var entities = _db.Lookup(keys);
             Assert.AreEqual(90, entities[0]["balance"]);
             Assert.AreEqual(10, entities[1]["balance"]);
         }
-    }
 
+        [TestMethod]
+        [ExpectedException(typeof(Grpc.Core.RpcException))]
+        public void TestConflictingTransactionalUpdate()
+        {
+            var keys = UpsertBalances();
+            using (var transaction = _db.BeginTransaction())
+            {
+                TransferFunds(keys[0], keys[1], 10, transaction);
+                TransferFunds(keys[1], keys[0], 5);
+                transaction.Commit();
+            }
+            var entities = _db.Lookup(keys);
+            Assert.AreEqual(95, entities[0]["balance"]);
+            Assert.AreEqual(5, entities[1]["balance"]);
+        }
+
+        // [START retry]
+        private T RetryRpc<T>(Func<T> action)
+        {
+            List<Grpc.Core.RpcException> exceptions = null;
+            var delayMs = _retryDelayMs;
+            for (int tryCount = 0; tryCount < _retryCount; ++tryCount)
+            {
+                try
+                {
+                    return action();
+                }
+                catch (Grpc.Core.RpcException e)
+                {
+                    if (exceptions == null)
+                        exceptions = new List<Grpc.Core.RpcException>();
+                    exceptions.Add(e);
+                }
+                System.Threading.Thread.Sleep(delayMs);
+                delayMs *= 2;  // Exponential back-off.
+            }
+            throw new AggregateException(exceptions);
+        }
+
+        private void RetryRpc(Action action)
+        {
+            RetryRpc(() => { action(); return 0; });
+        }
+
+        [TestMethod]
+        public void TestTransactionalRetry()
+        {
+            int tryCount = 0;
+            var keys = UpsertBalances();
+            RetryRpc(() =>
+            {
+                using (var transaction = _db.BeginTransaction())
+                {
+                    TransferFunds(keys[0], keys[1], 10, transaction);
+                    // Insert a conflicting transaction on the first try.
+                    if (tryCount++ == 0)
+                        TransferFunds(keys[1], keys[0], 5);
+                    transaction.Commit();
+                }
+            });
+            Assert.AreEqual(2, tryCount);
+        }
+        // [END retry]
+    }
 }
