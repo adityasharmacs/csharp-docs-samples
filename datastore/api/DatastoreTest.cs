@@ -779,6 +779,9 @@ namespace GoogleCloudSamples
         }
 
         // [START retry]
+        /// <summary>
+        /// Retry the action when a Grpc.Core.RpcException is thrown.
+        /// </summary>
         private T RetryRpc<T>(Func<T> action)
         {
             List<Grpc.Core.RpcException> exceptions = null;
@@ -825,5 +828,31 @@ namespace GoogleCloudSamples
             Assert.AreEqual(2, tryCount);
         }
         // [END retry]
+
+        [TestMethod]
+        public void TestTransactionalSingleEntityGroupReadOnly()
+        {
+            UpsertTaskList();
+            Key taskListKey = _db.CreateKeyFactory("TaskList")
+                .CreateKey("default");
+            Entity taskListEntity = new Entity() { Key = taskListKey };
+            _db.Upsert(taskListEntity);
+            // [START transactional_single_entity_group_read_only]
+            Entity taskList;
+            DatastoreQueryResults tasks;
+            using (var transaction = _db.BeginTransaction())
+            {
+                taskList = transaction.Lookup(taskListKey);
+                var query = new Query("Task")
+                {
+                    Filter = Filter.HasAncestor(taskListKey)
+                };
+                tasks = transaction.RunQuery(query);
+                transaction.Commit();
+            }
+            // [END transactional_single_entity_group_read_only]
+            Assert.AreEqual(taskListEntity, taskList);
+            Assert.AreEqual(1, tasks.Count());           
+        }
     }
 }
