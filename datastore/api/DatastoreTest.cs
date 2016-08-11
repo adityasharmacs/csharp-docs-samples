@@ -16,6 +16,7 @@ using Google.Datastore.V1Beta3;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
 using Google.Protobuf;
+using System.Collections.Generic;
 
 namespace GoogleCloudSamples
 {
@@ -701,9 +702,49 @@ namespace GoogleCloudSamples
             return finalCursor?.ToBase64();
             // [END cursor_paging]
         }
+
+        private IReadOnlyList<Key> UpsertBalances()
+        {
+            KeyFactory keyFactory = _db.CreateKeyFactory("People");
+            Entity from = new Entity()
+            {
+                Key = keyFactory.CreateKey("from"),
+                ["balance"] = 100
+            };
+            Entity to = new Entity()
+            {
+                Key = keyFactory.CreateKey("to"),
+                ["balance"] = 0
+            };
+            var keys = _db.Upsert(from, to);
+            // TODO: return keys; when following bug is fixed:
+            // https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/308
+            return new[] { from.Key, to.Key };
+        }
+
+        // [START transactional_update]
+        private void TransferFunds(Key fromKey, Key toKey, long amount)
+        {
+            using (var transaction = _db.BeginTransaction()) 
+            {
+                var entities = _db.Lookup(fromKey, toKey);
+                entities[0]["balance"].IntegerValue -= amount;
+                entities[1]["balance"].IntegerValue += amount;
+                transaction.Update(entities);
+                transaction.Commit();
+            }
+        }
+        // [END transactional_update]
+
+        [TestMethod]
+        public void TestTransactionalUpdate()
+        {
+            var keys = UpsertBalances();
+            TransferFunds(keys[0], keys[1], 10);
+            var entities = _db.Lookup(keys);
+            Assert.AreEqual(90, entities[0]["balance"]);
+            Assert.AreEqual(10, entities[1]["balance"]);
+        }
     }
 
-    // [START transactional_update]
-
-    // [END transactional_update]
 }
