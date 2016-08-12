@@ -868,5 +868,19 @@ namespace GoogleCloudSamples
             Assert.AreEqual(taskListEntity, taskList);
             Assert.AreEqual(1, tasks.Count());           
         }
+
+        [TestMethod]
+        public void TestEventualConsistentQuery()
+        {
+            UpsertTaskList();
+            // [START eventual_consistent_query]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.HasAncestor(_db.CreateKeyFactory("TaskList").CreateKey("default"))
+            };
+            var results = _db.RunQuery(query, ReadOptions.Types.ReadConsistency.Eventual);
+            // [END eventual_consistent_query]
+            Assert.IsFalse(IsEmpty(results));
+        }
     }
 }
