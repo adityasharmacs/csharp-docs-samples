@@ -14,10 +14,4 @@
 Import-Module ..\..\BuildTools.psm1 -DisableNameChecking
 
 Build-Solution
-Push-Location
-try {
-    Set-Location bin\debug
-    MSTest /testcontainer:DatastoreTest.dll
-} finally {
-    Pop-Location
-}
+packages\xunit.runner.console.2.1.0\tools\xunit.console.exe .\bin\Debug\DatastoreTest.dll
