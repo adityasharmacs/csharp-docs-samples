@@ -332,16 +332,9 @@ namespace GoogleCloudSamples
             Assert.IsNull(lookups[1]);
         }
 
-        private void ClearTaskList()
+        private void ClearTasks()
         {
-            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
-            Query query = new Query("Task")
-            {
-                Filter = Filter.HasAncestor(_db.CreateKeyFactory("TaskList")
-                    .CreateKey("default")),
-                Projection = { "__key__" }
-            };
-            var deadEntities = _db.RunQuery(query).ToArray();
+            var deadEntities = _db.RunQuery(new Query("Task")).ToArray();
             _db.Delete(deadEntities);
         }
 
@@ -845,7 +838,7 @@ namespace GoogleCloudSamples
         [TestMethod]
         public void TestTransactionalSingleEntityGroupReadOnly()
         {
-            ClearTaskList();
+            ClearTasks();
             UpsertTaskList();
             Key taskListKey = _db.CreateKeyFactory("TaskList")
                 .CreateKey("default");
@@ -866,7 +859,7 @@ namespace GoogleCloudSamples
             }
             // [END transactional_single_entity_group_read_only]
             Assert.AreEqual(taskListEntity, taskList);
-            Assert.AreEqual(1, tasks.Count());           
+            Assert.AreEqual(1, tasks.Count());
         }
 
         [TestMethod]
@@ -881,6 +874,38 @@ namespace GoogleCloudSamples
             var results = _db.RunQuery(query, ReadOptions.Types.ReadConsistency.Eventual);
             // [END eventual_consistent_query]
             Assert.IsFalse(IsEmpty(results));
+        }
+
+        [TestMethod]
+        public void TestUnindexedPropertyQuery()
+        {
+            ClearTasks();
+            UpsertTaskList();
+            // [START unindexed_property_query]
+            Query query = new Query("Task")
+            {
+                Filter = Filter.Equal("description", "Learn Cloud Datastore")
+            };
+            // [END unindexed_property_query]
+            var tasks = _db.RunQuery(query).ToArray();
+            Assert.IsTrue(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [TestMethod]
+        public void TestExplodingProperties()
+        {
+            // [START exploding_properties]
+            Entity task = new Entity()
+            {
+                Key = _db.CreateKeyFactory("Task").CreateKey("sampleTask"),
+                ["tags"] = new ArrayValue() { Values = { "fun", "programming", "learn" } },
+                ["collaborators"] = new ArrayValue() { Values = { "alice", "bob", "charlie" } },
+                ["created"] = DateTime.UtcNow
+            };
+            // [END exploding_properties]
+            // Avoid test failure due to float rounding differences.
+            task["created"] = new DateTime(2016, 8, 12, 9, 0, 0, DateTimeKind.Utc);
+            AssertValidEntity(task);
         }
     }
 }
