@@ -332,6 +332,19 @@ namespace GoogleCloudSamples
             Assert.IsNull(lookups[1]);
         }
 
+        private void ClearTaskList()
+        {
+            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
+            Query query = new Query("Task")
+            {
+                Filter = Filter.HasAncestor(_db.CreateKeyFactory("TaskList")
+                    .CreateKey("default")),
+                Projection = { "__key__" }
+            };
+            var deadEntities = _db.RunQuery(query).ToArray();
+            _db.Delete(deadEntities);
+        }
+
         private void UpsertTaskList()
         {
             Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey("default");
@@ -832,6 +845,7 @@ namespace GoogleCloudSamples
         [TestMethod]
         public void TestTransactionalSingleEntityGroupReadOnly()
         {
+            ClearTaskList();
             UpsertTaskList();
             Key taskListKey = _db.CreateKeyFactory("TaskList")
                 .CreateKey("default");
@@ -839,7 +853,7 @@ namespace GoogleCloudSamples
             _db.Upsert(taskListEntity);
             // [START transactional_single_entity_group_read_only]
             Entity taskList;
-            DatastoreQueryResults tasks;
+            Entity[] tasks;
             using (var transaction = _db.BeginTransaction())
             {
                 taskList = transaction.Lookup(taskListKey);
@@ -847,7 +861,7 @@ namespace GoogleCloudSamples
                 {
                     Filter = Filter.HasAncestor(taskListKey)
                 };
-                tasks = transaction.RunQuery(query);
+                tasks = transaction.RunQuery(query).ToArray();
                 transaction.Commit();
             }
             // [END transactional_single_entity_group_read_only]
