@@ -46,14 +46,14 @@ namespace Analyze
             var service = CreateNaturalLanguageAPIClient();
             var response = service.Documents.AnalyzeEntities(
                 new AnalyzeEntitiesRequest()
-            {
-                Document = new Document()
                 {
-                    Content = text,
-                    Type = "PLAIN_TEXT"
-                },
-                EncodingType = "UTF16"
-            }).Execute();
+                    Document = new Document()
+                    {
+                        Content = text,
+                        Type = "PLAIN_TEXT"
+                    },
+                    EncodingType = encoding
+                }).Execute();
             string entity_separator = "";
             foreach (var entity in response.Entities)
             {
@@ -71,9 +71,25 @@ namespace Analyze
             }
         }
 
+        static void AnalyzeSentiment(string text, string encoding = "UTF16")
+        {
+            var service = CreateNaturalLanguageAPIClient();
+            var response = service.Documents.AnalyzeSentiment(
+                new AnalyzeSentimentRequest()
+                {
+                    Document = new Document()
+                    {
+                        Content = text,
+                        Type = "PLAIN_TEXT"
+                    },
+                }).Execute();
+            Console.WriteLine($"Polarity: {response.DocumentSentiment.Polarity}");
+            Console.WriteLine($"Magnitude: {response.DocumentSentiment.Magnitude}");
+        }
+
         static void Main(string[] args)
         {
-            AnalyzeEntities("The rain in Spain stays mainly in the plain.");
+            AnalyzeSentiment("The rain in Spain stays mainly in the plain.");
         }
     }
 }
