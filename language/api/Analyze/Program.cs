@@ -22,6 +22,15 @@ namespace Analyze
 {
     class Program
     {
+        public static string Usage = @"Usage: 
+C:\> Analyze command text
+
+Where command is one of
+    entities
+    sentiment
+    syntax
+    everything
+";
         public static CloudNaturalLanguageAPIService 
             CreateNaturalLanguageAPIClient()
         {
@@ -152,7 +161,33 @@ namespace Analyze
 
         static void Main(string[] args)
         {
-            AnalyzeEverything("The rain in Spain stays mainly in the plain.");
+            if (args.Length < 2)
+            {
+                Console.Write(Usage);
+                return;
+            }
+            string command = args[0].ToLower();
+            string text = string.Join(" ",
+                new ArraySegment<string>(args, 1, args.Length - 1));
+            switch (command)
+            {
+                case "entities":
+                    AnalyzeEntities(text);
+                    break;
+                case "syntax":
+                    AnalyzeSyntax(text);
+                    break;
+                case "sentiment":
+                    AnalyzeSentiment(text);
+                    break;
+                case "everything":
+                    AnalyzeEverything(text);
+                    break;
+                default:
+                    Console.Write(Usage);
+                    return;
+            }
+            AnalyzeEverything(text);
         }
     }
 }
