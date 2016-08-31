@@ -13,11 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using Xunit;
 
@@ -47,7 +44,7 @@ namespace GoogleCloudSamples
             }
         }
 
-        static string text = 
+        private static string text =
             "Santa Claus Conquers the Martians is a terrible movie. "
             + "It's so bad, it's good.";
 

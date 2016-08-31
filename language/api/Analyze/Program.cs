@@ -11,18 +11,18 @@
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 // License for the specific language governing permissions and limitations under
 // the License.
-using System;
-using Google.Apis.CloudNaturalLanguageAPI.v1beta1;
 using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
+using Google.Apis.CloudNaturalLanguageAPI.v1beta1;
 using Google.Apis.CloudNaturalLanguageAPI.v1beta1.Data;
+using Google.Apis.Services;
+using System;
 using System.Collections.Generic;
 
 namespace GoogleCloudSamples
 {
     public class Analyze
     {
-        public static string Usage = @"Usage: 
+        public static string Usage = @"Usage:
 C:\> Analyze command text
 
 Where command is one of
@@ -31,14 +31,15 @@ Where command is one of
     syntax
     everything
 ";
-        public static CloudNaturalLanguageAPIService 
+
+        public static CloudNaturalLanguageAPIService
             CreateNaturalLanguageAPIClient()
         {
-            var credentials = 
+            var credentials =
                 GoogleCredential.GetApplicationDefaultAsync().Result;
             if (credentials.IsCreateScopedRequired)
             {
-                credentials = credentials.CreateScoped(new[] 
+                credentials = credentials.CreateScoped(new[]
                 {
                     CloudNaturalLanguageAPIService.Scope.CloudPlatform
                 });
@@ -51,7 +52,7 @@ Where command is one of
             return new CloudNaturalLanguageAPIService(serviceInitializer);
         }
 
-        static void AnalyzeEntities(string text, string encoding = "UTF16")
+        private static void AnalyzeEntities(string text, string encoding = "UTF16")
         {
             var service = CreateNaturalLanguageAPIClient();
             var response = service.Documents.AnalyzeEntities(
@@ -67,7 +68,7 @@ Where command is one of
             WriteEntities(response.Entities);
         }
 
-        static void WriteEntities(IEnumerable<Entity> entities)
+        private static void WriteEntities(IEnumerable<Entity> entities)
         {
             Console.WriteLine("Entities:");
             foreach (var entity in entities)
@@ -76,7 +77,7 @@ Where command is one of
                 Console.WriteLine($"\tType: {entity.Type}");
                 Console.WriteLine($"\tSalience: {entity.Salience}");
                 Console.WriteLine("\tMentions:");
-                foreach(var mention in entity.Mentions)
+                foreach (var mention in entity.Mentions)
                     Console.WriteLine($"\t\t{mention.Text.BeginOffset}: {mention.Text.Content}");
                 Console.WriteLine("\tMetadata:");
                 foreach (var keyval in entity.Metadata)
@@ -84,7 +85,7 @@ Where command is one of
             }
         }
 
-        static void AnalyzeSentiment(string text)
+        private static void AnalyzeSentiment(string text)
         {
             var service = CreateNaturalLanguageAPIClient();
             var response = service.Documents.AnalyzeSentiment(
@@ -99,13 +100,13 @@ Where command is one of
             WriteSentiment(response.DocumentSentiment);
         }
 
-        static void WriteSentiment(Sentiment sentiment)
+        private static void WriteSentiment(Sentiment sentiment)
         {
             Console.WriteLine($"Polarity: {sentiment.Polarity}");
             Console.WriteLine($"Magnitude: {sentiment.Magnitude}");
         }
 
-        static void AnalyzeSyntax(string text, string encoding = "UTF16")
+        private static void AnalyzeSyntax(string text, string encoding = "UTF16")
         {
             var service = CreateNaturalLanguageAPIClient();
             var response = service.Documents.AnnotateText(
@@ -125,7 +126,7 @@ Where command is one of
             WriteSentences(response.Sentences);
         }
 
-        static void WriteSentences(IEnumerable<Sentence> sentences)
+        private static void WriteSentences(IEnumerable<Sentence> sentences)
         {
             Console.WriteLine("Sentences:");
             foreach (var sentence in sentences)
@@ -134,7 +135,7 @@ Where command is one of
             }
         }
 
-        static void AnalyzeEverything(string text, string encoding = "UTF16")
+        private static void AnalyzeEverything(string text, string encoding = "UTF16")
         {
             var service = CreateNaturalLanguageAPIClient();
             var response = service.Documents.AnnotateText(
@@ -174,15 +175,19 @@ Where command is one of
                 case "entities":
                     AnalyzeEntities(text);
                     break;
+
                 case "syntax":
                     AnalyzeSyntax(text);
                     break;
+
                 case "sentiment":
                     AnalyzeSentiment(text);
                     break;
+
                 case "everything":
                     AnalyzeEverything(text);
                     break;
+
                 default:
                     Console.Write(Usage);
                     return;
