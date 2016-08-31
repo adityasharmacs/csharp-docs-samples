@@ -18,9 +18,9 @@ using Google.Apis.Services;
 using Google.Apis.CloudNaturalLanguageAPI.v1beta1.Data;
 using System.Collections.Generic;
 
-namespace Analyze
+namespace GoogleCloudSamples
 {
-    class Program
+    public class Analyze
     {
         public static string Usage = @"Usage: 
 C:\> Analyze command text
@@ -159,7 +159,7 @@ Where command is one of
             WriteEntities(response.Entities);
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             if (args.Length < 2)
             {
@@ -187,7 +187,6 @@ Where command is one of
                     Console.Write(Usage);
                     return;
             }
-            AnalyzeEverything(text);
         }
     }
 }
