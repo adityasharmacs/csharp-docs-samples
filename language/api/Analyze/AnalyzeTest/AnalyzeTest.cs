@@ -44,7 +44,7 @@ namespace GoogleCloudSamples
             }
         }
 
-        private static string text =
+        private static readonly string s_text =
             "Santa Claus Conquers the Martians is a terrible movie. "
             + "It's so bad, it's good.";
 
@@ -59,7 +59,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void EntitiesTest()
         {
-            string output = Run("entities", text);
+            string output = Run("entities", s_text);
             Assert.Contains("Entities:", output);
             Assert.Contains("Name: Santa Claus Conquers the Martians", output);
         }
@@ -67,7 +67,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void SyntaxTest()
         {
-            string output = Run("syntax", text);
+            string output = Run("syntax", s_text);
             Assert.Contains("Sentences:", output);
             Assert.Contains("0: Santa Claus Conquers the Martians is a terrible movie.", output);
             Assert.Contains("55: It's so bad, it's good.", output);
@@ -76,7 +76,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void SentimentTest()
         {
-            string output = Run("sentiment", text);
+            string output = Run("sentiment", s_text);
             Assert.Contains("Polarity: -", output);
             Assert.Contains("Magnitude: ", output);
         }
@@ -84,7 +84,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void EverythingTest()
         {
-            string output = Run("everything", text);
+            string output = Run("everything", s_text);
             Assert.Contains("Language: en", output);
             Assert.Contains("Polarity: -", output);
             Assert.Contains("Magnitude: ", output);
