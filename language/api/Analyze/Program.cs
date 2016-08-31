@@ -71,7 +71,7 @@ namespace Analyze
             }
         }
 
-        static void AnalyzeSentiment(string text, string encoding = "UTF16")
+        static void AnalyzeSentiment(string text)
         {
             var service = CreateNaturalLanguageAPIClient();
             var response = service.Documents.AnalyzeSentiment(
@@ -87,9 +87,33 @@ namespace Analyze
             Console.WriteLine($"Magnitude: {response.DocumentSentiment.Magnitude}");
         }
 
+        static void AnalyzeSyntax(string text, string encoding = "UTF16")
+        {
+            var service = CreateNaturalLanguageAPIClient();
+            var response = service.Documents.AnnotateText(
+                new AnnotateTextRequest()
+                {
+                    Document = new Document()
+                    {
+                        Content = text,
+                        Type = "PLAIN_TEXT"
+                    },
+                    EncodingType = encoding,
+                    Features = new Features()
+                    {
+                        ExtractSyntax = true
+                    }
+                }).Execute();
+            Console.WriteLine("Sentences:");
+            foreach (var sentence in response.Sentences)
+            {
+                Console.WriteLine($"\t{sentence.Text.BeginOffset}: {sentence.Text.Content}");
+            }
+        }
+
         static void Main(string[] args)
         {
-            AnalyzeSentiment("The rain in Spain stays mainly in the plain.");
+            AnalyzeSyntax("The rain in Spain stays mainly in the plain.");
         }
     }
 }
