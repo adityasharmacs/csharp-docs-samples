@@ -570,7 +570,44 @@ namespace GoogleCloudSamples
                 namespaces.Add(task.Key.Path[0].Name);
             };
             // [END namespace_run_query]
-            Assert.NotEmpty(namespaces);
+            Assert.Equal(new[] { "ghijklmnop" }, namespaces.ToArray());
+        }
+
+        [Fact]
+        public void TestKindRunQuery()
+        {
+            UpsertTaskList();
+            // [START kind_run_query]
+            Query query = new Query("__kind__");
+            var kinds = new List<string>();
+            foreach (Entity task in _db.RunQuery(query))
+            {
+                kinds.Add(task.Key.Path[0].Name);
+            };
+            // [END kind_run_query]
+            Assert.Contains("Task" , kinds);
+            Assert.Contains("TaskList", kinds);
+        }
+
+        [Fact]
+        public void TestPropertyRunQuery()
+        {
+            UpsertTaskList();
+            // [START kind_run_query]
+            Query query = new Query("__property__");
+            var taskProperties = new List<string>();
+            foreach (Entity task in _db.RunQuery(query))
+            {
+                string kind = task.Key.Path[0].Name;
+                string property = task.Key.Path[1].Name;
+                if (kind == "Task")
+                    taskProperties.Add(property);
+            };
+            // [END kind_run_query]
+            taskProperties.Sort();
+            Assert.Equal(new[] { "category", "completed", "created",
+                "done", "percent_complete", "priority", "tag" }, 
+                taskProperties.ToArray());
         }
 
         [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/346")]
