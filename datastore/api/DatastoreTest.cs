@@ -508,7 +508,7 @@ namespace GoogleCloudSamples
             Assert.False(IsEmpty(_db.RunQuery(query)));
         }
 
-        [Fact Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/304")]
+        [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/304")]
         public void TestRunProjectionQuery()
         {
             ClearTasks();
@@ -549,16 +549,35 @@ namespace GoogleCloudSamples
             };
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/346")]
         public void TestDistinctQuery()
         {
             UpsertTaskList();
             // [START distinct_query]
             Query query = new Query("Task")
             {
-                DistinctOn = { "priority" }
+                Projection = { "category", "priority" },
+                DistinctOn = { "category", "priority" },
+                Order = { { "category", PropertyOrder.Types.Direction.Ascending},
+                    {"priority", PropertyOrder.Types.Direction.Ascending } }
             };
             // [END distinct_query]
+            Assert.False(IsEmpty(_db.RunQuery(query)));
+        }
+
+        [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/346")]
+        public void TestDistinctOnQuery()
+        {
+            UpsertTaskList();
+            // [START distinct_on_query]
+            Query query = new Query("Task")
+            {
+                Projection = { "category", "priority" },
+                DistinctOn = { "category" },
+                Order = { { "category", PropertyOrder.Types.Direction.Ascending},
+                    {"priority", PropertyOrder.Types.Direction.Ascending } }
+            };
+            // [END distinct_on_query]
             Assert.False(IsEmpty(_db.RunQuery(query)));
         }
 
