@@ -41,12 +41,13 @@ namespace GoogleCloudSamples
         public DatastoreTest()
         {
             _projectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
-            _db = DatastoreDb.Create(_projectId);
+            _db = DatastoreDb.Create(_projectId, "ghijklmnop");
             _keyFactory = _db.CreateKeyFactory("Task");
             _sampleTask = new Entity()
             {
                 Key = _keyFactory.CreateKey("sampleTask"),
             };
+            ClearTasks();
         }
 
         private bool IsValidKey(Key key)
@@ -351,6 +352,8 @@ namespace GoogleCloudSamples
                 ["tag"] = new ArrayValue() { Values = { "fun", "l", "programming" } }
             };
             _db.Upsert(task);
+            // Datastore is, after all, eventually consistent.
+            System.Threading.Thread.Sleep(1000);
         }
 
         private static bool IsEmpty(DatastoreQueryResults results)
@@ -511,7 +514,6 @@ namespace GoogleCloudSamples
         [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/304")]
         public void TestRunProjectionQuery()
         {
-            ClearTasks();
             UpsertTaskList();
             // [START run_query_projection]
             Query query = new Query("Task")
@@ -533,7 +535,6 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestKeysOnlyQuery()
         {
-            ClearTasks();
             UpsertTaskList();
             // [START keys_only_query]
             Query query = new Query("Task")
@@ -547,6 +548,29 @@ namespace GoogleCloudSamples
                 Assert.Equal(0, task.Properties.Count);
                 break;
             };
+        }
+
+        [Fact]
+        public void TestNamespaceRunQuery()
+        {
+            UpsertTaskList();
+            // [START namespace_run_query]
+            KeyFactory keyFactory = _db.CreateKeyFactory("__namespace__");
+            Key startNamespace = keyFactory.CreateKey("g");
+            Key endNamespace = keyFactory.CreateKey("h");
+            Query query = new Query("__namespace__")
+            {
+                Filter = Filter.And(
+                    Filter.GreaterThan("__key__", startNamespace), 
+                    Filter.LessThan("__key__", endNamespace))
+            };
+            var namespaces = new List<string>();
+            foreach (Entity task in _db.RunQuery(query))
+            {
+                namespaces.Add(task.Key.Path[0].Name);
+            };
+            // [END namespace_run_query]
+            Assert.NotEmpty(namespaces);
         }
 
         [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/346")]
@@ -869,7 +893,6 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestTransactionalSingleEntityGroupReadOnly()
         {
-            ClearTasks();
             UpsertTaskList();
             Key taskListKey = _db.CreateKeyFactory("TaskList")
                 .CreateKey("default");
@@ -910,7 +933,6 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestUnindexedPropertyQuery()
         {
-            ClearTasks();
             UpsertTaskList();
             // [START unindexed_property_query]
             Query query = new Query("Task")
@@ -938,5 +960,7 @@ namespace GoogleCloudSamples
             task["created"] = new DateTime(2016, 8, 12, 9, 0, 0, DateTimeKind.Utc);
             AssertValidEntity(task);
         }
+
+
     }
 }
