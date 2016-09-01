@@ -565,9 +565,9 @@ namespace GoogleCloudSamples
                     Filter.LessThan("__key__", endNamespace))
             };
             var namespaces = new List<string>();
-            foreach (Entity task in _db.RunQuery(query))
+            foreach (Entity entity in _db.RunQuery(query))
             {
-                namespaces.Add(task.Key.Path[0].Name);
+                namespaces.Add(entity.Key.Path[0].Name);
             };
             // [END namespace_run_query]
             Assert.Equal(new[] { "ghijklmnop" }, namespaces.ToArray());
@@ -580,9 +580,9 @@ namespace GoogleCloudSamples
             // [START kind_run_query]
             Query query = new Query("__kind__");
             var kinds = new List<string>();
-            foreach (Entity task in _db.RunQuery(query))
+            foreach (Entity entity in _db.RunQuery(query))
             {
-                kinds.Add(task.Key.Path[0].Name);
+                kinds.Add(entity.Key.Path[0].Name);
             };
             // [END kind_run_query]
             Assert.Contains("Task" , kinds);
@@ -593,21 +593,53 @@ namespace GoogleCloudSamples
         public void TestPropertyRunQuery()
         {
             UpsertTaskList();
-            // [START kind_run_query]
+            // [START property_run_query]
             Query query = new Query("__property__");
-            var taskProperties = new List<string>();
-            foreach (Entity task in _db.RunQuery(query))
+            var properties = new List<string>();
+            foreach (Entity entity in _db.RunQuery(query))
             {
-                string kind = task.Key.Path[0].Name;
-                string property = task.Key.Path[1].Name;
+                string kind = entity.Key.Path[0].Name;
+                string property = entity.Key.Path[1].Name;
                 if (kind == "Task")
-                    taskProperties.Add(property);
+                    properties.Add(property);
             };
-            // [END kind_run_query]
-            taskProperties.Sort();
+            // [END property_run_query]
+            properties.Sort();
             Assert.Equal(new[] { "category", "completed", "created",
                 "done", "percent_complete", "priority", "tag" }, 
-                taskProperties.ToArray());
+                properties.ToArray());
+        }
+
+        [Fact]
+        public void TestPropertyByKindRunQuery()
+        {
+            UpsertTaskList();
+            // [START property_run_query]
+            Key key = _db.CreateKeyFactory("__kind__").CreateKey("Task");
+            Query query = new Query("__property__")
+            {
+                Filter = Filter.HasAncestor(key)
+            };
+            var properties = new List<string>();
+            foreach (Entity entity in _db.RunQuery(query))
+            {
+                string kind = entity.Key.Path[0].Name;
+                string property = entity.Key.Path[1].Name;
+                var representations = entity["property_representation"]
+                    .ArrayValue.Values.Select(x => x.StringValue).OrderBy(x => x);
+                properties.Add($"{property}:{string.Join(",", representations)}");
+            };
+            // [END property_run_query]
+            properties.Sort();
+            Assert.Equal(new[] {
+                "category:STRING",
+                "completed:BOOLEAN",
+                "created:INT64",
+                "done:BOOLEAN",
+                "percent_complete:DOUBLE",
+                "priority:INT64",
+                "tag:STRING" },
+                properties.ToArray());
         }
 
         [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/346")]
