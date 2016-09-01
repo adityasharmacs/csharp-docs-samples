@@ -508,6 +508,28 @@ namespace GoogleCloudSamples
             Assert.False(IsEmpty(_db.RunQuery(query)));
         }
 
+        [Fact Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/304")]
+        public void TestRunProjectionQuery()
+        {
+            ClearTasks();
+            UpsertTaskList();
+            // [START run_query_projection]
+            Query query = new Query("Task")
+            {
+                Projection = { "priority", "percent_complete" }
+            };
+            List<long> priorities = new List<long>();
+            List<double> percentCompletes = new List<double>();
+            foreach (var entity in _db.RunQuery(query))
+            {
+                priorities.Add((long)entity["priority"]);
+                percentCompletes.Add((double)entity["percent_complete"]);
+            }
+            // [END run_query_projection]
+            Assert.Equal(new long[] { 4L }, priorities.ToArray());
+            Assert.Equal(new double[] { 10.0 }, percentCompletes.ToArray());
+        }
+
         [Fact]
         public void TestKeysOnlyQuery()
         {
