@@ -934,7 +934,7 @@ namespace GoogleCloudSamples
             }
         }
 
-        // [START retry]
+        // [START transactional_retry]
         /// <summary>
         /// Retry the action when a Grpc.Core.RpcException is thrown.
         /// </summary>
@@ -983,7 +983,25 @@ namespace GoogleCloudSamples
             });
             Assert.Equal(2, tryCount);
         }
-        // [END retry]
+        // [END transactional_retry]
+
+        [Fact]
+        public void TestTransactionalGetOrCreate()
+        {
+            // [START transactional_get_or_create]
+            Entity task;
+            using (var transaction = _db.BeginTransaction())
+            {
+                task = transaction.Lookup(_sampleTask.Key);
+                if (task == null)
+                {
+                    transaction.Insert(_sampleTask);
+                    transaction.Commit();
+                }
+            }
+            // [END transactional_get_or_create]
+            Assert.Equal(_sampleTask, _db.Lookup(_sampleTask.Key));
+        }
 
         [Fact]
         public void TestTransactionalSingleEntityGroupReadOnly()
