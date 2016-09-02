@@ -614,7 +614,7 @@ namespace GoogleCloudSamples
         public void TestPropertyByKindRunQuery()
         {
             UpsertTaskList();
-            // [START property_run_query]
+            // [START property_by_kind_run_query]
             Key key = _db.CreateKeyFactory("__kind__").CreateKey("Task");
             Query query = new Query("__property__")
             {
@@ -629,7 +629,7 @@ namespace GoogleCloudSamples
                     .ArrayValue.Values.Select(x => x.StringValue).OrderBy(x => x);
                 properties.Add($"{property}:{string.Join(",", representations)}");
             };
-            // [END property_run_query]
+            // [END property_by_kind_run_query]
             properties.Sort();
             Assert.Equal(new[] {
                 "category:STRING",
@@ -639,6 +639,32 @@ namespace GoogleCloudSamples
                 "percent_complete:DOUBLE",
                 "priority:INT64",
                 "tag:STRING" },
+                properties.ToArray());
+        }
+
+        [Fact]
+        public void TestPropertyFilteringRunQuery()
+        {
+            UpsertTaskList();
+            // [START property_filtering_run_query]
+            Key key = _db.CreateKeyFactory("__kind__").CreateKey("Task");
+            Key startKey = new KeyFactory(key, "__property__").CreateKey("priority");
+            Query query = new Query("__property__")
+            {
+                Filter = Filter.GreaterThanOrEqual("__key__", startKey)
+            };
+            var properties = new List<string>();
+            foreach (Entity entity in _db.RunQuery(query))
+            {
+                string kind = entity.Key.Path[0].Name;
+                string property = entity.Key.Path[1].Name;
+                properties.Add($"{kind}.{property}");
+            };
+            // [END property_filtering_run_query]
+            properties.Sort();
+            Assert.Equal(new[] {
+                "Task.priority",
+                "Task.tag" },
                 properties.ToArray());
         }
 
