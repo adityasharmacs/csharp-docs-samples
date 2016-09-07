@@ -52,6 +52,53 @@ namespace GoogleCloudSamples
         }
         // [END add_entity]
 
+        // [START update_entity]
+        /// <summary>
+        /// Marks a task entity as done.
+        /// </summary>
+        /// <param name="id">The ID of the task entity as given by Key.</param>
+        /// <returns>true if the task was found.</returns>
+        bool MarkDone(long id)
+        {
+            using (var transaction = _db.BeginTransaction())
+            {
+                Entity task = transaction.Lookup(_keyFactory.CreateKey(id));
+                if (task != null)
+                {
+                    task["done"] = true;
+                    transaction.Update(task);
+                }
+                transaction.Commit();
+                return task != null;
+            }
+        }
+        // [END update_entity]
+
+        // [START retrieve_entities]
+        /// <summary>
+        /// Returns a list of all task entities in ascending order of creation time.
+        /// </summary>
+        IEnumerable<Entity> ListTasks()
+        {
+            Query query = new Query("Task")
+            {
+                Order = { { "created", PropertyOrder.Types.Direction.Descending } }
+            };
+            return _db.RunQuery(query);
+        }
+        // [END retrieve_entities]
+
+        // [START delete_entity]
+        /// <summary>
+        /// Deletes a task entity.
+        /// </summary>
+        /// <param name="id">he ID of the task entity as given by Key.</param>
+        void DeleteTask(long id)
+        {
+            _db.Delete(_keyFactory.CreateKey(id));
+        }
+        // [END delete_entity]
+
         static void Main(string[] args)
         {
         }
