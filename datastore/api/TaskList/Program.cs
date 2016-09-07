@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 using Google.Datastore.V1Beta3;
 using Google.Protobuf;
 using System;
@@ -31,7 +32,6 @@ namespace GoogleCloudSamples
 
         TaskList(string projectId)
         {
-
             // [START build_service]
             // Create an authorized Datastore service using Application Default Credentials.
             _db = DatastoreDb.Create(projectId);
@@ -114,11 +114,11 @@ namespace GoogleCloudSamples
         static IEnumerable<string> FormatTasks(IEnumerable<Entity> tasks)
         {
             var results = new List<string>();
-            foreach(Entity task in tasks)
+            foreach (Entity task in tasks)
             {
                 var note = (bool)task["done"] ? "done" :
                     $"created {(DateTime)task["created"]}";
-                results.Add($"{task.Key.Path.First().Id} : " + 
+                results.Add($"{task.Key.Path.First().Id} : " +
                     $"{(string)task["description"]} ({note})");
             }
             return results;
