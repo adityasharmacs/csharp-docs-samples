@@ -29,6 +29,12 @@ namespace GoogleCloudSamples
         private readonly DatastoreDb _db;
         private readonly KeyFactory _keyFactory;
 
+        TaskList(string projectId)
+        {
+            _db = DatastoreDb.Create(projectId);
+            _keyFactory = _db.CreateKeyFactory("Task");
+        }
+
         // [START add_entity]
         /// <summary>
         ///  Adds a task entity to the Datastore
@@ -37,9 +43,9 @@ namespace GoogleCloudSamples
         /// <returns>The key of the entity.</returns>
         Key AddTask(string description)
         {
-            Key key = _db.AllocateId(_keyFactory.CreateIncompleteKey());
             Entity task = new Entity()
             {
+                Key = _keyFactory.CreateIncompleteKey(),
                 ["description"] = new Value()
                 {
                     StringValue = description,
@@ -105,25 +111,97 @@ namespace GoogleCloudSamples
             var results = new List<string>();
             foreach(Entity task in tasks)
             {
-                if ((bool)task["done"])
-                {
-                    results.Add($"{task.Key.Path.First().Id} : " + 
-                        $"{(string)task["description"]} (done)");
-                }
-                else
-                {
-                    results.Add($"{task.Key.Path.First().Id} : " + 
-                        $"{(string)task["description"]} " + 
-                        $"(created {(DateTime)task["created"]})");
-                }
+                var note = (bool)task["done"] ? "done" :
+                    $"created {(DateTime)task["created"]}";
+                results.Add($"{task.Key.Path.First().Id} : " + 
+                    $"{(string)task["description"]} ({note})");
             }
             return results;
         }
-
-
         // [END format_results]
+
+        void HandleCommandLine(string commandLine)
+        {
+            string[] args = commandLine.Split(null, 2);
+            if (args.Length < 1)
+                throw new ArgumentException("not enough args");
+            string command = args[0];
+            switch (command)
+            {
+                case "new":
+                    if (args.Length != 2)
+                        throw new ArgumentException("missing description");
+                    AddTask(args[1]);
+                    Console.WriteLine("task added");
+                    break;
+                case "done":
+                    if (args.Length != 2)
+                        throw new ArgumentException("missing task id");
+                    long id = long.Parse(args[1]);
+                    if (MarkDone(id))
+                        Console.WriteLine("task marked done");
+                    else
+                        Console.WriteLine($"did not find a Task entity with ID {id}");
+                    break;
+                case "list":
+                    var tasks = FormatTasks(ListTasks());
+                    Console.WriteLine($"found {tasks.Count()} tasks");
+                    Console.WriteLine("task ID : description");
+                    Console.WriteLine("---------------------");
+                    foreach (string task in tasks)
+                        Console.WriteLine(task);
+                    break;
+                case "delete":
+                    if (args.Length != 2)
+                        throw new ArgumentException("missing task id");
+                    DeleteTask(long.Parse(args[1]));
+                    Console.WriteLine("task deleted (if it existed)");
+                    break;
+                default:
+                    throw new ArgumentException($"unrecognized command: {command}");
+            }
+        }
+
         static void Main(string[] args)
         {
+            string projectId = args.Length == 2 ? args[1] :
+                Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                Console.WriteLine("Set the environment variable " +
+                    "GOOGLE_PROJECT_ID or pass the google project id on" +
+                    "the command line.");
+                return;
+            }
+            TaskList taskList = new TaskList(projectId);
+            Console.WriteLine("Cloud Datastore Task List\n");
+            PrintUsage();
+            while (true)
+            {
+                Console.Write("> ");
+                string commandLine = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(commandLine))
+                    break;
+                try
+                {
+                    taskList.HandleCommandLine(commandLine);
+                }
+                catch (ArgumentException e)
+                {
+                    Console.WriteLine(e.Message);
+                    PrintUsage();
+                }
+            }
+            Console.WriteLine("exiting");
+        }
+
+        private static void PrintUsage()
+        {
+            Console.WriteLine(@"Usage:
+  new <description>  Adds a task with a description <description>
+  done <task-id>     Marks a task as done
+  list               Lists all tasks by creation time
+  delete <task-id>   Deletes a task");
         }
     }
 }
