@@ -31,8 +31,13 @@ namespace GoogleCloudSamples
 
         TaskList(string projectId)
         {
+
+            // [START build_service]
+            // Create an authorized Datastore service using Application Default Credentials.
             _db = DatastoreDb.Create(projectId);
+            // Create a Key factory to construct keys associated with this project.
             _keyFactory = _db.CreateKeyFactory("Task");
+            // [END build_service]
         }
 
         // [START add_entity]
