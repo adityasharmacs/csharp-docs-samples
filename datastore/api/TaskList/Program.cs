@@ -13,7 +13,6 @@
 // limitations under the License.
 
 using Google.Datastore.V1Beta3;
-using Google.Protobuf;
 using System;
 using System.Linq;
 using System.Collections.Generic;
