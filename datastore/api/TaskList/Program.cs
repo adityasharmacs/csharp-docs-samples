@@ -99,6 +99,29 @@ namespace GoogleCloudSamples
         }
         // [END delete_entity]
 
+        // [START format_results]
+        static IEnumerable<string> FormatTasks(IEnumerable<Entity> tasks)
+        {
+            var results = new List<string>();
+            foreach(Entity task in tasks)
+            {
+                if ((bool)task["done"])
+                {
+                    results.Add($"{task.Key.Path.First().Id} : " + 
+                        $"{(string)task["description"]} (done)");
+                }
+                else
+                {
+                    results.Add($"{task.Key.Path.First().Id} : " + 
+                        $"{(string)task["description"]} " + 
+                        $"(created {(DateTime)task["created"]})");
+                }
+            }
+            return results;
+        }
+
+
+        // [END format_results]
         static void Main(string[] args)
         {
         }
