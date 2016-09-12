@@ -194,106 +194,51 @@ namespace GoogleCloudSamples
             // [END delete_topic]
         }
 
-        // [START retry]
-        /// <summary>
-        /// Retry the action when a Grpc.Core.RpcException is thrown.
-        /// </summary>
-        private T RetryRpc<T>(Func<T> action)
-        {
-            List<Grpc.Core.RpcException> exceptions = null;
-            var delayMs = _retryDelayMs;
-            for (int tryCount = 0; tryCount < _retryCount; ++tryCount)
-            {
-                try
-                {
-                    return action();
-                }
-                catch (RpcException e)
-                {
-                    //If resource already exists then throw allowed exception
-                    if (e.Status.StatusCode == StatusCode.AlreadyExists)
-                    {
-                        throw;
-                    }
-                    if (exceptions == null)
-                    {
-                        exceptions = new List<Grpc.Core.RpcException>();
-                    }
-                    exceptions.Add(e);
-                }
-                System.Threading.Thread.Sleep(delayMs);
-                delayMs *= 2;  // Exponential back-off.
-            }
-            throw new AggregateException(exceptions);
-        }
-
-        private void RetryRpc(Action action)
-        {
-            try {
-                RetryRpc(() => { action(); return 0; });
-            }
-            catch (AggregateException exceptions)
-            {
-                throw exceptions;
-            }
-        }
-        // [END retry]
-
         public void RpcRetry(string topicId, string subscriptionId,
             PublisherClient publisher, SubscriberClient subscriber)
         {
             string topicName = PublisherClient.FormatTopicName(_projectId, topicId);
             string subscriptionName =
                 SubscriberClient.FormatSubscriptionName(_projectId, subscriptionId);
-            try
+            var delayMs = _retryDelayMs;
+            for (int tries = 0; true; ++tries)
             {
-                RetryRpc(() =>
+                try
                 {
                     // Subscribe to Topic
-                    // This should fail since Topic has not yet been created
+                    // This may fail if the topic has already been created.
                     subscriber.CreateSubscription(subscriptionName, topicName,
                         pushConfig: null, ackDeadlineSeconds: 60);
-                });
-            }
-            catch (AggregateException exceptions)
-            {
-                if (exceptions.InnerExceptions.Count() == _retryCount)
+                    break;
+                }
+                catch (RpcException e) when (e.Status.StatusCode == StatusCode.AlreadyExists)
                 {
-                    // [START retry]
-                    try
-                    {
-                        RetryRpc(() =>
-                        {
-                            //Create Topic
-                            publisher.CreateTopic(topicName);
-                        });
-                    }
-                    catch (RpcException e) when 
-                        (e.Status.StatusCode != StatusCode.AlreadyExists)
-                    {
-                        // A StatusCode of "AlreadyExists" is ok.  
-                        // It means the Topic already exists. 
-                        // Otherwise throw exception.
-                        throw;
-                    }
-                    // [END retry]
-                    try
-                    {
-                        RetryRpc(() =>
-                        {
-                            // Subscribe to Topic
-                            subscriber.CreateSubscription(subscriptionName, topicName,
-                                pushConfig: null, ackDeadlineSeconds: 60);
-                        });
-                    }
-                    catch (RpcException e) when
-                        (e.Status.StatusCode != StatusCode.AlreadyExists)
-                    {
-                        // A StatusCode of "AlreadyExists" is ok.  
-                        // It means the Subscription already exists. 
-                        // Otherwise throw exception.
-                        throw;
-                    }
+                    break;
+                }
+                catch (RpcException) when (tries < 3)
+                {
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2;  // Exponential back-off.
+                }
+            }
+
+            // Create Topic
+            delayMs = _retryDelayMs;
+            for (int tries = 0; true; ++tries)
+            {
+                try
+                {
+                    publisher.CreateTopic(topicName);
+                    break;
+                }
+                catch (RpcException e) when (e.Status.StatusCode == StatusCode.AlreadyExists)
+                {
+                    break;
+                }
+                catch (RpcException) when (tries < 3)
+                {
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2;  // Exponential back-off.
                 }
             }
         }
