@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranscribeAsync", "Transcri
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranscribeAsyncTest", "TranscribeAsyncTest\TranscribeAsyncTest.csproj", "{A488F318-CDBB-47B6-9C0C-89D2E1C8ED50}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranscribeButton", "TranscribeButton\TranscribeButton.csproj", "{66461256-01C7-411B-A9CB-3355A6164EBE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,10 @@ Global
 		{A488F318-CDBB-47B6-9C0C-89D2E1C8ED50}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A488F318-CDBB-47B6-9C0C-89D2E1C8ED50}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A488F318-CDBB-47B6-9C0C-89D2E1C8ED50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66461256-01C7-411B-A9CB-3355A6164EBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66461256-01C7-411B-A9CB-3355A6164EBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66461256-01C7-411B-A9CB-3355A6164EBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66461256-01C7-411B-A9CB-3355A6164EBE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
