@@ -22,7 +22,7 @@ namespace TranscribeButton
     public partial class TranscribeForm : Form
     {
         WhatsHappening _whatsHappening = WhatsHappening.Nothing;       
-        private WaveIn _waveIn;
+        private WaveInEvent _waveIn;
         private List<byte> _buffer = new List<byte>();
 
         public TranscribeForm()
@@ -80,18 +80,20 @@ namespace TranscribeButton
                 DeviceList.Items.Add(WaveIn.GetCapabilities(i).ProductName);
                 DeviceList.SelectedIndex = 0;
             }
-                InvokeAction(() => { Transcription.Text = "Initializing Audio..."; });
+            Task.Run(() =>
+            {
+                InvokeAction(() => { Transcription.Text = "Initializing Audio.\r\nPlease wait..."; });
                 _whatsHappening = WhatsHappening.Initializing;
-                _waveIn = new WaveIn()
-                {                    
-                    DeviceNumber = DeviceList.SelectedIndex,
+                _waveIn = new WaveInEvent()
+                {
+                    DeviceNumber = 0,
                     WaveFormat = new WaveFormat(sampleRate: 8000, channels: 1),
                 };
                 _waveIn.DataAvailable += WaveIn_OnDataAvailable;
-                _buffer.Clear();
                 _whatsHappening = WhatsHappening.Nothing;
                 _waveIn.StartRecording();
-                InvokeAction(() => { Transcription.Text = "Ready.  Hold down the spacebar to record."; });           
+                InvokeAction(() => { Transcription.Text = "Ready.  Hold down the spacebar to record."; });
+            });
         }
     }
 }
