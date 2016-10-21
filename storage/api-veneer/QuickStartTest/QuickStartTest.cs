@@ -13,20 +13,15 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Xunit;
-
 
 namespace GoogleCloudSamples
 {
     public class QuickStartTest
     {
-        struct RunResult
+        private struct RunResult
         {
             public int ExitCode;
             public string Stdout;
@@ -34,7 +29,7 @@ namespace GoogleCloudSamples
 
         /// <summary>Runs StorageSample.exe with the provided arguments</summary>
         /// <returns>The console output of this program</returns>
-        RunResult Run(params string[] arguments)
+        private RunResult Run(params string[] arguments)
         {
             var standardOut = Console.Out;
             using (var output = new StringWriter())
@@ -53,6 +48,33 @@ namespace GoogleCloudSamples
                     Console.SetOut(standardOut);
                 }
             }
+        }
+
+        [Fact]
+        public void TestNoArgs()
+        {
+            // Create a randomly named bucket.
+            var ran = Run();
+            Assert.Equal(-1, ran.ExitCode);
+            Assert.Contains("QuickStart", ran.Stdout);
+        }
+
+        [Fact]
+        public void TestBadCommand()
+        {
+            // Create a randomly named bucket.
+            var ran = Run("throb");
+            Assert.Equal(-1, ran.ExitCode);
+            Assert.Contains("QuickStart", ran.Stdout);
+        }
+
+        [Fact]
+        public void TestMissingDeleteArg()
+        {
+            // Create a randomly named bucket.
+            var ran = Run("delete");
+            Assert.Equal(-1, ran.ExitCode);
+            Assert.Contains("QuickStart", ran.Stdout);
         }
 
         [Fact]
