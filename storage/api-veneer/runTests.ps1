@@ -23,14 +23,11 @@ try {
     } > QuickStart\Program.cs
 
     Build-Solution
-    QuickStart\bin\Debug\QuickStart.exe
-    $SUCCEEDED = $SUCCEEDED -and @(0, 409) -contains $LASTEXITCODE
+    packages\xunit.runner.console.2.1.0\tools\xunit.console.exe `
+        .\QuickStartTest\bin\Debug\QuickStartTest.dll
+    $SUCCEEDED = $SUCCEEDED -and $LASTEXITCODE -eq 0
 } finally {
     Copy-Item -Force $quickStartCopy QuickStart\Program.cs
 }
-
-packages\xunit.runner.console.2.1.0\tools\xunit.console.exe `
-    .\StorageTest\bin\Debug\StorageTest.dll
-$SUCCEEDED = $SUCCEEDED -and $LASTEXITCODE -eq 0
 
 if (-not $SUCCEEDED) { throw "FAILED" }
