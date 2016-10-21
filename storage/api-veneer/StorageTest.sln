@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageTest", "StorageTest.csproj", "{478CC645-3544-4CE1-BB6A-D7608CC6680A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickStart", "..\QuickStart\QuickStart.csproj", "{714184A9-603D-4693-99B5-36E94710BFC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{478CC645-3544-4CE1-BB6A-D7608CC6680A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{478CC645-3544-4CE1-BB6A-D7608CC6680A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{478CC645-3544-4CE1-BB6A-D7608CC6680A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{714184A9-603D-4693-99B5-36E94710BFC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{714184A9-603D-4693-99B5-36E94710BFC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{714184A9-603D-4693-99B5-36E94710BFC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{714184A9-603D-4693-99B5-36E94710BFC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
