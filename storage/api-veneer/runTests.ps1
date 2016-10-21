@@ -24,7 +24,7 @@ try {
 
     Build-Solution
     QuickStart\bin\Debug\QuickStart.exe
-    $SUCCEEDED = $SUCCEEDED -and $LASTEXITCODE -eq 0
+    $SUCCEEDED = $SUCCEEDED -and @(0, 409) -contains $LASTEXITCODE
 } finally {
     Copy-Item -Force $quickStartCopy QuickStart\Program.cs
 }
