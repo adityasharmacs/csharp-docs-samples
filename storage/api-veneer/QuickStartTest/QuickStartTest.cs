@@ -31,6 +31,8 @@ namespace GoogleCloudSamples
         /// <returns>The console output of this program</returns>
         private RunResult Run(params string[] arguments)
         {
+            Console.Write("QuickStart.exe ");
+            Console.WriteLine(string.Join(" ", arguments));
             var standardOut = Console.Out;
             using (var output = new StringWriter())
             {
@@ -106,6 +108,33 @@ namespace GoogleCloudSamples
             Assert.Equal(0, deleted.ExitCode);
             // Make sure a second attempt to delete fails.
             Assert.Equal(404, Run("delete", bucketName).ExitCode);
+        }
+
+        [Fact]
+        public void TestListObjectsInBucket()
+        {
+            var created = Run("create");
+            Assert.Equal(0, created.ExitCode);
+            var created_regex = new Regex(@"Created\s+(.+)\.\s*", RegexOptions.IgnoreCase);
+            var match = created_regex.Match(created.Stdout);
+            Assert.True(match.Success);
+            string bucketName = match.Groups[1].Value;
+            try
+            {
+                // Try listing the files.  There should be none.
+                var listed = Run("list", bucketName);
+                Assert.Equal(0, listed.ExitCode);
+                Assert.Equal("", listed.Stdout);
+
+                var uploaded = Run("upload", bucketName, "Hello.txt");
+                Assert.Equal(0, uploaded.ExitCode);
+                var deleted = Run("delete", bucketName, "Hello.txt");
+                Assert.Equal(0, deleted.ExitCode);
+            }
+            finally
+            {
+                Assert.Equal(0, Run("delete", bucketName).ExitCode);
+            }
         }
     }
 }
