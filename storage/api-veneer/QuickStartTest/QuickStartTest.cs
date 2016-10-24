@@ -14,6 +14,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
 
@@ -138,18 +139,29 @@ namespace GoogleCloudSamples
 
             var uploaded = Run("upload", _bucketName, "Hello.txt");
             Assert.Equal(0, uploaded.ExitCode);
+
+            listed = Run("list", _bucketName);
+            Assert.Equal(0, listed.ExitCode);
+            Assert.Contains("Hello.txt", listed.Stdout);
+
             var deleted = Run("delete", _bucketName, "Hello.txt");
             Assert.Equal(0, deleted.ExitCode);
         }
+
+        public string[] SplitOutput(string stdout) =>
+            stdout.Split('\n')
+                .Select((s) => s.Trim()).Where((s) => !string.IsNullOrEmpty(s))
+                .OrderBy((s) => s).ToArray();
 
         [Fact]
         public void TestListObjectsInBucketWithPrefix()
         {
             // Try listing the files.  There should be none.
-            var listed = Run("list", _bucketName, "a", "/");
+            var listed = Run("list", _bucketName, "a", null);
             Assert.Equal(0, listed.ExitCode);
             Assert.Equal("", listed.Stdout);
 
+            // Upload 3 files.
             var uploaded = Run("upload", _bucketName, "Hello.txt", "a/1.txt");
             Assert.Equal(0, uploaded.ExitCode);
             uploaded = Run("upload", _bucketName, "Hello.txt", "a/2.txt");
@@ -157,8 +169,22 @@ namespace GoogleCloudSamples
             uploaded = Run("upload", _bucketName, "Hello.txt", "a/b/3.txt");
             Assert.Equal(0, uploaded.ExitCode);
 
-            listed = Run("list", _bucketName, "a", "/");
+            // With no delimiter, we should get all 3 files.
+            listed = Run("list", _bucketName, "a/", null);
             Assert.Equal(0, listed.ExitCode);
+            Assert.Equal(new string[] {
+                "a/1.txt",
+                "a/2.txt",
+                "a/b/3.txt"
+            }, SplitOutput(listed.Stdout));
+
+            // With a delimeter, we should see only direct contents.
+            listed = Run("list", _bucketName, "a/", "/");
+            Assert.Equal(0, listed.ExitCode);
+            Assert.Equal(new string[] {
+                "a/1.txt",
+                "a/2.txt",
+            }, SplitOutput(listed.Stdout));
         }
     }
 }

@@ -68,9 +68,10 @@ namespace GoogleCloudSamples
         {
             var storage = StorageClient.Create();
             var options = new ListObjectsOptions() { Delimiter = delimiter };
-            foreach (var bucket in storage.ListObjects(bucketName, prefix, options))
+            foreach (var storageObject in storage.ListObjects(
+                bucketName, prefix, options))
             {
-                Console.WriteLine(bucket.Name);
+                Console.WriteLine(storageObject.Name);
             }
         }
         // [END storage_list_files_with_prefix]
@@ -111,9 +112,15 @@ namespace GoogleCloudSamples
             var storage = StorageClient.Create();
             foreach (var storageObject in storage.ListObjects(bucketName, ""))
             {
-                DeleteObject(bucketName, storageObject.Name);
+                storage.DeleteObject(new Google.Apis.Storage.v1.Data.Object()
+                {
+                    Bucket = bucketName,
+                    Name = storageObject.Name,
+                });
+                Console.WriteLine($"Deleted {storageObject.Name}.");
             }
-            DeleteBucket(bucketName);
+            storage.DeleteBucket(new Bucket { Name = bucketName });
+            Console.WriteLine($"Deleted {bucketName}.");
         }
 
         public static bool PrintUsage()
@@ -157,7 +164,7 @@ namespace GoogleCloudSamples
 
                     case "upload":
                         if (args.Length < 3 && PrintUsage()) return -1;
-                        UploadFile(args[1], args[2]);
+                        UploadFile(args[1], args[2], args.Length < 4 ? null : args[3]);
                         break;
 
                     case "nuke":
