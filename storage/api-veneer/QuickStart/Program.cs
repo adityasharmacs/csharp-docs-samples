@@ -9,14 +9,14 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "bookshelf-dotnet"; // "YOUR-PROJECT-ID";
 
         private static readonly string s_usage =
                 "Usage: \n" +
                 "  QuickStart create [new-bucket-name]\n" +
                 "  QuickStart list\n" +
-                "  QuickStart list bucket-name [prefix]\n" +
-                "  QuickStart upload bucket-name local-file-path\n" +
+                "  QuickStart list bucket-name [prefix] [delimiter]\n" +
+                "  QuickStart upload bucket-name local-file-path [object-name]\n" +
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name\n";
 
@@ -52,27 +52,43 @@ namespace GoogleCloudSamples
         // [END storage_delete_bucket]
 
         // [START storage_list_files]
-        private static void ListObjects(string bucketName, string prefix)
+        private static void ListObjects(string bucketName)
         {
             var storage = StorageClient.Create();
-            foreach (var bucket in storage.ListObjects(bucketName, prefix))
+            foreach (var bucket in storage.ListObjects(bucketName, ""))
             {
                 Console.WriteLine(bucket.Name);
             }
         }
         // [END storage_list_files]
 
+        // [START storage_list_files_with_prefix]
+        private static void ListObjects(string bucketName, string prefix,
+            string delimiter)
+        {
+            var storage = StorageClient.Create();
+            var options = new ListObjectsOptions() { Delimiter = delimiter };
+            foreach (var bucket in storage.ListObjects(bucketName, prefix, options))
+            {
+                Console.WriteLine(bucket.Name);
+            }
+        }
+        // [END storage_list_files_with_prefix]
+
         // [START storage_upload_file]
-        private static void UploadFile(string bucketName, string localPath)
+        private static void UploadFile(string bucketName, string localPath,
+            string objectName = null)
         {
             var storage = StorageClient.Create();
             using (var f = File.OpenRead(localPath))
             {
-                storage.UploadObject(new Google.Apis.Storage.v1.Data.Object
+                var storageObject = new Google.Apis.Storage.v1.Data.Object
                 {
                     Bucket = bucketName,
-                    Name = Path.GetFileName(localPath)
-                }, f);
+                    Name = objectName ?? Path.GetFileName(localPath)
+                };
+                storage.UploadObject(storageObject, f);
+                Console.WriteLine($"Uploaded {storageObject.Name}.");
             }
         }
         // [END storage_upload_file]
@@ -86,16 +102,32 @@ namespace GoogleCloudSamples
                 Bucket = bucketName,
                 Name = objectName,
             });
+            Console.WriteLine($"Deleted {objectName}.");
         }
         // [END storage_delete_file]
 
-        public static int Main(string[] args)
+        private static void NukeBucket(string bucketName)
         {
-            if (args.Length < 1)
+            var storage = StorageClient.Create();
+            foreach (var storageObject in storage.ListObjects(bucketName, ""))
+            {
+                DeleteObject(bucketName, storageObject.Name);
+            }
+            DeleteBucket(bucketName);
+        }
+
+        public static void PrintUsage(bool printAndExit)
+        {
+            if (printAndExit)
             {
                 Console.WriteLine(s_usage);
-                return -1;
+                Environment.Exit(-1);
             }
+        }
+
+        public static int Main(string[] args)
+        {
+            PrintUsage(args.Length < 1);
             try
             {
                 switch (args[0].ToLower())
@@ -107,16 +139,15 @@ namespace GoogleCloudSamples
                     case "list":
                         if (args.Length < 2)
                             ListBuckets();
+                        else if (args.Length < 3)
+                            ListObjects(args[1]);
                         else
-                            ListObjects(args[1], args.Length < 3 ? "" : args[3]);
+                            ListObjects(args[1], args[2], 
+                                args.Length < 4 ? null : args[3]);
                         break;
 
                     case "delete":
-                        if (args.Length < 2)
-                        {
-                            Console.WriteLine(s_usage);
-                            return -1;
-                        }
+                        PrintUsage(args.Length < 2);
                         if (args.Length < 3)
                         {
                             DeleteBucket(args[1]);
@@ -128,17 +159,18 @@ namespace GoogleCloudSamples
                         break;
 
                     case "upload":
-                        if (args.Length < 3)
-                        {
-                            Console.WriteLine(s_usage);
-                            return -1;
-                        }
+                        PrintUsage(args.Length < 3);
                         UploadFile(args[1], args[2]);
                         break;
 
+                    case "nuke":
+                        PrintUsage(args.Length < 2);
+                        NukeBucket(args[1]);
+                        break;
+
                     default:
-                        Console.WriteLine(s_usage);
-                        return -1;
+                        PrintUsage(true);
+                        break;
                 }
                 return 0;
             }
@@ -153,9 +185,9 @@ namespace GoogleCloudSamples
         {
             using (RandomNumberGenerator rng = new RNGCryptoServiceProvider())
             {
-                string legalChars = "abcdefhijklmnopqrstuvwxyz";
+                string legalChars = "abcdefhijklmnpqrstuvwxyz";
                 byte[] randomByte = new byte[1];
-                var randomChars = new char[12];
+                var randomChars = new char[20];
                 int nextChar = 0;
                 while (nextChar < randomChars.Length)
                 {
