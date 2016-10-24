@@ -17,6 +17,7 @@ namespace GoogleCloudSamples
                 "  QuickStart list\n" +
                 "  QuickStart list bucket-name [prefix] [delimiter]\n" +
                 "  QuickStart upload bucket-name local-file-path [object-name]\n" +
+                "  QuickStart download bucket-name object-name [local-file-path]\n" +
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name\n";
 
@@ -107,6 +108,21 @@ namespace GoogleCloudSamples
         }
         // [END storage_delete_file]
 
+        // [START storage_download_file]
+        private static void DownloadObject(string bucketName, string objectName,
+            string localPath = null)
+        {
+            var storage = StorageClient.Create();
+            localPath = localPath ?? Path.GetFileName(objectName);
+            storage.DownloadObject(new Google.Apis.Storage.v1.Data.Object()
+            {
+                Bucket = bucketName,
+                Name = objectName,
+            }, File.OpenWrite(localPath));
+            Console.WriteLine($"downloaded {objectName} to {localPath}.");
+        }
+        // [END storage_download_file]
+
         private static void NukeBucket(string bucketName)
         {
             var storage = StorageClient.Create();
@@ -165,6 +181,11 @@ namespace GoogleCloudSamples
                     case "upload":
                         if (args.Length < 3 && PrintUsage()) return -1;
                         UploadFile(args[1], args[2], args.Length < 4 ? null : args[3]);
+                        break;
+
+                    case "download":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        DownloadObject(args[1], args[2], args.Length < 4 ? null : args[3]);
                         break;
 
                     case "nuke":

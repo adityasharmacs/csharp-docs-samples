@@ -186,5 +186,31 @@ namespace GoogleCloudSamples
                 "a/2.txt",
             }, SplitOutput(listed.Stdout));
         }
+
+        [Fact]
+        public void TestDownloadObject()
+        {
+            var uploaded = Run("upload", _bucketName, "Hello.txt");
+            Assert.Equal(0, uploaded.ExitCode);
+            uploaded = Run("upload", _bucketName, "Hello.txt", "Hello2.txt");
+            Assert.Equal(0, uploaded.ExitCode);
+
+            var downloaded = Run("download", _bucketName, "Hello2.txt");
+            Assert.Equal(0, downloaded.ExitCode);
+            try
+            {
+                Assert.Equal(File.ReadAllText("Hello.txt"),
+                    File.ReadAllText("Hello2.txt"));
+                downloaded = Run("download", _bucketName, "Hello.txt", 
+                    "Hello2.txt");
+                Assert.Equal(0, downloaded.ExitCode);
+                Assert.Equal(File.ReadAllText("Hello.txt"),
+                    File.ReadAllText("Hello2.txt"));
+            }
+            finally
+            {
+                File.Delete("Hello2.txt");
+            }
+        }
     }
 }
