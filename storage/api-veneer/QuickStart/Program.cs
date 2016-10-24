@@ -116,18 +116,15 @@ namespace GoogleCloudSamples
             DeleteBucket(bucketName);
         }
 
-        public static void PrintUsage(bool printAndExit)
+        public static bool PrintUsage()
         {
-            if (printAndExit)
-            {
-                Console.WriteLine(s_usage);
-                Environment.Exit(-1);
-            }
+            Console.WriteLine(s_usage);
+            return true;
         }
 
         public static int Main(string[] args)
         {
-            PrintUsage(args.Length < 1);
+            if (args.Length < 1 && PrintUsage()) return -1;
             try
             {
                 switch (args[0].ToLower())
@@ -147,7 +144,7 @@ namespace GoogleCloudSamples
                         break;
 
                     case "delete":
-                        PrintUsage(args.Length < 2);
+                        if (args.Length < 2 && PrintUsage()) return -1;
                         if (args.Length < 3)
                         {
                             DeleteBucket(args[1]);
@@ -159,18 +156,18 @@ namespace GoogleCloudSamples
                         break;
 
                     case "upload":
-                        PrintUsage(args.Length < 3);
+                        if (args.Length < 3 && PrintUsage()) return -1;
                         UploadFile(args[1], args[2]);
                         break;
 
                     case "nuke":
-                        PrintUsage(args.Length < 2);
+                        if (args.Length < 2 && PrintUsage()) return -1;
                         NukeBucket(args[1]);
                         break;
 
                     default:
-                        PrintUsage(true);
-                        break;
+                        PrintUsage();
+                        return -1;
                 }
                 return 0;
             }
