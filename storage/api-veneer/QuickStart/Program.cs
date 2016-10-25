@@ -29,7 +29,7 @@ namespace GoogleCloudSamples
         }
 
         readonly TextWriter _out;
-        
+
         // [START storage_create_bucket]
         private void CreateBucket(string bucketName)
         {
@@ -177,10 +177,10 @@ namespace GoogleCloudSamples
             {
                 deleteTasks[i] = storage.DeleteObjectAsync(
                     new Google.Apis.Storage.v1.Data.Object()
-                {
-                    Bucket = bucketName,
-                    Name = objectList[i].Name,
-                });
+                    {
+                        Bucket = bucketName,
+                        Name = objectList[i].Name,
+                    });
                 _out.WriteLine($"Deleting {objectList[i].Name}.");
             }
             Task.WaitAll(deleteTasks);
@@ -223,7 +223,7 @@ namespace GoogleCloudSamples
                         else if (args.Length < 3)
                             ListObjects(args[1]);
                         else
-                            ListObjects(args[1], args[2], 
+                            ListObjects(args[1], args[2],
                                 args.Length < 4 ? null : args[3]);
                         break;
 
