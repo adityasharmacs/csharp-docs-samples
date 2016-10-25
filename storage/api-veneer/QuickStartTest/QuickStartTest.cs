@@ -76,7 +76,7 @@ namespace GoogleCloudSamples
 
     public class QuickStartTest : BaseTest, IDisposable
     {
-        private string _bucketName;
+        private readonly string _bucketName;
         public QuickStartTest()
         {
             _bucketName = CreateRandomBucket();
