@@ -38,12 +38,20 @@ namespace GoogleCloudSamples
             using (var output = new StringWriter())
             {
                 QuickStart quickStart = new QuickStart(output);
-                return new ConsoleOutput()
+                var consoleOutput = new ConsoleOutput()
                 {
                     ExitCode = quickStart.Run(arguments),
                     Stdout = output.ToString()
                 };
+                Console.Write(consoleOutput.Stdout);
+                return consoleOutput;
             }
+        }
+
+        protected static void AssertSucceeded(ConsoleOutput output)
+        {
+            Assert.True(0 == output.ExitCode, 
+                $"Exit code: {output.ExitCode}\n{output.Stdout}");
         }
     }
 
@@ -90,7 +98,7 @@ namespace GoogleCloudSamples
         public static string CreateRandomBucket()
         {
             var created = Run("create");
-            Assert.Equal(0, created.ExitCode);
+            AssertSucceeded(created);
             var created_regex = new Regex(@"Created\s+(.+)\.\s*", RegexOptions.IgnoreCase);
             var match = created_regex.Match(created.Stdout);
             Assert.True(match.Success);
@@ -110,14 +118,14 @@ namespace GoogleCloudSamples
 
                 // Try listing the buckets.  We should find the new one.
                 var listed = Run("list");
-                Assert.Equal(0, listed.ExitCode);
+                AssertSucceeded(listed);
                 Assert.Contains(_bucketName, listed.Stdout);
             }
             finally
             {
                 deleted = Run("delete", _bucketName);
             }
-            Assert.Equal(0, deleted.ExitCode);
+            AssertSucceeded(deleted);
             // Make sure a second attempt to delete fails.
             Assert.Equal(404, Run("delete", _bucketName).ExitCode);
         }
@@ -127,18 +135,18 @@ namespace GoogleCloudSamples
         {
             // Try listing the files.  There should be none.
             var listed = Run("list", _bucketName);
-            Assert.Equal(0, listed.ExitCode);
+            AssertSucceeded(listed);
             Assert.Equal("", listed.Stdout);
 
             var uploaded = Run("upload", _bucketName, "Hello.txt");
-            Assert.Equal(0, uploaded.ExitCode);
+            AssertSucceeded(uploaded);
 
             listed = Run("list", _bucketName);
-            Assert.Equal(0, listed.ExitCode);
+            AssertSucceeded(listed);
             Assert.Contains("Hello.txt", listed.Stdout);
 
             var deleted = Run("delete", _bucketName, "Hello.txt");
-            Assert.Equal(0, deleted.ExitCode);
+            AssertSucceeded(deleted);
         }
 
         public string[] SplitOutput(string stdout) =>
@@ -151,20 +159,20 @@ namespace GoogleCloudSamples
         {
             // Try listing the files.  There should be none.
             var listed = Run("list", _bucketName, "a", null);
-            Assert.Equal(0, listed.ExitCode);
+            AssertSucceeded(listed);
             Assert.Equal("", listed.Stdout);
 
             // Upload 3 files.
             var uploaded = Run("upload", _bucketName, "Hello.txt", "a/1.txt");
-            Assert.Equal(0, uploaded.ExitCode);
+            AssertSucceeded(uploaded);
             uploaded = Run("upload", _bucketName, "Hello.txt", "a/2.txt");
-            Assert.Equal(0, uploaded.ExitCode);
+            AssertSucceeded(uploaded);
             uploaded = Run("upload", _bucketName, "Hello.txt", "a/b/3.txt");
-            Assert.Equal(0, uploaded.ExitCode);
+            AssertSucceeded(uploaded);
 
             // With no delimiter, we should get all 3 files.
             listed = Run("list", _bucketName, "a/", null);
-            Assert.Equal(0, listed.ExitCode);
+            AssertSucceeded(listed);
             Assert.Equal(new string[] {
                 "a/1.txt",
                 "a/2.txt",
@@ -173,7 +181,7 @@ namespace GoogleCloudSamples
 
             // With a delimeter, we should see only direct contents.
             listed = Run("list", _bucketName, "a/", "/");
-            Assert.Equal(0, listed.ExitCode);
+            AssertSucceeded(listed);
             Assert.Equal(new string[] {
                 "a/1.txt",
                 "a/2.txt",
@@ -184,19 +192,19 @@ namespace GoogleCloudSamples
         public void TestDownloadObject()
         {
             var uploaded = Run("upload", _bucketName, "Hello.txt");
-            Assert.Equal(0, uploaded.ExitCode);
+            AssertSucceeded(uploaded);
             uploaded = Run("upload", _bucketName, "Hello.txt", "Hello2.txt");
-            Assert.Equal(0, uploaded.ExitCode);
+            AssertSucceeded(uploaded);
 
             var downloaded = Run("download", _bucketName, "Hello2.txt");
-            Assert.Equal(0, downloaded.ExitCode);
+            AssertSucceeded(downloaded);
             try
             {
                 Assert.Equal(File.ReadAllText("Hello.txt"),
                     File.ReadAllText("Hello2.txt"));
                 downloaded = Run("download", _bucketName, "Hello.txt",
                     "Hello2.txt");
-                Assert.Equal(0, downloaded.ExitCode);
+                AssertSucceeded(downloaded);
                 Assert.Equal(File.ReadAllText("Hello.txt"),
                     File.ReadAllText("Hello2.txt"));
             }
@@ -211,7 +219,7 @@ namespace GoogleCloudSamples
         {
             var uploaded = Run("upload", _bucketName, "Hello.txt");
             var got = Run("get-metadata", _bucketName, "Hello.txt");
-            Assert.Equal(0, got.ExitCode);
+            AssertSucceeded(got);
             Assert.Contains("Generation", got.Stdout);
             Assert.Contains("Size", got.Stdout);
         }
