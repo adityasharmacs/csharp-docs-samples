@@ -1,9 +1,11 @@
 ﻿using Google.Apis.Storage.v1.Data;
 using Google.Storage.V1;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace GoogleCloudSamples
 {
@@ -159,19 +161,27 @@ namespace GoogleCloudSamples
         }
         // [END storage_get_metadata]
 
-        private void NukeBucket(string bucketName)
+        /// <summary>
+        /// Delete all the files in a bucket, then delete the bucket.
+        /// </summary>
+        /// <param name="bucketName"></param>
+        private async Task NukeBucketAsync(string bucketName)
         {
             var storage = StorageClient.Create();
-            foreach (var storageObject in storage.ListObjects(bucketName, ""))
+            var objectList = await storage.ListObjectsAsync(bucketName, "").ToArray();
+            var deleteTasks = new Task[objectList.Length];
+            for (int i = 0; i < objectList.Length; ++i)
             {
-                storage.DeleteObject(new Google.Apis.Storage.v1.Data.Object()
+                deleteTasks[i] = storage.DeleteObjectAsync(
+                    new Google.Apis.Storage.v1.Data.Object()
                 {
                     Bucket = bucketName,
-                    Name = storageObject.Name,
+                    Name = objectList[i].Name,
                 });
-                _out.WriteLine($"Deleted {storageObject.Name}.");
+                _out.WriteLine($"Deleting {objectList[i].Name}.");
             }
-            storage.DeleteBucket(new Bucket { Name = bucketName });
+            Task.WaitAll(deleteTasks);
+            await storage.DeleteBucketAsync(new Bucket { Name = bucketName });
             _out.WriteLine($"Deleted {bucketName}.");
         }
 
@@ -237,7 +247,7 @@ namespace GoogleCloudSamples
 
                     case "nuke":
                         if (args.Length < 2 && PrintUsage()) return -1;
-                        NukeBucket(args[1]);
+                        Task.Run(() => NukeBucketAsync(args[1]));
                         break;
 
                     default:
