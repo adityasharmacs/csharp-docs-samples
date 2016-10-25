@@ -22,6 +22,8 @@ namespace GoogleCloudSamples
 {
     public class BaseTest
     {
+        
+
         protected struct ConsoleOutput
         {
             public int ExitCode;
@@ -34,6 +36,7 @@ namespace GoogleCloudSamples
         {
             Console.Write("QuickStart.exe ");
             Console.WriteLine(string.Join(" ", arguments));
+
             var standardOut = Console.Out;
             using (var output = new StringWriter())
             {
@@ -201,7 +204,7 @@ namespace GoogleCloudSamples
             {
                 Assert.Equal(File.ReadAllText("Hello.txt"),
                     File.ReadAllText("Hello2.txt"));
-                downloaded = Run("download", _bucketName, "Hello.txt", 
+                downloaded = Run("download", _bucketName, "Hello.txt",
                     "Hello2.txt");
                 Assert.Equal(0, downloaded.ExitCode);
                 Assert.Equal(File.ReadAllText("Hello.txt"),
@@ -211,6 +214,16 @@ namespace GoogleCloudSamples
             {
                 File.Delete("Hello2.txt");
             }
+        }
+
+        [Fact]
+        public void TestGetMetadata()
+        {
+            var uploaded = Run("upload", _bucketName, "Hello.txt");
+            var got = Run("get-metadata", _bucketName, "Hello.txt");
+            Assert.Equal(0, got.ExitCode);
+            Assert.Contains("Generation", got.Stdout);
+            Assert.Contains("Size", got.Stdout);
         }
     }
 }

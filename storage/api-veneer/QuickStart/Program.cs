@@ -123,6 +123,35 @@ namespace GoogleCloudSamples
         }
         // [END storage_download_file]
 
+        // [START storage_get_metadata]
+        private static void GetMetadata(string bucketName, string objectName)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, objectName);
+            Console.WriteLine($"Bucket:\t{storageObject.Bucket}");
+            Console.WriteLine($"CacheControl:\t{storageObject.CacheControl}");
+            Console.WriteLine($"ComponentCount:\t{storageObject.ComponentCount}");
+            Console.WriteLine($"ContentDisposition:\t{storageObject.ContentDisposition}");
+            Console.WriteLine($"ContentEncoding:\t{storageObject.ContentEncoding}");
+            Console.WriteLine($"ContentLanguage:\t{storageObject.ContentLanguage}");
+            Console.WriteLine($"ContentType:\t{storageObject.ContentType}");
+            Console.WriteLine($"Crc32c:\t{storageObject.Crc32c}");
+            Console.WriteLine($"ETag:\t{storageObject.ETag}");
+            Console.WriteLine($"Generation:\t{storageObject.Generation}");
+            Console.WriteLine($"Id:\t{storageObject.Id}");
+            Console.WriteLine($"Kind:\t{storageObject.Kind}");
+            Console.WriteLine($"KmsKeyName:\t{storageObject.KmsKeyName}");
+            Console.WriteLine($"Md5Hash:\t{storageObject.Md5Hash}");
+            Console.WriteLine($"MediaLink:\t{storageObject.MediaLink}");
+            Console.WriteLine($"Metageneration:\t{storageObject.Metageneration}");
+            Console.WriteLine($"Name:\t{storageObject.Name}");
+            Console.WriteLine($"Size:\t{storageObject.Size}");
+            Console.WriteLine($"StorageClass:\t{storageObject.StorageClass}");
+            Console.WriteLine($"TimeCreated:\t{storageObject.TimeCreated}");
+            Console.WriteLine($"Updated:\t{storageObject.Updated}");
+        }
+        // [END storage_get_metadata]
+
         private static void NukeBucket(string bucketName)
         {
             var storage = StorageClient.Create();
@@ -186,6 +215,11 @@ namespace GoogleCloudSamples
                     case "download":
                         if (args.Length < 3 && PrintUsage()) return -1;
                         DownloadObject(args[1], args[2], args.Length < 4 ? null : args[3]);
+                        break;
+
+                    case "get-metadata":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        GetMetadata(args[1], args[2]);
                         break;
 
                     case "nuke":
