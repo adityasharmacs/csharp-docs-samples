@@ -11,7 +11,7 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "bookshelf-dotnet"; // "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "YOUR-PROJECT-ID";
 
         private static readonly string s_usage =
                 "Usage: \n" +
@@ -202,6 +202,12 @@ namespace GoogleCloudSamples
 
         public int Run(string[] args)
         {
+            if (s_projectId == "YOUR-PROJECT" + "-ID")
+            {
+                _out.WriteLine("Update program.cs and replace YOUR-PROJECT" +
+                    "-ID with your project id, and recompile.");
+                return -1;
+            }
             if (args.Length < 1 && PrintUsage()) return -1;
             try
             {
