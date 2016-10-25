@@ -50,7 +50,7 @@ namespace GoogleCloudSamples
 
         protected static void AssertSucceeded(ConsoleOutput output)
         {
-            Assert.True(0 == output.ExitCode, 
+            Assert.True(0 == output.ExitCode,
                 $"Exit code: {output.ExitCode}\n{output.Stdout}");
         }
     }
