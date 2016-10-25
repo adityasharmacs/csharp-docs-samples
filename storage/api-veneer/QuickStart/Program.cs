@@ -123,11 +123,14 @@ namespace GoogleCloudSamples
         {
             var storage = StorageClient.Create();
             localPath = localPath ?? Path.GetFileName(objectName);
-            storage.DownloadObject(new Google.Apis.Storage.v1.Data.Object()
+            using (var outputFile = File.OpenWrite(localPath))
             {
-                Bucket = bucketName,
-                Name = objectName,
-            }, File.OpenWrite(localPath));
+                storage.DownloadObject(new Google.Apis.Storage.v1.Data.Object()
+                {
+                    Bucket = bucketName,
+                    Name = objectName,
+                }, outputFile);
+            }
             _out.WriteLine($"downloaded {objectName} to {localPath}.");
         }
         // [END storage_download_file]
