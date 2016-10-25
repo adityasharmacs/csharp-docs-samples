@@ -22,8 +22,6 @@ namespace GoogleCloudSamples
 {
     public class BaseTest
     {
-        
-
         protected struct ConsoleOutput
         {
             public int ExitCode;
@@ -37,22 +35,14 @@ namespace GoogleCloudSamples
             Console.Write("QuickStart.exe ");
             Console.WriteLine(string.Join(" ", arguments));
 
-            var standardOut = Console.Out;
             using (var output = new StringWriter())
             {
-                Console.SetOut(output);
-                try
+                QuickStart quickStart = new QuickStart(output);
+                return new ConsoleOutput()
                 {
-                    return new ConsoleOutput()
-                    {
-                        ExitCode = QuickStart.Main(arguments),
-                        Stdout = output.ToString()
-                    };
-                }
-                finally
-                {
-                    Console.SetOut(standardOut);
-                }
+                    ExitCode = quickStart.Run(arguments),
+                    Stdout = output.ToString()
+                };
             }
         }
     }

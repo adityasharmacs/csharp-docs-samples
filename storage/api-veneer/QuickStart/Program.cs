@@ -21,50 +21,57 @@ namespace GoogleCloudSamples
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name\n";
 
+        public QuickStart(TextWriter stdout)
+        {
+            _out = stdout;
+        }
+
+        readonly TextWriter _out;
+        
         // [START storage_create_bucket]
-        private static void CreateBucket(string bucketName)
+        private void CreateBucket(string bucketName)
         {
             var storage = StorageClient.Create();
             if (bucketName == null)
                 bucketName = RandomBucketName();
             storage.CreateBucket(s_projectId, new Bucket { Name = bucketName });
-            Console.WriteLine($"Created {bucketName}.");
+            _out.WriteLine($"Created {bucketName}.");
         }
         // [END storage_create_bucket]
 
         // [START storage_list_buckets]
-        private static void ListBuckets()
+        private void ListBuckets()
         {
             var storage = StorageClient.Create();
             foreach (var bucket in storage.ListBuckets(s_projectId))
             {
-                Console.WriteLine(bucket.Name);
+                _out.WriteLine(bucket.Name);
             }
         }
         // [END storage_list_buckets]
 
         // [START storage_delete_bucket]
-        private static void DeleteBucket(string bucketName)
+        private void DeleteBucket(string bucketName)
         {
             var storage = StorageClient.Create();
             storage.DeleteBucket(new Bucket { Name = bucketName });
-            Console.WriteLine($"Deleted {bucketName}.");
+            _out.WriteLine($"Deleted {bucketName}.");
         }
         // [END storage_delete_bucket]
 
         // [START storage_list_files]
-        private static void ListObjects(string bucketName)
+        private void ListObjects(string bucketName)
         {
             var storage = StorageClient.Create();
             foreach (var bucket in storage.ListObjects(bucketName, ""))
             {
-                Console.WriteLine(bucket.Name);
+                _out.WriteLine(bucket.Name);
             }
         }
         // [END storage_list_files]
 
         // [START storage_list_files_with_prefix]
-        private static void ListObjects(string bucketName, string prefix,
+        private void ListObjects(string bucketName, string prefix,
             string delimiter)
         {
             var storage = StorageClient.Create();
@@ -72,13 +79,13 @@ namespace GoogleCloudSamples
             foreach (var storageObject in storage.ListObjects(
                 bucketName, prefix, options))
             {
-                Console.WriteLine(storageObject.Name);
+                _out.WriteLine(storageObject.Name);
             }
         }
         // [END storage_list_files_with_prefix]
 
         // [START storage_upload_file]
-        private static void UploadFile(string bucketName, string localPath,
+        private void UploadFile(string bucketName, string localPath,
             string objectName = null)
         {
             var storage = StorageClient.Create();
@@ -90,13 +97,13 @@ namespace GoogleCloudSamples
                     Name = objectName ?? Path.GetFileName(localPath)
                 };
                 storage.UploadObject(storageObject, f);
-                Console.WriteLine($"Uploaded {storageObject.Name}.");
+                _out.WriteLine($"Uploaded {storageObject.Name}.");
             }
         }
         // [END storage_upload_file]
 
         // [START storage_delete_file]
-        private static void DeleteObject(string bucketName, string objectName)
+        private void DeleteObject(string bucketName, string objectName)
         {
             var storage = StorageClient.Create();
             storage.DeleteObject(new Google.Apis.Storage.v1.Data.Object()
@@ -104,12 +111,12 @@ namespace GoogleCloudSamples
                 Bucket = bucketName,
                 Name = objectName,
             });
-            Console.WriteLine($"Deleted {objectName}.");
+            _out.WriteLine($"Deleted {objectName}.");
         }
         // [END storage_delete_file]
 
         // [START storage_download_file]
-        private static void DownloadObject(string bucketName, string objectName,
+        private void DownloadObject(string bucketName, string objectName,
             string localPath = null)
         {
             var storage = StorageClient.Create();
@@ -119,40 +126,40 @@ namespace GoogleCloudSamples
                 Bucket = bucketName,
                 Name = objectName,
             }, File.OpenWrite(localPath));
-            Console.WriteLine($"downloaded {objectName} to {localPath}.");
+            _out.WriteLine($"downloaded {objectName} to {localPath}.");
         }
         // [END storage_download_file]
 
         // [START storage_get_metadata]
-        private static void GetMetadata(string bucketName, string objectName)
+        private void GetMetadata(string bucketName, string objectName)
         {
             var storage = StorageClient.Create();
             var storageObject = storage.GetObject(bucketName, objectName);
-            Console.WriteLine($"Bucket:\t{storageObject.Bucket}");
-            Console.WriteLine($"CacheControl:\t{storageObject.CacheControl}");
-            Console.WriteLine($"ComponentCount:\t{storageObject.ComponentCount}");
-            Console.WriteLine($"ContentDisposition:\t{storageObject.ContentDisposition}");
-            Console.WriteLine($"ContentEncoding:\t{storageObject.ContentEncoding}");
-            Console.WriteLine($"ContentLanguage:\t{storageObject.ContentLanguage}");
-            Console.WriteLine($"ContentType:\t{storageObject.ContentType}");
-            Console.WriteLine($"Crc32c:\t{storageObject.Crc32c}");
-            Console.WriteLine($"ETag:\t{storageObject.ETag}");
-            Console.WriteLine($"Generation:\t{storageObject.Generation}");
-            Console.WriteLine($"Id:\t{storageObject.Id}");
-            Console.WriteLine($"Kind:\t{storageObject.Kind}");
-            Console.WriteLine($"KmsKeyName:\t{storageObject.KmsKeyName}");
-            Console.WriteLine($"Md5Hash:\t{storageObject.Md5Hash}");
-            Console.WriteLine($"MediaLink:\t{storageObject.MediaLink}");
-            Console.WriteLine($"Metageneration:\t{storageObject.Metageneration}");
-            Console.WriteLine($"Name:\t{storageObject.Name}");
-            Console.WriteLine($"Size:\t{storageObject.Size}");
-            Console.WriteLine($"StorageClass:\t{storageObject.StorageClass}");
-            Console.WriteLine($"TimeCreated:\t{storageObject.TimeCreated}");
-            Console.WriteLine($"Updated:\t{storageObject.Updated}");
+            _out.WriteLine($"Bucket:\t{storageObject.Bucket}");
+            _out.WriteLine($"CacheControl:\t{storageObject.CacheControl}");
+            _out.WriteLine($"ComponentCount:\t{storageObject.ComponentCount}");
+            _out.WriteLine($"ContentDisposition:\t{storageObject.ContentDisposition}");
+            _out.WriteLine($"ContentEncoding:\t{storageObject.ContentEncoding}");
+            _out.WriteLine($"ContentLanguage:\t{storageObject.ContentLanguage}");
+            _out.WriteLine($"ContentType:\t{storageObject.ContentType}");
+            _out.WriteLine($"Crc32c:\t{storageObject.Crc32c}");
+            _out.WriteLine($"ETag:\t{storageObject.ETag}");
+            _out.WriteLine($"Generation:\t{storageObject.Generation}");
+            _out.WriteLine($"Id:\t{storageObject.Id}");
+            _out.WriteLine($"Kind:\t{storageObject.Kind}");
+            _out.WriteLine($"KmsKeyName:\t{storageObject.KmsKeyName}");
+            _out.WriteLine($"Md5Hash:\t{storageObject.Md5Hash}");
+            _out.WriteLine($"MediaLink:\t{storageObject.MediaLink}");
+            _out.WriteLine($"Metageneration:\t{storageObject.Metageneration}");
+            _out.WriteLine($"Name:\t{storageObject.Name}");
+            _out.WriteLine($"Size:\t{storageObject.Size}");
+            _out.WriteLine($"StorageClass:\t{storageObject.StorageClass}");
+            _out.WriteLine($"TimeCreated:\t{storageObject.TimeCreated}");
+            _out.WriteLine($"Updated:\t{storageObject.Updated}");
         }
         // [END storage_get_metadata]
 
-        private static void NukeBucket(string bucketName)
+        private void NukeBucket(string bucketName)
         {
             var storage = StorageClient.Create();
             foreach (var storageObject in storage.ListObjects(bucketName, ""))
@@ -162,19 +169,25 @@ namespace GoogleCloudSamples
                     Bucket = bucketName,
                     Name = storageObject.Name,
                 });
-                Console.WriteLine($"Deleted {storageObject.Name}.");
+                _out.WriteLine($"Deleted {storageObject.Name}.");
             }
             storage.DeleteBucket(new Bucket { Name = bucketName });
-            Console.WriteLine($"Deleted {bucketName}.");
+            _out.WriteLine($"Deleted {bucketName}.");
         }
 
-        public static bool PrintUsage()
+        public bool PrintUsage()
         {
-            Console.WriteLine(s_usage);
+            _out.WriteLine(s_usage);
             return true;
         }
 
         public static int Main(string[] args)
+        {
+            QuickStart quickStart = new QuickStart(Console.Out);
+            return quickStart.Run(args);
+        }
+
+        public int Run(string[] args)
         {
             if (args.Length < 1 && PrintUsage()) return -1;
             try
@@ -235,7 +248,7 @@ namespace GoogleCloudSamples
             }
             catch (Google.GoogleApiException e)
             {
-                Console.WriteLine(e.Message);
+                _out.WriteLine(e.Message);
                 return e.Error.Code;
             }
         }
