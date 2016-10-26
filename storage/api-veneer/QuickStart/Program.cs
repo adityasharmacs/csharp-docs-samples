@@ -21,6 +21,7 @@ namespace GoogleCloudSamples
                 "  QuickStart get-metadata bucket-name object-name\n" +
                 "  QuickStart make-public bucket-name object-name\n" +
                 "  QuickStart upload bucket-name local-file-path [object-name]\n" +
+                "  QuickStart copy source-bucket-name source-object-name dest-bucket-name dest-object-name\n" +
                 "  QuickStart move bucket-name source-object-name dest-object-name\n" +
                 "  QuickStart download bucket-name object-name [local-file-path]\n" +
                 "  QuickStart delete bucket-name\n" +
@@ -182,6 +183,18 @@ namespace GoogleCloudSamples
         }
         // [END storage_move_file]
 
+        // [START storage_copy_file]
+        private void CopyObject(string sourceBucketName, string sourceObjectName,
+            string destBucketName, string destObjectName)
+        {
+            var storage = StorageClient.Create();
+            storage.CopyObject(sourceBucketName, sourceObjectName,
+                destBucketName, destObjectName);
+            _out.WriteLine($"Copied {sourceBucketName}/{sourceObjectName} to "
+                + $"{destBucketName}/{destObjectName}.");
+        }
+        // [END storage_copy_file]
+
         /// <summary>
         /// Delete all the files in a bucket, then delete the bucket.
         /// </summary>
@@ -276,6 +289,11 @@ namespace GoogleCloudSamples
                     case "move":
                         if (args.Length < 4 && PrintUsage()) return -1;
                         MoveObject(args[1], args[2], args[3]);
+                        break;
+
+                    case "copy":
+                        if (args.Length < 5 && PrintUsage()) return -1;
+                        CopyObject(args[1], args[2], args[3], args[4]);
                         break;
 
                     case "nuke":

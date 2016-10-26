@@ -254,13 +254,31 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestMove()
         {
-            var uploaded = Run("upload", _bucketName, "Hello.txt");
+            Run("upload", _bucketName, "Hello.txt");
             // Make sure the file doesn't exist until we move it there.
             var got = Run("get-metadata", _bucketName, "Bye.txt");
             Assert.Equal(404, got.ExitCode);
             // Now move it there.
             AssertSucceeded(Run("move", _bucketName, "Hello.txt", "Bye.txt"));
             AssertSucceeded(Run("get-metadata", _bucketName, "Bye.txt"));
+        }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Run("upload", _bucketName, "Hello.txt");
+            string otherBucketName = CreateRandomBucket();
+            try
+            {
+                AssertSucceeded(Run("copy", _bucketName, "Hello.txt",
+                    otherBucketName, "Bye.txt"));
+                AssertSucceeded(Run("get-metadata", otherBucketName, 
+                    "Bye.txt"));
+            }
+            finally
+            {
+                AssertSucceeded(Run("nuke", otherBucketName));
+            }
         }
     }
 }
