@@ -11,13 +11,15 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "bookshelf-dotnet"; // "YOUR-PROJECT-ID";
 
         private static readonly string s_usage =
                 "Usage: \n" +
                 "  QuickStart create [new-bucket-name]\n" +
                 "  QuickStart list\n" +
                 "  QuickStart list bucket-name [prefix] [delimiter]\n" +
+                "  QuickStart get-metadata bucket-name object-name\n" +
+                "  QuickStart make-public bucket-name object-name\n" +
                 "  QuickStart upload bucket-name local-file-path [object-name]\n" +
                 "  QuickStart download bucket-name object-name [local-file-path]\n" +
                 "  QuickStart delete bucket-name\n" +
@@ -152,10 +154,23 @@ namespace GoogleCloudSamples
         }
         // [END storage_get_metadata]
 
-        /// <summary>
-        /// Delete all the files in a bucket, then delete the bucket.
-        /// </summary>
-        /// <param name="bucketName"></param>
+        // [START storage_make_public]
+        private void MakePublic(string bucketName, string objectName)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, objectName);
+            storageObject.Acl = storageObject.Acl ?? new List<ObjectAccessControl>();
+            storage.UpdateObject(storageObject, new UpdateObjectOptions
+            {
+                PredefinedAcl = PredefinedObjectAcl.PublicRead
+            });
+        }
+        // [END storage_make_public]
+
+            /// <summary>
+            /// Delete all the files in a bucket, then delete the bucket.
+            /// </summary>
+            /// <param name="bucketName"></param>
         private async Task NukeBucketAsync(string bucketName)
         {
             var storage = StorageClient.Create();
@@ -236,6 +251,11 @@ namespace GoogleCloudSamples
                     case "get-metadata":
                         if (args.Length < 3 && PrintUsage()) return -1;
                         GetMetadata(args[1], args[2]);
+                        break;
+
+                    case "make-public":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        MakePublic(args[1], args[2]);
                         break;
 
                     case "nuke":

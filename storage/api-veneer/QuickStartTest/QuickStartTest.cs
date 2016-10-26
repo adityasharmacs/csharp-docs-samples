@@ -15,6 +15,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using Xunit;
 
@@ -167,6 +168,8 @@ namespace GoogleCloudSamples
             AssertSucceeded(uploaded);
             uploaded = Run("upload", _bucketName, "Hello.txt", "a/2.txt");
             AssertSucceeded(uploaded);
+            uploaded = Run("upload", _bucketName, "Hello.txt", "b/2.txt");
+            AssertSucceeded(uploaded);
             uploaded = Run("upload", _bucketName, "Hello.txt", "a/b/3.txt");
             AssertSucceeded(uploaded);
 
@@ -222,6 +225,30 @@ namespace GoogleCloudSamples
             AssertSucceeded(got);
             Assert.Contains("Generation", got.Stdout);
             Assert.Contains("Size", got.Stdout);
+        }
+
+        [Fact]
+        public void TestMakePublic()
+        {
+            var uploaded = Run("upload", _bucketName, "Hello.txt");
+            var got = Run("get-metadata", _bucketName, "Hello.txt");
+            AssertSucceeded(got);
+            var medialink_regex = new Regex(@"MediaLink:\s?(.+)");
+            var match = medialink_regex.Match(got.Stdout);
+            Assert.True(match.Success);
+
+            // Before making the file public, fetching the medialink should
+            // throw an exception.
+            string medialink = match.Groups[1].Value.Trim();
+            WebClient webClient = new WebClient();
+            Assert.Throws<WebException>(() => 
+                webClient.DownloadString(medialink));
+
+            // Make it public and try fetching again.
+            var madePublic = Run("make-public", _bucketName, "Hello.txt");
+            AssertSucceeded(madePublic);
+            var text = webClient.DownloadString(medialink);
+            Assert.Equal(File.ReadAllText("Hello.txt"), text);
         }
     }
 }
