@@ -272,13 +272,20 @@ namespace GoogleCloudSamples
             {
                 AssertSucceeded(Run("copy", _bucketName, "Hello.txt",
                     otherBucketName, "Bye.txt"));
-                AssertSucceeded(Run("get-metadata", otherBucketName, 
+                AssertSucceeded(Run("get-metadata", otherBucketName,
                     "Bye.txt"));
             }
             finally
             {
                 AssertSucceeded(Run("nuke", otherBucketName));
             }
+        }
+
+        [Fact]
+        public void TestPrintBucketAcl()
+        {
+            var printed_acl = Run("print-acl", _bucketName);
+            AssertSucceeded(printed_acl);
         }
     }
 }

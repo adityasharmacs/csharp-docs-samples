@@ -195,6 +195,32 @@ namespace GoogleCloudSamples
         }
         // [END storage_copy_file]
 
+
+        // [START storage_print_bucket_acl]
+        private void PrintBucketAcl(string bucketName)
+        {
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName);
+            if (bucket.Acl != null) foreach (var acl in bucket.Acl)
+            {
+                _out.WriteLine($"{acl.Role}:{acl.Entity}");
+            }
+        }
+        // [END storage_print_bucket_acl]
+
+        // [START storage_print_bucket_acl]
+        private void PrintBucketAclForUser(string bucketName, string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName);
+
+            foreach (var acl in bucket.Acl)
+            {
+                _out.WriteLine($"{acl.Role}:{acl.Entity}");
+            }
+        }
+        // [END storage_print_bucket_acl]
+
         /// <summary>
         /// Delete all the files in a bucket, then delete the bucket.
         /// </summary>
@@ -299,6 +325,11 @@ namespace GoogleCloudSamples
                     case "nuke":
                         if (args.Length < 2 && PrintUsage()) return -1;
                         Task.Run(() => NukeBucketAsync(args[1]));
+                        break;
+
+                    case "print-acl":
+                        if (args.Length < 2 && PrintUsage()) return -1;
+                        PrintBucketAcl(args[1]);
                         break;
 
                     default:
