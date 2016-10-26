@@ -376,5 +376,12 @@ namespace GoogleCloudSamples
                 }
             }
         }
+
+        [Fact]
+        public void TestPrintBucketAcl()
+        {
+            var printed_acl = Run("print-acl", _bucketName);
+            AssertSucceeded(printed_acl);
+        }
     }
 }
