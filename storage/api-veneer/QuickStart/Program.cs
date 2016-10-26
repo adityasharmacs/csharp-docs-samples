@@ -175,10 +175,9 @@ namespace GoogleCloudSamples
             string destObjectName)
         {
             var storage = StorageClient.Create();
-            var storageObject = storage.GetObject(bucketName, sourceObjectName);
-            storageObject.Acl = storageObject.Acl ?? new List<ObjectAccessControl>();
-            storageObject.Name = destObjectName;
-            storage.UpdateObject(storageObject);
+            storage.CopyObject(bucketName, sourceObjectName, bucketName,
+                destObjectName);
+            storage.DeleteObject(bucketName, sourceObjectName);
             _out.WriteLine($"Moved {sourceObjectName} to {destObjectName}.");
         }
         // [END storage_move_file]
