@@ -21,6 +21,7 @@ namespace GoogleCloudSamples
                 "  QuickStart get-metadata bucket-name object-name\n" +
                 "  QuickStart make-public bucket-name object-name\n" +
                 "  QuickStart upload bucket-name local-file-path [object-name]\n" +
+                "  QuickStart move bucket-name source-object-name dest-object-name\n" +
                 "  QuickStart download bucket-name object-name [local-file-path]\n" +
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name\n";
@@ -164,13 +165,28 @@ namespace GoogleCloudSamples
             {
                 PredefinedAcl = PredefinedObjectAcl.PublicRead
             });
+            _out.WriteLine(objectName + " is now public an can be fetched from " +
+                storageObject.MediaLink);
         }
         // [END storage_make_public]
 
-            /// <summary>
-            /// Delete all the files in a bucket, then delete the bucket.
-            /// </summary>
-            /// <param name="bucketName"></param>
+        // [START storage_move_file]
+        private void MoveObject(string bucketName, string sourceObjectName,
+            string destObjectName)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, sourceObjectName);
+            storageObject.Acl = storageObject.Acl ?? new List<ObjectAccessControl>();
+            storageObject.Name = destObjectName;
+            storage.UpdateObject(storageObject);
+            _out.WriteLine($"Moved {sourceObjectName} to {destObjectName}.");
+        }
+        // [END storage_move_file]
+
+        /// <summary>
+        /// Delete all the files in a bucket, then delete the bucket.
+        /// </summary>
+        /// <param name="bucketName"></param>
         private async Task NukeBucketAsync(string bucketName)
         {
             var storage = StorageClient.Create();
@@ -256,6 +272,11 @@ namespace GoogleCloudSamples
                     case "make-public":
                         if (args.Length < 3 && PrintUsage()) return -1;
                         MakePublic(args[1], args[2]);
+                        break;
+
+                    case "move":
+                        if (args.Length < 4 && PrintUsage()) return -1;
+                        MoveObject(args[1], args[2], args[3]);
                         break;
 
                     case "nuke":

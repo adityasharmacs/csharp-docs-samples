@@ -241,7 +241,7 @@ namespace GoogleCloudSamples
             // throw an exception.
             string medialink = match.Groups[1].Value.Trim();
             WebClient webClient = new WebClient();
-            Assert.Throws<WebException>(() => 
+            Assert.Throws<WebException>(() =>
                 webClient.DownloadString(medialink));
 
             // Make it public and try fetching again.
@@ -249,6 +249,18 @@ namespace GoogleCloudSamples
             AssertSucceeded(madePublic);
             var text = webClient.DownloadString(medialink);
             Assert.Equal(File.ReadAllText("Hello.txt"), text);
+        }
+
+        [Fact]
+        public void TestMove()
+        {
+            var uploaded = Run("upload", _bucketName, "Hello.txt");
+            // Make sure the file doesn't exist until we move it there.
+            var got = Run("get-metadata", _bucketName, "Bye.txt");
+            Assert.Equal(404, got.ExitCode);
+            // Now move it there.
+            AssertSucceeded(Run("move", _bucketName, "Hello.txt", "Bye.txt"));
+            AssertSucceeded(Run("get-metadata", _bucketName, "Bye.txt"));
         }
     }
 }
