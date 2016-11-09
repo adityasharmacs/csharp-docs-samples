@@ -380,8 +380,20 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestPrintBucketAcl()
         {
-            var printed_acl = Run("print-acl", _bucketName);
-            AssertSucceeded(printed_acl);
+            var printedAcl = Run("print-acl", _bucketName);
+            AssertSucceeded(printedAcl);
+        }
+
+        [Fact]
+        public void TestAddOwner()
+        {
+            string userEmail =
+                "230835935096-8io28ro0tvbbv612p5k6nstlaucmhnrq@developer.gserviceaccount.com";
+            var addedOwner = Run("add-owner", _bucketName, userEmail);
+            AssertSucceeded(addedOwner);
+            var printedAcl = Run("print-acl", _bucketName);
+            AssertSucceeded(printedAcl);
+            Assert.Contains(userEmail, printedAcl.Stdout);
         }
     }
 }

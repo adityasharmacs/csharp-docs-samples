@@ -11,7 +11,7 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "bookshelf-dotnet"; // "YOUR-PROJECT-ID";
 
         private static readonly string s_usage =
                 "Usage: \n" +
@@ -24,6 +24,8 @@ namespace GoogleCloudSamples
                 "  QuickStart copy source-bucket-name source-object-name dest-bucket-name dest-object-name\n" +
                 "  QuickStart move bucket-name source-object-name dest-object-name\n" +
                 "  QuickStart download bucket-name object-name [local-file-path]\n" +
+                "  QuickStart print-acl bucket-name\n" +
+                "  QuickStart add-owner bucket-name user-email\n" +
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name [object-name]\n";
 
@@ -216,12 +218,36 @@ namespace GoogleCloudSamples
             var storage = StorageClient.Create();
             var bucket = storage.GetBucket(bucketName);
 
-            foreach (var acl in bucket.Acl)
+            foreach (var acl in bucket.Acl.Where(
+                (acl) => acl.Entity == $"user-{userEmail}"))
             {
                 _out.WriteLine($"{acl.Role}:{acl.Entity}");
             }
         }
         // [END storage_print_bucket_acl]
+
+        // [START storage_add_bucket_owner]
+        private void AddBucketOwner(string bucketName, string userEmail)
+        {
+            var storage = StorageClient.Create();            
+            var bucket = storage.GetBucket(bucketName);
+            if (null == bucket.Acl)
+            {
+                bucket.Acl = new List<BucketAccessControl>();
+            }
+            bucket.Acl.Add(new BucketAccessControl()
+            {
+                Bucket = bucketName,
+                Entity = $"user-{userEmail}",
+                Role = "OWNER",
+            });
+            storage.UpdateBucket(bucket, new UpdateBucketOptions()
+            {
+                // Avoid race conditions.
+                IfMetagenerationMatch = bucket.Metageneration,
+            });
+        }
+        // [END storage_add_bucket_owner]
 
         public bool PrintUsage()
         {
@@ -308,6 +334,12 @@ namespace GoogleCloudSamples
                         if (args.Length < 2 && PrintUsage()) return -1;
                         PrintBucketAcl(args[1]);
                         break;
+
+                    case "add-owner":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        AddBucketOwner(args[1], args[2]);
+                        break;
+
 
                     default:
                         PrintUsage();
