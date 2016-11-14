@@ -2,6 +2,7 @@
 using Google.Storage.V1;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -11,7 +12,7 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "bookshelf-dotnet"; // "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "YOUR-PROJECT-ID";
 
         private static readonly string s_usage =
                 "Usage: \n" +
@@ -212,7 +213,7 @@ namespace GoogleCloudSamples
         }
         // [END storage_print_bucket_acl]
 
-        // [START storage_print_bucket_acl]
+        // [START storage_print_bucket_acl_for_user]
         private void PrintBucketAclForUser(string bucketName, string userEmail)
         {
             var storage = StorageClient.Create();
@@ -224,7 +225,7 @@ namespace GoogleCloudSamples
                 _out.WriteLine($"{acl.Role}:{acl.Entity}");
             }
         }
-        // [END storage_print_bucket_acl]
+        // [END storage_print_bucket_acl_for_user]
 
         // [START storage_add_bucket_owner]
         private void AddBucketOwner(string bucketName, string userEmail)
@@ -241,13 +242,51 @@ namespace GoogleCloudSamples
                 Entity = $"user-{userEmail}",
                 Role = "OWNER",
             });
-            storage.UpdateBucket(bucket, new UpdateBucketOptions()
+            var updatedBucket = storage.UpdateBucket(bucket, new UpdateBucketOptions()
             {
                 // Avoid race conditions.
                 IfMetagenerationMatch = bucket.Metageneration,
             });
         }
         // [END storage_add_bucket_owner]
+
+        // [START storage_add_bucket_default_owner]
+        private void AddBucketDefaultOwner(string bucketName, string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName);
+            if (null == bucket.DefaultObjectAcl)
+            {
+                bucket.DefaultObjectAcl = new List<ObjectAccessControl>();
+            }
+            bucket.DefaultObjectAcl.Add(new ObjectAccessControl()
+            {
+                Bucket = bucketName,
+                Entity = $"user-{userEmail}",
+                Role = "OWNER",
+            });
+            var updatedBucket = storage.UpdateBucket(bucket, new UpdateBucketOptions()
+            {
+                // Avoid race conditions.
+                IfMetagenerationMatch = bucket.Metageneration,
+            });
+        }
+        // [END storage_add_bucket_default_owner]
+
+        // [START storage_print_file_acl]
+        private void PrintObjectAcl(string bucketName, string objectName)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, objectName);
+            if (storageObject.Acl != null)
+            {
+                foreach (var acl in storageObject.Acl)
+                {
+                    _out.WriteLine($"{acl.Role}:{acl.Entity}");
+                }
+            }
+        }
+        // [END storage_print_file_acl]
 
         public bool PrintUsage()
         {
