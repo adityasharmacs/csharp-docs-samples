@@ -326,7 +326,7 @@ namespace GoogleCloudSamples
             var uploaded = Run("upload", _bucketName, Collect("Hello.txt"));
             AssertSucceeded(uploaded);
 
-            var downloaded = Run("download-byte-range", _bucketName, 
+            var downloaded = Run("download-byte-range", _bucketName,
                 "Hello.txt", "0", "20");
             AssertSucceeded(downloaded);
             try
@@ -508,7 +508,7 @@ namespace GoogleCloudSamples
             var printedAcl = Run("print-acl", _bucketName, "Hello.txt");
             AssertSucceeded(printedAcl);
             Assert.DoesNotContain(userEmail, printedAcl.Stdout);
-            var printedAclForUser = Run("print-acl-for-user", _bucketName, 
+            var printedAclForUser = Run("print-acl-for-user", _bucketName,
                 "Hello.txt", userEmail);
             Assert.Equal("", printedAclForUser.Stdout);
 
@@ -524,10 +524,10 @@ namespace GoogleCloudSamples
 
             // Make sure we print-acl-for-user shows us the user, 
             // but not all the ACLs.
-            printedAclForUser = Run("print-acl-for-user", _bucketName, 
+            printedAclForUser = Run("print-acl-for-user", _bucketName,
                 "Hello.txt", userEmail);
             Assert.Contains(userEmail, printedAclForUser.Stdout);
-            Assert.True(printedAcl.Stdout.Length > 
+            Assert.True(printedAcl.Stdout.Length >
                 printedAclForUser.Stdout.Length);
 
             // Remove the owner.
