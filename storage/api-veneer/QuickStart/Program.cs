@@ -12,7 +12,7 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "bookshelf-dotnet"; // "YOUR-PROJECT-ID";
 
         private static readonly string s_usage =
                 "Usage: \n" +
@@ -26,7 +26,10 @@ namespace GoogleCloudSamples
                 "  QuickStart move bucket-name source-object-name dest-object-name\n" +
                 "  QuickStart download bucket-name object-name [local-file-path]\n" +
                 "  QuickStart print-acl bucket-name\n" +
+                "  QuickStart print-acl bucket-name object-name\n" +
                 "  QuickStart add-owner bucket-name user-email\n" +
+                "  QuickStart add-owner bucket-name object-name user-email\n" +
+                "  QuickStart add-default-owner bucket-name user-email\n" +
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name [object-name]\n";
 
@@ -205,7 +208,10 @@ namespace GoogleCloudSamples
         private void PrintBucketAcl(string bucketName)
         {
             var storage = StorageClient.Create();
-            var bucket = storage.GetBucket(bucketName);
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
             if (bucket.Acl != null) foreach (var acl in bucket.Acl)
             {
                 _out.WriteLine($"{acl.Role}:{acl.Entity}");
@@ -213,13 +219,31 @@ namespace GoogleCloudSamples
         }
         // [END storage_print_bucket_acl]
 
+        // [START storage_print_bucket_default_acl]
+        private void PrintBucketDefaultAcl(string bucketName)
+        {
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
+            if (bucket.Acl != null) foreach (var acl in bucket.DefaultObjectAcl)
+            {
+                _out.WriteLine($"{acl.Role}:{acl.Entity}");
+            }
+        }
+        // [END storage_print_bucket_default_acl]
+
         // [START storage_print_bucket_acl_for_user]
         private void PrintBucketAclForUser(string bucketName, string userEmail)
         {
             var storage = StorageClient.Create();
-            var bucket = storage.GetBucket(bucketName);
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
 
-            foreach (var acl in bucket.Acl.Where(
+            if (bucket.Acl != null) foreach (var acl in bucket.Acl.Where(
                 (acl) => acl.Entity == $"user-{userEmail}"))
             {
                 _out.WriteLine($"{acl.Role}:{acl.Entity}");
@@ -230,8 +254,11 @@ namespace GoogleCloudSamples
         // [START storage_add_bucket_owner]
         private void AddBucketOwner(string bucketName, string userEmail)
         {
-            var storage = StorageClient.Create();            
-            var bucket = storage.GetBucket(bucketName);
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
             if (null == bucket.Acl)
             {
                 bucket.Acl = new List<BucketAccessControl>();
@@ -254,7 +281,14 @@ namespace GoogleCloudSamples
         private void AddBucketDefaultOwner(string bucketName, string userEmail)
         {
             var storage = StorageClient.Create();
-            var bucket = storage.GetBucket(bucketName);
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
+            if (null == bucket.Acl)
+            {
+                bucket.Acl = new List<BucketAccessControl>();
+            }
             if (null == bucket.DefaultObjectAcl)
             {
                 bucket.DefaultObjectAcl = new List<ObjectAccessControl>();
@@ -277,7 +311,8 @@ namespace GoogleCloudSamples
         private void PrintObjectAcl(string bucketName, string objectName)
         {
             var storage = StorageClient.Create();
-            var storageObject = storage.GetObject(bucketName, objectName);
+            var storageObject = storage.GetObject(bucketName, objectName,
+                new GetObjectOptions() { Projection = Projection.Full });
             if (storageObject.Acl != null)
             {
                 foreach (var acl in storageObject.Acl)
@@ -287,6 +322,50 @@ namespace GoogleCloudSamples
             }
         }
         // [END storage_print_file_acl]
+
+        // [START storage_print_file_acl_for_user]
+        private void PrintObjectAclForUser(string bucketName, string objectName, 
+            string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, objectName,
+                new GetObjectOptions() { Projection = Projection.Full });
+            if (storageObject.Acl != null)
+            {
+                foreach (var acl in storageObject.Acl
+                    .Where((acl) => acl.Entity == $"user-{userEmail}"))
+                {
+                    _out.WriteLine($"{acl.Role}:{acl.Entity}");
+                }
+            }
+        }
+        // [END storage_print_file_acl_for_user]
+
+        // [START storage_add_file_owner]
+        private void AddObjectOwner(string bucketName, string objectName, 
+            string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, objectName, 
+                new GetObjectOptions() { Projection = Projection.Full });
+            if (null == storageObject.Acl)
+            {
+                storageObject.Acl = new List<ObjectAccessControl>();
+            }
+            storageObject.Acl.Add(new ObjectAccessControl()
+            {
+                Bucket = bucketName,
+                Entity = $"user-{userEmail}",
+                Role = "OWNER",
+            });
+            var updatedObject = storage.UpdateObject(storageObject, new UpdateObjectOptions()
+            {
+                // Avoid race conditions.
+                IfMetagenerationMatch = storageObject.Metageneration,
+            });
+        }
+        // [END storage_add_file_owner]
+
 
         public bool PrintUsage()
         {
@@ -371,14 +450,37 @@ namespace GoogleCloudSamples
 
                     case "print-acl":
                         if (args.Length < 2 && PrintUsage()) return -1;
-                        PrintBucketAcl(args[1]);
+                        if (args.Length < 3)
+                            PrintBucketAcl(args[1]);
+                        else
+                            PrintObjectAcl(args[1], args[2]);
+                        break;
+
+                    case "print-acl-for-user":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        if (args.Length < 4)
+                            PrintBucketAclForUser(args[1], args[2]);
+                        else
+                            PrintObjectAclForUser(args[1], args[2], args[3]);
+                        break;
+
+                    case "print-default-acl":
+                        if (args.Length < 2 && PrintUsage()) return -1;
+                        PrintBucketDefaultAcl(args[1]);
                         break;
 
                     case "add-owner":
                         if (args.Length < 3 && PrintUsage()) return -1;
-                        AddBucketOwner(args[1], args[2]);
+                        if (args.Length < 4)
+                            AddBucketOwner(args[1], args[2]);
+                        else
+                            AddObjectOwner(args[1], args[2], args[3]);
                         break;
 
+                    case "add-default-owner":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        AddBucketDefaultOwner(args[1], args[2]);
+                        break;
 
                     default:
                         PrintUsage();

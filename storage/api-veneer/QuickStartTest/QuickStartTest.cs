@@ -103,6 +103,19 @@ namespace GoogleCloudSamples
         public string BucketName { get; private set; }
     }
 
+    public class GarbageCollector : IDisposable
+    {
+        private readonly QuickStartTest _test;
+        public GarbageCollector(QuickStartTest test)
+        {
+            _test = test;
+        }
+        public void Dispose()
+        {
+            _test.DeleteGarbage();
+        }
+    }
+
     public class QuickStartTest : BaseTest, IDisposable, IClassFixture<BucketFixture>
     {
         private readonly string _bucketName;
@@ -148,7 +161,7 @@ namespace GoogleCloudSamples
             DeleteGarbage();
         }
 
-        private void DeleteGarbage()
+        public void DeleteGarbage()
         {
             foreach (var bucket in _garbage)
             {
@@ -360,20 +373,13 @@ namespace GoogleCloudSamples
         {
             Run("upload", _bucketName, Collect("Hello.txt"));
             using (var otherBucket = new BucketFixture())
+            using (var garbageCollector = new GarbageCollector(this))
             {
-                try
-                {
-                    AssertSucceeded(Run("copy", _bucketName, "Hello.txt",
-                        otherBucket.BucketName, "Bye.txt"));
-                    Collect(otherBucket.BucketName, "Bye.txt");
-                    AssertSucceeded(Run("get-metadata", otherBucket.BucketName,
-                        "Bye.txt"));
-                }
-                finally
-                {
-                    // Must delete garbage before trying to dispose otherBucket.
-                    DeleteGarbage();
-                }
+                AssertSucceeded(Run("copy", _bucketName, "Hello.txt",
+                    otherBucket.BucketName, "Bye.txt"));
+                Collect(otherBucket.BucketName, "Bye.txt");
+                AssertSucceeded(Run("get-metadata", otherBucket.BucketName,
+                    "Bye.txt"));
             }
         }
 
@@ -385,15 +391,80 @@ namespace GoogleCloudSamples
         }
 
         [Fact]
-        public void TestAddOwner()
+        public void TestAddBucketOwner()
+        {
+            using (var bucket = new BucketFixture())
+            {
+                string userEmail =
+                   "230835935096-8io28ro0tvbbv612p5k6nstlaucmhnrq@developer.gserviceaccount.com";
+                var printedAcl = Run("print-acl", bucket.BucketName);
+                AssertSucceeded(printedAcl);
+                Assert.DoesNotContain(userEmail, printedAcl.Stdout);
+                var printedAclForUser = Run("print-acl-for-user", _bucketName, userEmail);
+                Assert.Equal("", printedAclForUser.Stdout);
+
+                var addedOwner = Run("add-owner", bucket.BucketName, userEmail);
+                AssertSucceeded(addedOwner);
+
+                printedAcl = Run("print-acl", bucket.BucketName);
+                AssertSucceeded(printedAcl);
+                Assert.Contains(userEmail, printedAcl.Stdout);
+
+                // Make sure we print-acl-for-user shows us the user, but not all the ACLs.
+                printedAclForUser = Run("print-acl-for-user", bucket.BucketName, userEmail);
+                Assert.Contains(userEmail, printedAclForUser.Stdout);
+                Assert.True(printedAcl.Stdout.Length > printedAclForUser.Stdout.Length);
+            }
+        }
+
+        [Fact]
+        public void TestAddDefaultOwner()
+        {
+            using (var bucket = new BucketFixture())
+            {
+                string userEmail =
+                   "230835935096-8io28ro0tvbbv612p5k6nstlaucmhnrq@developer.gserviceaccount.com";
+                var printedAcl = Run("print-default-acl", bucket.BucketName);
+                AssertSucceeded(printedAcl);
+                Assert.DoesNotContain(userEmail, printedAcl.Stdout);
+
+                // Add the default owner.
+                var addedOwner = Run("add-default-owner", bucket.BucketName,
+                    userEmail);
+                AssertSucceeded(addedOwner);
+
+                printedAcl = Run("print-default-acl", bucket.BucketName);
+                AssertSucceeded(printedAcl);
+                Assert.Contains(userEmail, printedAcl.Stdout);
+            }
+        }
+
+        [Fact]
+        public void TestAddObjectOwner()
         {
             string userEmail =
-                "230835935096-8io28ro0tvbbv612p5k6nstlaucmhnrq@developer.gserviceaccount.com";
-            var addedOwner = Run("add-owner", _bucketName, userEmail);
+               "230835935096-8io28ro0tvbbv612p5k6nstlaucmhnrq@developer.gserviceaccount.com";
+            Run("upload", _bucketName, Collect("Hello.txt"));
+            var printedAcl = Run("print-acl", _bucketName, "Hello.txt");
+            AssertSucceeded(printedAcl);
+            Assert.DoesNotContain(userEmail, printedAcl.Stdout);
+            var printedAclForUser = Run("print-acl-for-user", _bucketName, "Hello.txt", userEmail);
+            Assert.Equal("", printedAclForUser.Stdout);
+
+            // Add the owner.
+            var addedOwner = Run("add-owner", _bucketName,
+                "Hello.txt", userEmail);
             AssertSucceeded(addedOwner);
-            var printedAcl = Run("print-acl", _bucketName);
+
+            // Make sure we print-acl shows us the user.
+            printedAcl = Run("print-acl", _bucketName, "Hello.txt");
             AssertSucceeded(printedAcl);
             Assert.Contains(userEmail, printedAcl.Stdout);
+
+            // Make sure we print-acl-for-user shows us the user, but not all the ACLs.
+            printedAclForUser = Run("print-acl-for-user", _bucketName, "Hello.txt", userEmail);
+            Assert.Contains(userEmail, printedAclForUser.Stdout);
+            Assert.True(printedAcl.Stdout.Length > printedAclForUser.Stdout.Length);
         }
     }
 }
