@@ -414,6 +414,13 @@ namespace GoogleCloudSamples
                 printedAclForUser = Run("print-acl-for-user", bucket.BucketName, userEmail);
                 Assert.Contains(userEmail, printedAclForUser.Stdout);
                 Assert.True(printedAcl.Stdout.Length > printedAclForUser.Stdout.Length);
+
+                // Remove the owner.
+                var removedOwner = Run("remove-owner", bucket.BucketName, userEmail);
+                AssertSucceeded(addedOwner);
+                printedAcl = Run("print-acl", bucket.BucketName);
+                AssertSucceeded(printedAcl);
+                Assert.DoesNotContain(userEmail, printedAcl.Stdout);
             }
         }
 
@@ -436,6 +443,15 @@ namespace GoogleCloudSamples
                 printedAcl = Run("print-default-acl", bucket.BucketName);
                 AssertSucceeded(printedAcl);
                 Assert.Contains(userEmail, printedAcl.Stdout);
+
+                // Remove the default owner.
+                var removedOwner = Run("remove-default-owner", bucket.BucketName,
+                    userEmail);
+                AssertSucceeded(removedOwner);
+
+                printedAcl = Run("print-default-acl", bucket.BucketName);
+                AssertSucceeded(printedAcl);
+                Assert.DoesNotContain(userEmail, printedAcl.Stdout);
             }
         }
 
@@ -448,7 +464,8 @@ namespace GoogleCloudSamples
             var printedAcl = Run("print-acl", _bucketName, "Hello.txt");
             AssertSucceeded(printedAcl);
             Assert.DoesNotContain(userEmail, printedAcl.Stdout);
-            var printedAclForUser = Run("print-acl-for-user", _bucketName, "Hello.txt", userEmail);
+            var printedAclForUser = Run("print-acl-for-user", _bucketName, 
+                "Hello.txt", userEmail);
             Assert.Equal("", printedAclForUser.Stdout);
 
             // Add the owner.
@@ -461,10 +478,21 @@ namespace GoogleCloudSamples
             AssertSucceeded(printedAcl);
             Assert.Contains(userEmail, printedAcl.Stdout);
 
-            // Make sure we print-acl-for-user shows us the user, but not all the ACLs.
-            printedAclForUser = Run("print-acl-for-user", _bucketName, "Hello.txt", userEmail);
+            // Make sure we print-acl-for-user shows us the user, 
+            // but not all the ACLs.
+            printedAclForUser = Run("print-acl-for-user", _bucketName, 
+                "Hello.txt", userEmail);
             Assert.Contains(userEmail, printedAclForUser.Stdout);
-            Assert.True(printedAcl.Stdout.Length > printedAclForUser.Stdout.Length);
+            Assert.True(printedAcl.Stdout.Length > 
+                printedAclForUser.Stdout.Length);
+
+            // Remove the owner.
+            var removedOwner = Run("remove-owner", _bucketName, "Hello.txt",
+                userEmail);
+            AssertSucceeded(removedOwner);
+            printedAcl = Run("print-acl", _bucketName, "Hello.txt");
+            AssertSucceeded(printedAcl);
+            Assert.DoesNotContain(userEmail, printedAcl.Stdout);
         }
     }
 }

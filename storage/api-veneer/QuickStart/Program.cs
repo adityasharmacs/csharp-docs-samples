@@ -30,6 +30,9 @@ namespace GoogleCloudSamples
                 "  QuickStart add-owner bucket-name user-email\n" +
                 "  QuickStart add-owner bucket-name object-name user-email\n" +
                 "  QuickStart add-default-owner bucket-name user-email\n" +
+                "  QuickStart remove-owner bucket-name user-email\n" +
+                "  QuickStart remove-owner bucket-name object-name user-email\n" +
+                "  QuickStart remove-default-owner bucket-name user-email\n" +
                 "  QuickStart delete bucket-name\n" +
                 "  QuickStart delete bucket-name object-name [object-name]\n";
 
@@ -277,6 +280,27 @@ namespace GoogleCloudSamples
         }
         // [END storage_add_bucket_owner]
 
+        // [START storage_remove_bucket_owner]
+        private void RemoveBucketOwner(string bucketName, string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
+            if (null == bucket.Acl)
+                return;
+            bucket.Acl = bucket.Acl.Where((acl) => 
+                !(acl.Entity == $"user-{userEmail}" && acl.Role == "OWNER")
+                ).ToList();
+            var updatedBucket = storage.UpdateBucket(bucket, new UpdateBucketOptions()
+            {
+                // Avoid race conditions.
+                IfMetagenerationMatch = bucket.Metageneration,
+            });
+        }
+        // [END storage_remove_bucket_owner]
+
         // [START storage_add_bucket_default_owner]
         private void AddBucketDefaultOwner(string bucketName, string userEmail)
         {
@@ -306,6 +330,31 @@ namespace GoogleCloudSamples
             });
         }
         // [END storage_add_bucket_default_owner]
+
+        // [START storage_remove_bucket_default_owner]
+        private void RemoveBucketDefaultOwner(string bucketName, string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
+            {
+                Projection = Projection.Full
+            });
+            if (null == bucket.DefaultObjectAcl)
+                return;
+            if (null == bucket.Acl)
+            {
+                bucket.Acl = new List<BucketAccessControl>();
+            }
+            bucket.DefaultObjectAcl= bucket.DefaultObjectAcl.Where((acl) =>
+                !(acl.Entity == $"user-{userEmail}" && acl.Role == "OWNER")
+                ).ToList();
+            var updatedBucket = storage.UpdateBucket(bucket, new UpdateBucketOptions()
+            {
+                // Avoid race conditions.
+                IfMetagenerationMatch = bucket.Metageneration,
+            });
+        }
+        // [END storage_remove_bucket_default_owner]
 
         // [START storage_print_file_acl]
         private void PrintObjectAcl(string bucketName, string objectName)
@@ -365,6 +414,26 @@ namespace GoogleCloudSamples
             });
         }
         // [END storage_add_file_owner]
+
+        // [START storage_remove_file_owner]
+        private void RemoveObjectOwner(string bucketName, string objectName,
+            string userEmail)
+        {
+            var storage = StorageClient.Create();
+            var storageObject = storage.GetObject(bucketName, objectName,
+                new GetObjectOptions() { Projection = Projection.Full });
+            if (null == storageObject.Acl)
+                return;
+            storageObject.Acl = storageObject.Acl.Where((acl) =>
+                !(acl.Entity == $"user-{userEmail}" && acl.Role == "OWNER")
+                ).ToList();
+            var updatedObject = storage.UpdateObject(storageObject, new UpdateObjectOptions()
+            {
+                // Avoid race conditions.
+                IfMetagenerationMatch = storageObject.Metageneration,
+            });
+        }
+        // [END storage_remove_file_owner]
 
 
         public bool PrintUsage()
@@ -477,9 +546,22 @@ namespace GoogleCloudSamples
                             AddObjectOwner(args[1], args[2], args[3]);
                         break;
 
+                    case "remove-owner":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        if (args.Length < 4)
+                            RemoveBucketOwner(args[1], args[2]);
+                        else
+                            RemoveObjectOwner(args[1], args[2], args[3]);
+                        break;
+
                     case "add-default-owner":
                         if (args.Length < 3 && PrintUsage()) return -1;
                         AddBucketDefaultOwner(args[1], args[2]);
+                        break;
+
+                    case "remove-default-owner":
+                        if (args.Length < 3 && PrintUsage()) return -1;
+                        RemoveBucketDefaultOwner(args[1], args[2]);
                         break;
 
                     default:
