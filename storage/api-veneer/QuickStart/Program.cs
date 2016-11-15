@@ -147,7 +147,7 @@ namespace GoogleCloudSamples
             long firstByte, long lastByte, string localPath = null)
         {
             var storageClient = StorageClient.Create();
-            localPath = localPath ?? 
+            localPath = localPath ??
                 $"{Path.GetFileName(objectName)}_{firstByte}-{lastByte}";
 
             // Create an HTTP request for the media, for a limited byte range.
@@ -155,7 +155,7 @@ namespace GoogleCloudSamples
             var uri = new Uri(
                 $"{storage.BaseUri}b/{bucketName}/o/{objectName}?alt=media");
             var request = new HttpRequestMessage() { RequestUri = uri };
-            request.Headers.Range = 
+            request.Headers.Range =
                 new System.Net.Http.Headers.RangeHeaderValue(firstByte,
                 lastByte);
             using (var outputFile = File.OpenWrite(localPath))
@@ -245,10 +245,11 @@ namespace GoogleCloudSamples
             {
                 Projection = Projection.Full
             });
-            if (bucket.Acl != null) foreach (var acl in bucket.Acl)
-            {
-                _out.WriteLine($"{acl.Role}:{acl.Entity}");
-            }
+            if (bucket.Acl != null)
+                foreach (var acl in bucket.Acl)
+                {
+                    _out.WriteLine($"{acl.Role}:{acl.Entity}");
+                }
         }
         // [END storage_print_bucket_acl]
 
@@ -260,10 +261,11 @@ namespace GoogleCloudSamples
             {
                 Projection = Projection.Full
             });
-            if (bucket.Acl != null) foreach (var acl in bucket.DefaultObjectAcl)
-            {
-                _out.WriteLine($"{acl.Role}:{acl.Entity}");
-            }
+            if (bucket.Acl != null)
+                foreach (var acl in bucket.DefaultObjectAcl)
+                {
+                    _out.WriteLine($"{acl.Role}:{acl.Entity}");
+                }
         }
         // [END storage_print_bucket_default_acl]
 
@@ -276,11 +278,12 @@ namespace GoogleCloudSamples
                 Projection = Projection.Full
             });
 
-            if (bucket.Acl != null) foreach (var acl in bucket.Acl.Where(
-                (acl) => acl.Entity == $"user-{userEmail}"))
-            {
-                _out.WriteLine($"{acl.Role}:{acl.Entity}");
-            }
+            if (bucket.Acl != null)
+                foreach (var acl in bucket.Acl.Where(
+(acl) => acl.Entity == $"user-{userEmail}"))
+                {
+                    _out.WriteLine($"{acl.Role}:{acl.Entity}");
+                }
         }
         // [END storage_print_bucket_acl_for_user]
 
@@ -320,7 +323,7 @@ namespace GoogleCloudSamples
             });
             if (null == bucket.Acl)
                 return;
-            bucket.Acl = bucket.Acl.Where((acl) => 
+            bucket.Acl = bucket.Acl.Where((acl) =>
                 !(acl.Entity == $"user-{userEmail}" && acl.Role == "OWNER")
                 ).ToList();
             var updatedBucket = storage.UpdateBucket(bucket, new UpdateBucketOptions()
@@ -375,8 +378,8 @@ namespace GoogleCloudSamples
             {
                 bucket.Acl = new List<BucketAccessControl>();
             }
-            bucket.DefaultObjectAcl= bucket.DefaultObjectAcl.Where((acl) =>
-                !(acl.Entity == $"user-{userEmail}" && acl.Role == "OWNER")
+            bucket.DefaultObjectAcl = bucket.DefaultObjectAcl.Where((acl) =>
+                 !(acl.Entity == $"user-{userEmail}" && acl.Role == "OWNER")
                 ).ToList();
             var updatedBucket = storage.UpdateBucket(bucket, new UpdateBucketOptions()
             {
@@ -403,7 +406,7 @@ namespace GoogleCloudSamples
         // [END storage_print_file_acl]
 
         // [START storage_print_file_acl_for_user]
-        private void PrintObjectAclForUser(string bucketName, string objectName, 
+        private void PrintObjectAclForUser(string bucketName, string objectName,
             string userEmail)
         {
             var storage = StorageClient.Create();
@@ -421,11 +424,11 @@ namespace GoogleCloudSamples
         // [END storage_print_file_acl_for_user]
 
         // [START storage_add_file_owner]
-        private void AddObjectOwner(string bucketName, string objectName, 
+        private void AddObjectOwner(string bucketName, string objectName,
             string userEmail)
         {
             var storage = StorageClient.Create();
-            var storageObject = storage.GetObject(bucketName, objectName, 
+            var storageObject = storage.GetObject(bucketName, objectName,
                 new GetObjectOptions() { Projection = Projection.Full });
             if (null == storageObject.Acl)
             {
@@ -529,7 +532,7 @@ namespace GoogleCloudSamples
 
                     case "download-byte-range":
                         if (args.Length < 5 && PrintUsage()) return -1;
-                        DownloadByteRange(args[1], args[2], 
+                        DownloadByteRange(args[1], args[2],
                             long.Parse(args[3]), long.Parse(args[4]),
                             args.Length < 6 ? null : args[4]);
                         break;
