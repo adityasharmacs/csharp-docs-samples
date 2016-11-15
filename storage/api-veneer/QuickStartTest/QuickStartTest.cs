@@ -321,6 +321,50 @@ namespace GoogleCloudSamples
         }
 
         [Fact]
+        public void TestDownloadCompleteByteRange()
+        {
+            var uploaded = Run("upload", _bucketName, Collect("Hello.txt"));
+            AssertSucceeded(uploaded);
+
+            var downloaded = Run("download-byte-range", _bucketName, 
+                "Hello.txt", "0", "20");
+            AssertSucceeded(downloaded);
+            try
+            {
+                string helloText = File.ReadAllText("Hello.txt");
+                Assert.Equal(
+                    helloText.Substring(0, Math.Min(helloText.Length, 20)),
+                    File.ReadAllText("Hello.txt_0-20"));
+            }
+            finally
+            {
+                File.Delete("Hello.txt_0-20");
+            }
+        }
+
+        [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/537")]
+        public void TestDownloadPartialByteRange()
+        {
+            var uploaded = Run("upload", _bucketName, Collect("Hello.txt"));
+            AssertSucceeded(uploaded);
+
+            var downloaded = Run("download-byte-range", _bucketName,
+                "Hello.txt", "1", "5");
+            AssertSucceeded(downloaded);
+            try
+            {
+                string helloText = File.ReadAllText("Hello.txt");
+                Assert.Equal(
+                    helloText.Substring(1, Math.Min(helloText.Length, 5)),
+                    File.ReadAllText("Hello.txt_1-5"));
+            }
+            finally
+            {
+                File.Delete("Hello.txt_1-5");
+            }
+        }
+
+        [Fact]
         public void TestGetMetadata()
         {
             var uploaded = Run("upload", _bucketName, Collect("Hello.txt"));

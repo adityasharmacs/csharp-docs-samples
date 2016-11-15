@@ -1,10 +1,12 @@
-﻿using Google.Apis.Storage.v1.Data;
+﻿using Google.Apis.Storage.v1;
+using Google.Apis.Storage.v1.Data;
 using Google.Storage.V1;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -25,6 +27,7 @@ namespace GoogleCloudSamples
                 "  QuickStart copy source-bucket-name source-object-name dest-bucket-name dest-object-name\n" +
                 "  QuickStart move bucket-name source-object-name dest-object-name\n" +
                 "  QuickStart download bucket-name object-name [local-file-path]\n" +
+                "  QuickStart download-byte-range bucket-name object-name range-begin range-end [local-file-path]\n" +
                 "  QuickStart print-acl bucket-name\n" +
                 "  QuickStart print-acl bucket-name object-name\n" +
                 "  QuickStart add-owner bucket-name user-email\n" +
@@ -138,6 +141,33 @@ namespace GoogleCloudSamples
             _out.WriteLine($"downloaded {objectName} to {localPath}.");
         }
         // [END storage_download_file]
+
+        // [START storage_download_byte_range]
+        private void DownloadByteRange(string bucketName, string objectName,
+            long firstByte, long lastByte, string localPath = null)
+        {
+            var storageClient = StorageClient.Create();
+            localPath = localPath ?? 
+                $"{Path.GetFileName(objectName)}_{firstByte}-{lastByte}";
+
+            // Create an HTTP request for the media, for a limited byte range.
+            StorageService storage = storageClient.Service;
+            var uri = new Uri(
+                $"{storage.BaseUri}b/{bucketName}/o/{objectName}?alt=media");
+            var request = new HttpRequestMessage() { RequestUri = uri };
+            request.Headers.Range = 
+                new System.Net.Http.Headers.RangeHeaderValue(firstByte,
+                lastByte);
+            using (var outputFile = File.OpenWrite(localPath))
+            {
+                // Use the HttpClient in the storage object because it supplies
+                // all the authentication headers we need.
+                var response = storage.HttpClient.SendAsync(request).Result;
+                response.Content.CopyToAsync(outputFile, null).Wait();
+                _out.WriteLine($"downloaded {objectName} to {localPath}.");
+            }
+        }
+        // [END storage_download_byte_range]
 
         // [START storage_get_metadata]
         private void GetMetadata(string bucketName, string objectName)
@@ -495,6 +525,13 @@ namespace GoogleCloudSamples
                     case "download":
                         if (args.Length < 3 && PrintUsage()) return -1;
                         DownloadObject(args[1], args[2], args.Length < 4 ? null : args[3]);
+                        break;
+
+                    case "download-byte-range":
+                        if (args.Length < 5 && PrintUsage()) return -1;
+                        DownloadByteRange(args[1], args[2], 
+                            long.Parse(args[3]), long.Parse(args[4]),
+                            args.Length < 6 ? null : args[4]);
                         break;
 
                     case "get-metadata":
