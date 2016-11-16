@@ -14,7 +14,7 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        private static readonly string s_projectId = "YOUR-PROJECT-ID";
+        private static readonly string s_projectId = "bookshelf-dotnet";
 
         private static readonly string s_usage =
                 "Usage: \n" +
@@ -240,10 +240,7 @@ namespace GoogleCloudSamples
         private void PrintBucketAcl(string bucketName)
         {
             var storage = StorageClient.Create();
-            var bucket = storage.GetBucket(bucketName, new GetBucketOptions()
-            {
-                Projection = Projection.Full
-            });
+            var bucket = storage.GetBucket(bucketName);
             if (bucket.Acl != null)
                 foreach (var acl in bucket.Acl)
                 {
