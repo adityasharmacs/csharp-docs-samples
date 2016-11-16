@@ -45,7 +45,8 @@ But no sample will work until you:
     4.  Set the environment variable `GOOGLE_APPLICATION_CREDENTIALS`
         to the path of the JSON key that was downloaded.  In powershell,
         the command will like something like this:
-        ```
+        
+        ```ps1
         # For this powershell session.
         PS > $env:GOOGLE_APPLICATION_CREDENTIALS = "$env:USERPROFILE\Downloads\your-project-id-dea9fa230eae3.json"
         # For all processes created after this command.
