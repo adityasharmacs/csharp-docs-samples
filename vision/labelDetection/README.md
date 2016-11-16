@@ -22,8 +22,8 @@ A sample demonstrating how to invoke Cloud Vision label detection from C#.
 
 ## Contributing changes
 
-* See [CONTRIBUTING.md](../CONTRIBUTING.md)
+* See [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
 ## Licensing
 
-* See [LICENSE](../LICENSE)
+* See [LICENSE](../../LICENSE)
