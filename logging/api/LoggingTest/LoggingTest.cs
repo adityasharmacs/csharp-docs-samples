@@ -37,7 +37,7 @@ namespace GoogleCloudSamples
         };
         private readonly RetryRobot _retryRobot = new RetryRobot()
         {
-            RetryWhenExceptions = new [] { typeof(Xunit.Sdk.XunitException)}
+            RetryWhenExceptions = new[] { typeof(Xunit.Sdk.XunitException) }
         };
 
         public BaseTest()

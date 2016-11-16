@@ -34,7 +34,7 @@ namespace GoogleCloudSamples
         };
         /// <summary>Runs sample with the provided arguments</summary>
         /// <returns>The console output of this program</returns>
-        public string Run(params string[] arguments) => 
+        public string Run(params string[] arguments) =>
             _runner.Run(arguments).Stdout;
 
         [Fact]
