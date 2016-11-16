@@ -103,12 +103,9 @@ namespace GoogleCloudSamples
                 string message3 = "Additional example log entry.";
                 _logsToDelete.Add(logId);
                 // Try creating three log entries.
-                var created1 = Run("create-log-entry", logId, message1);
-                created1.AssertSucceeded();
-                var created2 = Run("create-log-entry", logId, message2);
-                created2.AssertSucceeded();
-                var created3 = Run("create-log-entry", logId, message3);
-                created3.AssertSucceeded();
+                Run("create-log-entry", logId, message1).AssertSucceeded();
+                Run("create-log-entry", logId, message2).AssertSucceeded();
+                Run("create-log-entry", logId, message3).AssertSucceeded();
                 Eventually(() =>
                 {
                     // Retrieve the log entries just added, using the logId as a filter.
