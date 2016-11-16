@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Xunit;
 
 namespace GoogleCloudSamples
@@ -10,14 +11,14 @@ namespace GoogleCloudSamples
         public int FirstRetryDelayMs { get; set; } = 1000;
         public float DelayMultiplier { get; set; } = 2;
         public int MaxTryCount { get; set; } = 6;
-        public List<Type> RetryWhenExceptions { get; set; } = new List<Type>();
+        public IEnumerable<Type> RetryWhenExceptions { get; set; } = new Type[0];
         public Func<Exception, bool> ShouldRetry { get; set; }
 
         /// <summary>
         /// Retry action when assertion fails.
         /// </summary>
         /// <param name="func"></param>
-        private T Eventually<T>(Func<T> func)
+        public T Eventually<T>(Func<T> func)
         {
             int delayMs = FirstRetryDelayMs;
             for (int i = 0; ; ++i)
@@ -36,7 +37,7 @@ namespace GoogleCloudSamples
             }
         }
 
-        private void Eventually(Action action)
+        public void Eventually(Action action)
         {
             Eventually(() => { action(); return 0; });
         }
@@ -53,9 +54,10 @@ namespace GoogleCloudSamples
         }
     };
 
-    class CommandLineRunner
+    public class CommandLineRunner
     {
         public Func<string[], int> Main { get; set; }
+        public Action<string[]> VoidMain { get; set; }
         public string Command { get; set; }
 
         /// <summary>Runs StorageSample.exe with the provided arguments</summary>
@@ -70,9 +72,14 @@ namespace GoogleCloudSamples
             Console.SetOut(stringOut);
             try
             {
+                int exitCode = 0;
+                if (null == VoidMain)
+                    exitCode = Main(arguments);
+                else
+                    VoidMain(arguments);
                 var consoleOutput = new ConsoleOutput()
                 {
-                    ExitCode = Main(arguments),
+                    ExitCode = exitCode,
                     Stdout = stringOut.ToString()
                 };
                 Console.Write(consoleOutput.Stdout);

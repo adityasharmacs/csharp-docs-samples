@@ -38,16 +38,10 @@ namespace GoogleCloudSamples
                 "  LoggingSample delete-log log-id\n" +
                 "  LoggingSample delete-sink sink-id \n";
 
-        public LoggingSample(TextWriter stdout)
-        {
-            _out = stdout;
-        }
-
-        readonly TextWriter _out;
 
         public bool PrintUsage()
         {
-            _out.WriteLine(s_usage);
+            Console.WriteLine(s_usage);
             return true;
         }
 
@@ -59,7 +53,7 @@ namespace GoogleCloudSamples
                     "-ID with your project id, and recompile.");
                 return -1;
             }
-            LoggingSample loggingSample = new LoggingSample(Console.Out);
+            LoggingSample loggingSample = new LoggingSample();
             return loggingSample.Run(args);
         }
 
@@ -90,7 +84,7 @@ namespace GoogleCloudSamples
             // Add log entry to collection for writing. Multiple log entries can be added.
             IEnumerable<LogEntry> logEntries = new LogEntry[] { logEntry };
             client.WriteLogEntries(logName, resource, entryLabels, logEntries);
-            _out.WriteLine($"Created log entry in log-id: {logId}.");
+            Console.WriteLine($"Created log entry in log-id: {logId}.");
         }
         // [END write_log_entry]
 
@@ -105,7 +99,7 @@ namespace GoogleCloudSamples
             {
                 if (row != null && !String.IsNullOrEmpty(row.TextPayload.Trim()))
                 {
-                    _out.WriteLine($"{row.TextPayload.Trim()}");
+                    Console.WriteLine($"{row.TextPayload.Trim()}");
                 }
                 else
                 {
@@ -137,7 +131,7 @@ namespace GoogleCloudSamples
             sinkRequest.Parent = $"projects/{s_projectId}";
             sinkRequest.Sink = myLogSink;
             sinkClient.CreateSink(sinkRequest.Parent, myLogSink);
-            _out.WriteLine($"Created sink: {sinkId}.");
+            Console.WriteLine($"Created sink: {sinkId}.");
         }
         // [END create_log_sink]
 
@@ -148,7 +142,7 @@ namespace GoogleCloudSamples
             var listOfSinks = sinkClient.ListSinks($"projects/{s_projectId}");
             foreach (var sink in listOfSinks)
             {
-                _out.WriteLine($"{sink.Name} {sink.ToString()}");
+                Console.WriteLine($"{sink.Name} {sink.ToString()}");
             }
         }
         // [END list_log_sinks]
@@ -162,7 +156,7 @@ namespace GoogleCloudSamples
             var sink = sinkClient.GetSink(sinkName);
             sink.Filter = $"logName={logName}AND severity<=ERROR";
             sinkClient.UpdateSink(sinkName, sink);
-            _out.WriteLine($"Updated {sinkId} to export logs from {logId}.");
+            Console.WriteLine($"Updated {sinkId} to export logs from {logId}.");
         }
         // [END update_log_sink]
 
@@ -172,7 +166,7 @@ namespace GoogleCloudSamples
             var client = LoggingServiceV2Client.Create();
             string logName = $"projects/{s_projectId}/logs/{logId}";
             client.DeleteLog(logName);
-            _out.WriteLine($"Deleted {logId}.");
+            Console.WriteLine($"Deleted {logId}.");
         }
         // [END delete_log]
 
@@ -182,7 +176,7 @@ namespace GoogleCloudSamples
             var sinkClient = ConfigServiceV2Client.Create();
             string sinkName = $"projects/{s_projectId}/sinks/{sinkId}";
             sinkClient.DeleteSink(sinkName);
-            _out.WriteLine($"Deleted {sinkId}.");
+            Console.WriteLine($"Deleted {sinkId}.");
         }
         // [END delete_log_sink]
 
@@ -190,7 +184,7 @@ namespace GoogleCloudSamples
         {
             if (s_projectId == "YOUR-PROJECT" + "-ID")
             {
-                _out.WriteLine("Update Program.cs and replace YOUR-PROJECT" +
+                Console.WriteLine("Update Program.cs and replace YOUR-PROJECT" +
                     "-ID with your project id, and recompile.");
                 return -1;
             }
@@ -234,7 +228,7 @@ namespace GoogleCloudSamples
             }
             catch (Google.GoogleApiException e)
             {
-                _out.WriteLine(e.Message);
+                Console.WriteLine(e.Message);
                 return e.Error.Code;
             }
         }

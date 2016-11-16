@@ -160,6 +160,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\testutil\testutil.csproj">
+      <Project>{21fbb464-182b-4580-aad2-41c493ad2d20}</Project>
+      <Name>testutil</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LoggingSample.csproj">
       <Project>{43FCF1C1-E0AB-4F7F-A336-A62CE5EAD692}</Project>
       <Name>LoggingSample</Name>
@@ -168,6 +172,9 @@
       <Project>{fae3a6f1-6292-4780-a631-6610487e8f16}</Project>
       <Name>QuickStart</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Grpc.Core.1.0.0\build\net45\Grpc.Core.targets" Condition="Exists('..\packages\Grpc.Core.1.0.0\build\net45\Grpc.Core.targets')" />

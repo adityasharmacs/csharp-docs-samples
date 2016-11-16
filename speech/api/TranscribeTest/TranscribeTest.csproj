@@ -66,6 +66,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\testutil\testutil.csproj">
+      <Project>{21fbb464-182b-4580-aad2-41c493ad2d20}</Project>
+      <Name>testutil</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Transcribe\Transcribe.csproj">
       <Project>{36e708f6-18f8-4699-8684-fc907f1278dc}</Project>
       <Name>Transcribe</Name>
