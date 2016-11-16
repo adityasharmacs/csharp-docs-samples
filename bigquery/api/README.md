@@ -22,7 +22,7 @@ A sample demonstrating how to invoke BigQuery from C#.
 
 8.  Run it from the command line with your project id:
 
-    ```sh
+    ```ps1
     PS C:\...\GettingStarted\bin\Debug> .\BigquerySample.exe YOUR-PROJECT-ID
     
     Query Results:

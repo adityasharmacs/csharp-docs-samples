@@ -21,7 +21,7 @@ A sample demonstrating how to invoke Google Cloud Datastore from C#.
 9.  From the command line, run TaskList.exe to see a list of 
     subcommands:
 
-    ```sh
+    ```ps1
     PS C:\...\TaskList\bin\Debug> .\tasklist
     Cloud Datastore Task List
     

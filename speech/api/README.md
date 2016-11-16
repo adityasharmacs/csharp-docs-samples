@@ -21,10 +21,10 @@ to transcribe audio files, using the REST-based [Google API Client Library for
 Each of the samples takes the audio file to transcribe as the first argument.
 For example:
 
-```sh
-> .\Transcribe\bin\Debug\Transcribe.exe .\resources\audio.raw
+```ps1
+PS > .\Transcribe\bin\Debug\Transcribe.exe .\resources\audio.raw
 
-> .\TranscribeAsync\bin\Debug\TranscribeAsync.exe .\resources\audio.raw
+PS > .\TranscribeAsync\bin\Debug\TranscribeAsync.exe .\resources\audio.raw
 ```
 
 You should see a response with the transcription result.
