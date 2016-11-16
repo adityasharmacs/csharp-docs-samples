@@ -16,7 +16,7 @@ A sample demonstrating how to invoke Google Cloud Storage from C#.
     [Click here](https://console.cloud.google.com/flows/enableapi?apiid=storage_api&showconfirmation=true)
     to visit Cloud Platform Console and enable the Google Cloud Speech API.
 
-6.  Open [storage.sln](storage.sln) with Microsoft Visual Studio version 2012 or later.
+6.  Open [Storage.sln](Storage.sln) with Microsoft Visual Studio version 2012 or later.
 
 7.  Edit `QuickStart\Program.cs`, and replace YOUR-PROJECT-ID with id
     of the project you created in step 1.
