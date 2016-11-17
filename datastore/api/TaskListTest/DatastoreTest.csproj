@@ -141,12 +141,6 @@
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\testutil\testutil.csproj">
-      <Project>{21fbb464-182b-4580-aad2-41c493ad2d20}</Project>
-      <Name>testutil</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

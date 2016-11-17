@@ -7,9 +7,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatastoreTest", "TaskListTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskList", "TaskList\TaskList.csproj", "{3890B4ED-9626-4B69-BE52-49FF33FBA444}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testutil", "..\..\testutil\testutil.csproj", "{21FBB464-182B-4580-AAD2-41C493AD2D20}"
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TestUtil", "..\..\testutil\TestUtil.shproj", "{DA92596D-5BF6-4F45-A1DD-830FB63568E5}"
 EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\..\testutil\TestUtil.projitems*{da92596d-5bf6-4f45-a1dd-830fb63568e5}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -23,10 +26,6 @@ Global
 		{3890B4ED-9626-4B69-BE52-49FF33FBA444}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3890B4ED-9626-4B69-BE52-49FF33FBA444}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3890B4ED-9626-4B69-BE52-49FF33FBA444}.Release|Any CPU.Build.0 = Release|Any CPU
-		{21FBB464-182B-4580-AAD2-41C493AD2D20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{21FBB464-182B-4580-AAD2-41C493AD2D20}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{21FBB464-182B-4580-AAD2-41C493AD2D20}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{21FBB464-182B-4580-AAD2-41C493AD2D20}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
