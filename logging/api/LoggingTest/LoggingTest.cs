@@ -42,6 +42,10 @@ namespace GoogleCloudSamples
             public string Stdout;
         };
 
+        static StreamWriter s_log = new StreamWriter(Path.Combine(Environment
+                .GetEnvironmentVariable("USERPROFILE"), "Documents", 
+                "LoggingTest.log"));
+        
         /// <summary>Runs LoggingSample.exe with the provided arguments</summary>
         /// <returns>The console output of this program</returns>
         public static ConsoleOutput Run(params string[] arguments)
@@ -51,7 +55,7 @@ namespace GoogleCloudSamples
 
             using (var output = new StringWriter())
             {
-                LoggingSample loggingSample = new LoggingSample(output);
+                LoggingSample loggingSample = new LoggingSample(output, s_log);
                 var consoleOutput = new ConsoleOutput()
                 {
                     ExitCode = loggingSample.Run(arguments),

@@ -21,6 +21,8 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using Google.Api;
+using System.CodeDom.Compiler;
+using System.CodeDom;
 
 namespace GoogleCloudSamples
 {
@@ -38,12 +40,14 @@ namespace GoogleCloudSamples
                 "  LoggingSample delete-log log-id\n" +
                 "  LoggingSample delete-sink sink-id \n";
 
-        public LoggingSample(TextWriter stdout)
+        public LoggingSample(TextWriter stdout, TextWriter log)
         {
             _out = stdout;
+            _log = log;
         }
 
         readonly TextWriter _out;
+        TextWriter _log;
 
         public bool PrintUsage()
         {
@@ -59,13 +63,27 @@ namespace GoogleCloudSamples
                     "-ID with your project id, and recompile.");
                 return -1;
             }
-            LoggingSample loggingSample = new LoggingSample(Console.Out);
+            LoggingSample loggingSample = new LoggingSample(Console.Out, Console.Out);
             return loggingSample.Run(args);
+        }
+
+        private static string Repr(string input)
+        {
+            using (var writer = new StringWriter())
+            {
+                using (var provider = CodeDomProvider.CreateProvider("CSharp"))
+                {
+                    provider.GenerateCodeFromExpression(new CodePrimitiveExpression(input), writer, null);
+                    return writer.ToString();
+                }
+            }
         }
 
         // [START write_log_entry]
         private void WriteLogEntry(string logId, string message)
         {
+            _log.WriteLine($"WriteLogEntry({Repr(logId)}, {Repr(message)});");
+            _log.Flush();
             var client = LoggingServiceV2Client.Create();
             string logName = $"projects/{s_projectId}/logs/{logId}";
             LogEntry logEntry = new LogEntry();
@@ -97,6 +115,8 @@ namespace GoogleCloudSamples
         // [START list_log_entries]
         private void ListLogEntries(string logId)
         {
+            _log.WriteLine($"ListLogEntries({Repr(logId)});");
+            _log.Flush();
             var client = LoggingServiceV2Client.Create();
             string logName = $"projects/{s_projectId}/logs/{logId}";
             IEnumerable<string> projectIds = new string[] { s_projectId };
@@ -169,6 +189,8 @@ namespace GoogleCloudSamples
         // [START delete_log]
         private void DeleteLog(string logId)
         {
+            _log.WriteLine($"DeleteLog({Repr(logId)}");
+            _log.Flush();
             var client = LoggingServiceV2Client.Create();
             string logName = $"projects/{s_projectId}/logs/{logId}";
             client.DeleteLog(logName);
@@ -238,6 +260,7 @@ namespace GoogleCloudSamples
                 return e.Error.Code;
             }
         }
+
     }
 }
 // [END complete]
