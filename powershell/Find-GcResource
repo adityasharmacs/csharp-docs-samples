@@ -1,0 +1,111 @@
+﻿# Copyright(c) 2016 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+# List all my Google Cloud Resources.
+
+function Get-GcProject {
+    $stderr = [System.IO.Path]::GetTempFileName()
+    $lines = gcloud config list project 2> $stderr
+    if (0 -ne $LASTEXITCODE) {
+        Write-Error (Get-Content $stderr)
+    }
+    foreach ($line in $lines) {
+        $subs = $line.Split("=", 2)
+        if ($subs.Length -eq 2) {
+            $subs[1].Trim()
+        }
+    }
+}
+
+function Set-GcProject([string]$ProjectId) {
+    $stderr = [System.IO.Path]::GetTempFileName()
+    gcloud config set project $ProjectID
+}
+    
+function Find-GcProject {
+    gcloud projects list
+}
+
+
+function Find-GcResource([string]$ProjectId) {
+    if ($null -eq $ProjectId) {
+        $ProjectId = Get-GcProject
+    }
+    Write-Information "Using project $ProjectId"
+    # Google Cloud Storage
+    Try {
+        $buckets = Get-GcsBucket -Project $ProjectId
+        $buckets
+        foreach ($bucket in $buckets) {
+          Find-GcsObject -Bucket $bucket
+        }
+    }
+    Catch {
+        Report-Exception $_.Exception
+    }
+
+    # Google Compute Engine
+    Try {
+        Get-GceAddress -Project $ProjectId
+        Get-GceBackendService -Project $ProjectId
+        Get-GceDisk -Project $ProjectId
+        Get-GceFirewall -Project $ProjectId
+        Get-GceForwardingRule -Project $ProjectId
+        Get-GceHealthCheck -Project $ProjectId
+        Get-GceInstance -Project $ProjectId
+        Get-GceInstanceTemplate -Project $ProjectId
+        Get-GceManagedInstanceGroup -Project $ProjectId
+        Get-GceNetwork -Project $ProjectId
+        Get-GceRoute -Project $ProjectId
+        Get-GceSnapshot -Project $ProjectId
+        Get-GceTargetPool -Project $ProjectId
+        Get-GceTargetProxy -Project $ProjectId
+        Get-GceUrlMap -Project $ProjectId
+    }
+    Catch {
+        Report-Exception $_.Exception
+    }
+
+    # Google Cloud Sql
+    Try {
+        Get-GcSqlInstance -Project $ProjectId
+    }
+    Catch {
+        Report-Exception $_.Exception
+    }
+
+    # Google Cloud Dns
+    Try {
+        $zones = Get-GcdManagedZone -Project $ProjectId
+        foreach ($zone in $zones) {
+            Get-GcdResourceRecordSet $zone -Project $ProjectId
+        }
+    }
+    Catch {
+        Report-Exception $_.Exception
+    }
+
+}
+
+function Report-Exception($Exception) {
+    if (-not $Exception.Message.Contains("accessNotConfigured")) {
+        Write-Warning $Exception.Message
+    }
+}
+
+function Format-GcResource {
+    $input | Format-Table -GroupBy Kind -Property Size, SizeGb, DiskSizeGb, Name
+}
+
+Find-GcResource (Get-GcProject)| Format-GcResource
