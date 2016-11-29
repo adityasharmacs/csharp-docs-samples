@@ -12,7 +12,23 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-# List all my Google Cloud Resources.
+##############################################################################
+#.SYNOPSIS
+# List all the resources visible to Google Cloud Tools for PowerShell.
+#
+#.PARAMETER $ProjectId
+# List all the resources for this project id.
+# 
+#.DESCRIPTION
+# This doesn't list everything.  For example, it tells you nothing about logs
+# or datastore.  As additional commands are added to
+# Google Cloud Tools for PowerShell, they'll be added here.
+#
+#.OUTPUTs
+# A formatted list of Google Cloud resources.
+##############################################################################
+Param([string] $ProjectId)
+
 
 ##############################################################################
 #.SYNOPSIS
@@ -64,6 +80,9 @@ function Find-GcProject {
 #.SYNOPSIS
 # List all the resources visible to Google Cloud Tools for PowerShell.
 #
+#.PARAMETER $ProjectId
+# List all the resources for this project id.
+# 
 #.DESCRIPTION
 # This doesn't list everything.  For example, it tells you nothing about logs
 # or datastore.  As additional commands are added to
@@ -73,7 +92,7 @@ function Find-GcProject {
 # A list of Google Cloud resources.
 ##############################################################################
 function Find-GcResource([string]$ProjectId) {
-    if ($null -eq $ProjectId) {
+    if (-not $ProjectId) {
         $ProjectId = Get-GcProject
     }
     Write-Information "Using project $ProjectId"
@@ -160,4 +179,4 @@ function Format-GcResource {
     $input | Format-Table -GroupBy Kind -Property Size, SizeGb, DiskSizeGb, Name
 }
 
-Find-GcResource (Get-GcProject)| Format-GcResource
+Find-GcResource $ProjectId | Format-GcResource
