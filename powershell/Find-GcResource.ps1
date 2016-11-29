@@ -97,19 +97,16 @@ function Find-GcResource([string]$ProjectId) {
     }
     Write-Information "Using project $ProjectId"
     # Google Cloud Storage
-    Try {
+    Ignore-ApiNotEnabled {
         $buckets = Get-GcsBucket -Project $ProjectId
         $buckets
         foreach ($bucket in $buckets) {
           Find-GcsObject -Bucket $bucket
         }
     }
-    Catch {
-        Report-Exception $_.Exception
-    }
 
     # Google Compute Engine
-    Try {
+    Ignore-ApiNotEnabled {
         Get-GceAddress -Project $ProjectId
         Get-GceBackendService -Project $ProjectId
         Get-GceDisk -Project $ProjectId
@@ -126,29 +123,19 @@ function Find-GcResource([string]$ProjectId) {
         Get-GceTargetProxy -Project $ProjectId
         Get-GceUrlMap -Project $ProjectId
     }
-    Catch {
-        Report-Exception $_.Exception
-    }
 
     # Google Cloud Sql
-    Try {
+    Ignore-ApiNotEnabled {
         Get-GcSqlInstance -Project $ProjectId
-    }
-    Catch {
-        Report-Exception $_.Exception
     }
 
     # Google Cloud Dns
-    Try {
+    Ignore-ApiNotEnabled {
         $zones = Get-GcdManagedZone -Project $ProjectId
         foreach ($zone in $zones) {
             Get-GcdResourceRecordSet $zone -Project $ProjectId
         }
     }
-    Catch {
-        Report-Exception $_.Exception
-    }
-
 }
 
 ##############################################################################
@@ -159,11 +146,17 @@ function Find-GcResource([string]$ProjectId) {
 # If you haven't enabled cloud dns in your project, then there are no cloud
 # dns resources to report.  No need to report an error.
 ##############################################################################
-function Report-Exception($Exception) {
-    if (-not $Exception.Message.Contains("accessNotConfigured")) {
-        Write-Error $Exception.Message
+function Ignore-ApiNotEnabled($ScriptBlock) {
+    try {
+        . $ScriptBlock
+    }
+    catch {
+        if (-not $_.Exception.Message.Contains("accessNotConfigured")) {
+            throw
+        }
     }
 }
+
 
 ##############################################################################
 #.SYNOPSIS
