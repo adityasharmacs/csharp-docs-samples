@@ -95,7 +95,6 @@ function Find-GcResource([string]$ProjectId) {
     if (-not $ProjectId) {
         $ProjectId = Get-GcProject
     }
-    Write-Information "Using project $ProjectId"
     # Google Cloud Storage
     Ignore-ApiNotEnabled {
         $buckets = Get-GcsBucket -Project $ProjectId
