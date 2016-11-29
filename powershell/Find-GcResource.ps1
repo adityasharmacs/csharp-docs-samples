@@ -14,6 +14,14 @@
 
 # List all my Google Cloud Resources.
 
+##############################################################################
+#.SYNOPSIS
+# Get the project id that Google Cloud commands will use by default.
+#
+#.OUTPUTs
+# The current project id.
+##############################################################################
+
 function Get-GcProject {
     $stderr = [System.IO.Path]::GetTempFileName()
     $lines = gcloud config list project 2> $stderr
@@ -28,16 +36,42 @@ function Get-GcProject {
     }
 }
 
+##############################################################################
+#.SYNOPSIS
+# Set the project id that Google Cloud commands will use by default.
+#
+#.PARAMETER $ProjectId
+# The new project id to use by default.
+##############################################################################
 function Set-GcProject([string]$ProjectId) {
     $stderr = [System.IO.Path]::GetTempFileName()
     gcloud config set project $ProjectID
 }
     
+##############################################################################
+#.SYNOPSIS
+# List all the Google Cloud projects that you have permission to see.
+#
+#.OUTPUTs
+# A list of Google Cloud projects.
+##############################################################################
 function Find-GcProject {
     gcloud projects list
 }
 
 
+##############################################################################
+#.SYNOPSIS
+# List all the resources visible to Google Cloud Tools for PowerShell.
+#
+#.DESCRIPTION
+# This doesn't list everything.  For example, it tells you nothing about logs
+# or datastore.  As additional commands are added to
+# Google Cloud Tools for PowerShell, they'll be added here.
+#
+#.OUTPUTs
+# A list of Google Cloud resources.
+##############################################################################
 function Find-GcResource([string]$ProjectId) {
     if ($null -eq $ProjectId) {
         $ProjectId = Get-GcProject
@@ -98,12 +132,30 @@ function Find-GcResource([string]$ProjectId) {
 
 }
 
+##############################################################################
+#.SYNOPSIS
+# Ignores accessNotConfigured exceptions.
+#
+#.DESCRIPTION
+# If you haven't enabled cloud dns in your project, then there are no cloud
+# dns resources to report.  No need to report an error.
+##############################################################################
 function Report-Exception($Exception) {
     if (-not $Exception.Message.Contains("accessNotConfigured")) {
-        Write-Warning $Exception.Message
+        Write-Error $Exception.Message
     }
 }
 
+##############################################################################
+#.SYNOPSIS
+# Formats Google Cloud Resources in a pretty table.
+#
+#.INPUTS
+# Google Cloud Resource objects.
+#
+#.OUTPUTS
+# A pretty text table.
+##############################################################################
 function Format-GcResource {
     $input | Format-Table -GroupBy Kind -Property Size, SizeGb, DiskSizeGb, Name
 }
