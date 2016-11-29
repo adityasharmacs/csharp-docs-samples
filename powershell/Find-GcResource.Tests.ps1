@@ -11,9 +11,12 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
+. "$here\$sut"
 
-Describe "Silk" {
-    It "feels smooth." {
-        2 | Should be 2        
+Describe "Find-GcResource.ps1" {
+    It "doesn't throw an exception." {
+        .\Find-GcResource.ps1
     }
 }
