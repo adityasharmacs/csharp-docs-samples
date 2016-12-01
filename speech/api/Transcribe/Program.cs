@@ -13,43 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-// [START app]
-// [START import_libraries]
-
 using System;
 using System.Linq;
-using Google.Apis.CloudSpeechAPI.v1beta1;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using System.IO;
-//[END import_libraries]
+using Google.Cloud.Speech.V1Beta1;
 
 namespace GoogleCloudSamples
 {
     public class Transcribe
     {
-        // [START authenticating]
-        static public CloudSpeechAPIService CreateAuthorizedClient()
-        {
-            GoogleCredential credential =
-                GoogleCredential.GetApplicationDefaultAsync().Result;
-            // Inject the Cloud Storage scope if required.
-            if (credential.IsCreateScopedRequired)
-            {
-                credential = credential.CreateScoped(new[]
-                {
-                    CloudSpeechAPIService.Scope.CloudPlatform
-                });
-            }
-            return new CloudSpeechAPIService(new BaseClientService.Initializer()
-            {
-                HttpClientInitializer = credential,
-                ApplicationName = "DotNet Google Cloud Platform Speech Sample",
-            });
-        }
-        // [END authenticating]
-
-        // [START run_application]
         static public void Main(string[] args)
         {
             if (args.Count() < 1)
@@ -57,33 +28,22 @@ namespace GoogleCloudSamples
                 Console.WriteLine("Usage:\nTranscribe audio_file");
                 return;
             }
-            var service = CreateAuthorizedClient();
             string audio_file_path = args[0];
-            // [END run_application]
-            // [START construct_request]
-            var request = new Google.Apis.CloudSpeechAPI.v1beta1.Data.SyncRecognizeRequest()
+            // [START speech_sync_recognize]
+            var client = SpeechClient.Create();
+            var response = client.SyncRecognize(new RecognitionConfig()
             {
-                Config = new Google.Apis.CloudSpeechAPI.v1beta1.Data.RecognitionConfig()
-                {
-                    Encoding = "LINEAR16",
-                    SampleRate = 16000,
-                    LanguageCode = "en-US"
-                },
-                Audio = new Google.Apis.CloudSpeechAPI.v1beta1.Data.RecognitionAudio()
-                {
-                    Content = Convert.ToBase64String(File.ReadAllBytes(audio_file_path))
-                }
-            };
-            // [END construct_request]
-            // [START send_request]
-            var response = service.Speech.Syncrecognize(request).Execute();
+                Encoding = RecognitionConfig.Types.AudioEncoding.Linear16,
+                SampleRate = 16000,
+                LanguageCode = "en-US"
+            },
+                RecognitionAudio.FromFile(audio_file_path));
             foreach (var result in response.Results)
             {
                 foreach (var alternative in result.Alternatives)
                     Console.WriteLine(alternative.Transcript);
             }
-            // [END send_request]
+            // [END speech_sync_recognize]
         }
     }
 }
-// [END app]
