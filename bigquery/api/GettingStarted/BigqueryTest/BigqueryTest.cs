@@ -47,6 +47,8 @@ namespace GoogleCloudSamples
             }
         };
 
+        private readonly RetryRobot _retryFailedAssert = new RetryRobot();
+
         public BigqueryTest()
         {
             // [START create_bigquery_client]
@@ -60,6 +62,8 @@ namespace GoogleCloudSamples
             _client = BigqueryClient.Create(_projectId);
             // [END create_bigquery_client]
         }
+
+        void Eventually(Action a) => _retryFailedAssert.Eventually(a);
 
         // [START create_dataset]
         public void CreateDataset(string datasetId, BigqueryClient client)
@@ -420,8 +424,11 @@ namespace GoogleCloudSamples
         {
             string datasetId = "sampleDatasetTestListDataset";
             CreateDataset(datasetId, _client);
-            var datasets = ListDatasets(_client);
-            Assert.True(datasets.Count() > 0);
+            Eventually(() =>
+            {
+                var datasets = ListDatasets(_client);
+                Assert.True(datasets.Count() > 0);
+            });
             DeleteDataset(datasetId, _client);
         }
 
@@ -439,8 +446,11 @@ namespace GoogleCloudSamples
             string datasetId = "samples";
             string tableId = "shakespeare";
             int numberOfRows = 20;
-            int recordCount = ListRows(projectId, datasetId, tableId, numberOfRows, _client);
-            Assert.True(recordCount == numberOfRows);
+            Eventually(() =>
+            {
+                int recordCount = ListRows(projectId, datasetId, tableId, numberOfRows, _client);
+                Assert.True(recordCount == numberOfRows);
+            });
         }
 
         [Fact]
@@ -490,10 +500,13 @@ namespace GoogleCloudSamples
             string newTableId = "tableForTestListTables";
             CreateDataset(datasetId, _client);
             CreateTable(datasetId, newTableId, _client);
-            // [START list_tables]
-            var tables = _client.ListTables(datasetId).ToList();
-            // [END list_tables]
-            Assert.False(tables.Count() == 0);
+            Eventually(() =>
+            {
+                // [START list_tables]
+                var tables = _client.ListTables(datasetId).ToList();
+                // [END list_tables]
+                Assert.False(tables.Count() == 0);
+            });
             DeleteTable(datasetId, newTableId, _client);
             DeleteDataset(datasetId, _client);
         }
