@@ -26,5 +26,31 @@ namespace WebApp.Controllers
 
             return View();
         }
+
+        [HttpGet]
+        public ActionResult S(string id = null)
+        {
+            if (id == null)
+            {
+                ViewBag.Keys = Session.Keys;
+                return View();
+            }
+
+            return Content((string) Session[id]);
+        }
+
+        [HttpPost]
+        public ActionResult S(Models.SessionVariable svar)
+        {
+            Session[svar.Key] = svar.Value;
+            ViewBag.Keys = Session.Keys;
+            return View();
+        }
+
+        [HttpPut]
+        public ActionResult S(string id, [System.Web.Http.FromBody]string value)
+        {
+            return new EmptyResult();
+        }
     }
 }
