@@ -10,6 +10,7 @@ namespace WebApp.Controllers
     {
         public ActionResult Index()
         {
+            Session["Jeff"] = "Rules";
             return View();
         }
 
