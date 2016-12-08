@@ -11,16 +11,60 @@ namespace WebApp.Services
 {
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
-        readonly Google.Datastore.V1.DatastoreDb _client = 
+        readonly Google.Datastore.V1.DatastoreDb _datastore =
             Google.Datastore.V1.DatastoreDb.Create(
                 Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID"));
-        readonly string _applicationName = 
+        readonly string _applicationName =
             System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath;
         readonly Google.Datastore.V1.KeyFactory _keyFactory;
 
+        // Property names for the datastore entity.
+        const string CREATED = "created",
+            EXPIRES = "expires",
+            LOCK_DATE = "lockDate",
+            LOCK_ID = "lockId",
+            TIMEOUT = "timeout",
+            LOCKED = "locked",
+            ITEMS = "items",
+            FLAGS = "flags";
+
+        readonly string[] UNINDEXED_PROPERTIES =
+        {  // Everything but expires
+            CREATED,
+            LOCK_DATE,
+            LOCK_ID,
+            TIMEOUT,
+            LOCKED,
+            ITEMS,
+            FLAGS,
+        };
+
         DatastoreSessionStateStoreProvider()
         {
-            _keyFactory = _client.CreateKeyFactory("Session");
+            _keyFactory = _datastore.CreateKeyFactory("Session");
+        }
+
+        private Google.Datastore.V1.Entity NewEntity(string id, int timeout,
+            SessionStateActions flags = SessionStateActions.None)
+        {
+            var now = DateTime.UtcNow;
+            var entity = new Google.Datastore.V1.Entity()
+            {
+                Key = EntityKeyFromSessionId(id),
+                [CREATED] = now,
+                [EXPIRES] = now + TimeSpan.FromMinutes(timeout),
+                [LOCK_DATE] = now,
+                [LOCK_ID] = 0,
+                [TIMEOUT] = timeout,
+                [LOCKED] = false,
+                [ITEMS] = new Byte[] { },
+                [FLAGS] = (int) flags
+            };
+            foreach (string prop in UNINDEXED_PROPERTIES)
+            {
+                entity[prop].ExcludeFromIndexes = true;
+            }
+            return entity;
         }
 
         public override SessionStateStoreData CreateNewStoreData(HttpContext context, int timeout)
@@ -31,10 +75,9 @@ namespace WebApp.Services
 
         public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
-            // I think I can get away with doing nothing here.  Not much point in inserting an
-            // empty value into Datastore.
-            // NOPE
-            // I need to record the timeout!
+            var now = DateTime.UtcNow;
+            var entity = NewEntity(id, timeout, SessionStateActions.InitializeItem);
+            _datastore.Upsert(entity);
         }
 
         public override void Dispose()
@@ -48,36 +91,32 @@ namespace WebApp.Services
 
         public override SessionStateStoreData GetItem(HttpContext context, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
         {
-            throw new NotImplementedException();
-            var entity = _client.Lookup(EntityKeyFromSessionId(id));
-            actions = 0;
-            if (entity == null || (DateTime) entity["expires"]  < DateTime.UtcNow)
+            var entity = _datastore.Lookup(EntityKeyFromSessionId(id));
+            if (entity == null || (DateTime)entity[EXPIRES] < DateTime.UtcNow)
             {
                 lockAge = TimeSpan.Zero;
                 locked = false;
                 lockId = null;
-                return CreateNewStoreData(context, 30);
+                actions = 0;
+                return null;
             }
-            locked = (bool)entity["locked"];
-            lockAge = locked ? DateTime.UtcNow - (DateTime)entity["lockDate"] : TimeSpan.Zero;
-            lockId = (int)entity["lockId"];
-            return Deserialize(context, entity["items"].BlobValue.ToArray(), timeout);
+            locked = (bool)entity[LOCKED];
+            lockAge = locked ? DateTime.UtcNow - (DateTime)entity[LOCK_DATE] : TimeSpan.Zero;
+            lockId = (int)entity[LOCK_ID];
+            actions = (SessionStateActions)(int)entity[FLAGS];
+            if (actions == SessionStateActions.InitializeItem)
+                return CreateNewStoreData(context, (int)entity[TIMEOUT]);
+            return Deserialize(context, entity[ITEMS].BlobValue.ToArray(), (int)entity[TIMEOUT]);
         }
 
         private static SessionStateStoreData Deserialize(HttpContext context,
             byte[] serializedItems, int timeout)
         {
-            SessionStateItemCollection items;
-            if (serializedItems.Length > 0)
-            {
-                MemoryStream m = new MemoryStream(serializedItems);
-                BinaryReader reader = new BinaryReader(m);
-                items = SessionStateItemCollection.Deserialize(reader);
-            }
-            else
-            {
-                items = new SessionStateItemCollection();
-            }
+            SessionStateItemCollection items = 
+                serializedItems != null && serializedItems.Length > 0 ?
+                SessionStateItemCollection.Deserialize(
+                    new BinaryReader(new MemoryStream(serializedItems))) :
+                new SessionStateItemCollection();
 
             return new SessionStateStoreData(items, 
                 SessionStateUtility.GetSessionStaticObjects(context), timeout);
@@ -85,17 +124,48 @@ namespace WebApp.Services
 
         public override SessionStateStoreData GetItemExclusive(HttpContext context, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
         {
-            throw new NotImplementedException();
+            using (var transaction = _datastore.BeginTransaction())
+            {
+                var entity = transaction.Lookup(EntityKeyFromSessionId(id));
+                if (entity == null || (DateTime)entity[EXPIRES] < DateTime.UtcNow)
+                {
+                    lockAge = TimeSpan.Zero;
+                    locked = false;
+                    lockId = null;
+                    actions = 0;
+                    return null;
+                }
+                locked = (bool)entity[LOCKED];
+                lockAge = locked ? DateTime.UtcNow - (DateTime)entity[LOCK_DATE] : TimeSpan.Zero;
+                lockId = entity[LOCK_ID];
+                actions = (SessionStateActions)(int)entity[FLAGS];
+                if (locked)
+                    return null;
+                entity[LOCKED] = true;
+                entity[LOCK_DATE] = DateTime.UtcNow;
+                entity[LOCK_ID] = (int)entity[LOCK_ID] + 1;
+                transaction.Commit();
+                if (actions == SessionStateActions.InitializeItem)
+                    return CreateNewStoreData(context, (int)entity[TIMEOUT]);
+                return Deserialize(context, entity[ITEMS].BlobValue.ToArray(), (int)entity[TIMEOUT]);
+            }            
         }
 
         public override void InitializeRequest(HttpContext context)
-        {
-            throw new NotImplementedException();
+        {            
         }
 
         public override void ReleaseItemExclusive(HttpContext context, string id, object lockId)
         {
-            throw new NotImplementedException();
+            using (var transaction = _datastore.BeginTransaction())
+            {
+                var entity = transaction.Lookup(EntityKeyFromSessionId(id));
+                if (entity == null || !LockIdsMatch(lockId, entity[LOCK_ID]))
+                    return;
+                entity[LOCKED] = false;
+                entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes((int)entity[TIMEOUT]);
+                transaction.Commit();
+            }
         }
 
         private static bool LockIdsMatch(Google.Datastore.V1.Value a, object b)
@@ -119,7 +189,7 @@ namespace WebApp.Services
         public override void RemoveItem(HttpContext context, string id, object lockId, SessionStateStoreData item)
         {
             var key = EntityKeyFromSessionId(id);
-            using (var transaction = _client.BeginTransaction())
+            using (var transaction = _datastore.BeginTransaction())
             {
                 var entity = transaction.Lookup(key);
                 if (entity == null)
@@ -133,12 +203,51 @@ namespace WebApp.Services
 
         public override void ResetItemTimeout(HttpContext context, string id)
         {
-            throw new NotImplementedException();
+            var key = EntityKeyFromSessionId(id);
+            using (var transaction = _datastore.BeginTransaction())
+            {
+                var entity = transaction.Lookup(key);
+                entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes((int)entity[TIMEOUT]);
+                transaction.Update(entity);
+                transaction.Commit();
+            }
         }
 
         public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId, bool newItem)
         {
-            throw new NotImplementedException();
+            var itemBlob = Serialize((SessionStateItemCollection)item.Items);
+            var key = EntityKeyFromSessionId(id);
+            Google.Datastore.V1.Entity entity;
+            if (newItem)
+            {
+                entity = NewEntity(id, item.Timeout);
+                entity[ITEMS] = itemBlob;
+                _datastore.Upsert(entity);
+            }
+            else
+            {
+                using (var transaction = _datastore.BeginTransaction())
+                {
+                    entity = transaction.Lookup(key);
+                    if (!LockIdsMatch(lockId, entity[LOCK_ID]))
+                        return;
+                    entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes(item.Timeout);
+                    entity[ITEMS] = itemBlob;
+                    entity[LOCKED] = false;
+                    transaction.Upsert(entity);
+                    transaction.Commit();
+                }
+            }
+        }
+
+        private byte[] Serialize(SessionStateItemCollection items)
+        {
+            MemoryStream ms = new MemoryStream();
+            BinaryWriter writer = new BinaryWriter(ms);
+            if (items != null)
+                items.Serialize(writer);
+            writer.Close();
+            return ms.ToArray();
         }
 
         public override bool SetItemExpireCallback(SessionStateItemExpireCallback expireCallback)
