@@ -50,6 +50,7 @@ namespace WebApp.Controllers
         [HttpPut]
         public ActionResult S(string id, [System.Web.Http.FromBody]string value)
         {
+            Session[id] = value;
             return new EmptyResult();
         }
     }
