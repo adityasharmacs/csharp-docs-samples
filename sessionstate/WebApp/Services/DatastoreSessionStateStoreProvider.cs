@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.SessionState;
@@ -32,6 +33,8 @@ namespace WebApp.Services
         {
             // I think I can get away with doing nothing here.  Not much point in inserting an
             // empty value into Datastore.
+            // NOPE
+            // I need to record the timeout!
         }
 
         public override void Dispose()
@@ -40,12 +43,44 @@ namespace WebApp.Services
 
         public override void EndRequest(HttpContext context)
         {
-            throw new NotImplementedException();
+            // Nothing to do here, I guess.
         }
 
         public override SessionStateStoreData GetItem(HttpContext context, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
         {
             throw new NotImplementedException();
+            var entity = _client.Lookup(EntityKeyFromSessionId(id));
+            actions = 0;
+            if (entity == null || (DateTime) entity["expires"]  < DateTime.UtcNow)
+            {
+                lockAge = TimeSpan.Zero;
+                locked = false;
+                lockId = null;
+                return CreateNewStoreData(context, 30);
+            }
+            locked = (bool)entity["locked"];
+            lockAge = locked ? DateTime.UtcNow - (DateTime)entity["lockDate"] : TimeSpan.Zero;
+            lockId = (int)entity["lockId"];
+            return Deserialize(context, entity["items"].BlobValue.ToArray(), timeout);
+        }
+
+        private static SessionStateStoreData Deserialize(HttpContext context,
+            byte[] serializedItems, int timeout)
+        {
+            SessionStateItemCollection items;
+            if (serializedItems.Length > 0)
+            {
+                MemoryStream m = new MemoryStream(serializedItems);
+                BinaryReader reader = new BinaryReader(m);
+                items = SessionStateItemCollection.Deserialize(reader);
+            }
+            else
+            {
+                items = new SessionStateItemCollection();
+            }
+
+            return new SessionStateStoreData(items, 
+                SessionStateUtility.GetSessionStaticObjects(context), timeout);
         }
 
         public override SessionStateStoreData GetItemExclusive(HttpContext context, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
