@@ -11,6 +11,10 @@ namespace WebApp.Services
 {
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
+        // Stores a session in datastore.
+        // The metadata for the session is stored in a parent entity.
+        // And the items (payload) are stored in a child entity.
+
         readonly Google.Datastore.V1.DatastoreDb _datastore =
             Google.Datastore.V1.DatastoreDb.Create(
                 Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID"));
@@ -120,9 +124,9 @@ namespace WebApp.Services
             out TimeSpan lockAge, out object lockId, 
             out SessionStateActions actions)
         {
+            var key = EntityKeyFromSessionId(id);
             using (var transaction = _datastore.BeginTransaction())
             {
-                var key = EntityKeyFromSessionId(id);
                 var entity = transaction.Lookup(key);
                 if (entity == null || 
                     (DateTime)entity[EXPIRES] < DateTime.UtcNow)
@@ -175,6 +179,7 @@ namespace WebApp.Services
                     return;
                 entity[LOCKED] = false;
                 entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes((int)entity[TIMEOUT]);
+                transaction.Update(entity);
                 transaction.Commit();
             }
         }
