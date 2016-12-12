@@ -149,6 +149,7 @@ namespace WebApp.Services
                     entity[LOCKED] = true;
                     entity[LOCK_DATE] = DateTime.UtcNow;
                     entity[LOCK_ID] = (int)entity[LOCK_ID] + 1;
+                    entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes((int)entity[TIMEOUT]);
                     transaction.Update(entity);
                 }
                 if (actions == SessionStateActions.InitializeItem)
