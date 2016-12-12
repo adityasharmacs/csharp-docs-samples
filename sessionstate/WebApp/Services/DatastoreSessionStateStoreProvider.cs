@@ -42,7 +42,7 @@ namespace WebApp.Services
             FLAGS,
         };
 
-        DatastoreSessionStateStoreProvider()
+        public DatastoreSessionStateStoreProvider()
         {
             _keyFactory = _datastore.CreateKeyFactory("Session");
         }
@@ -148,8 +148,9 @@ namespace WebApp.Services
                 {
                     entity[LOCKED] = true;
                     entity[LOCK_DATE] = DateTime.UtcNow;
-                    entity[LOCK_ID] = (int)entity[LOCK_ID] + 1;
+                    lockId = entity[LOCK_ID] = (int)entity[LOCK_ID] + 1;
                     entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes((int)entity[TIMEOUT]);
+                    entity[FLAGS] = (int)SessionStateActions.None;
                     transaction.Update(entity);
                 }
                 if (actions == SessionStateActions.InitializeItem)
@@ -191,6 +192,9 @@ namespace WebApp.Services
                 return b == null;
             if (b == null)
                 return false;
+            var c = b as Google.Datastore.V1.Value;
+            if (c != null)
+                return a.IntegerValue == c.IntegerValue;
             return a.IntegerValue == (int)b;
         }
         private static bool LockIdsMatch(object a, Google.Datastore.V1.Value b)
