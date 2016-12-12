@@ -12,40 +12,56 @@ namespace WebClient
 {
     class Program
     {
+        static async Task TaskMainAsync(HttpClient client)
+        {
+            // Add 10 session vars:
+            for (int i = 0; i < 10; ++i)
+            {
+                string content = new string((char)('A' + i), 40 * (i + 1));
+                await client.PutAsync($"Home/S/{i}", new StringContent(content));
+            }
+            // Read and write the session vars a bunch of times.
+            uint contentChar = 'A';
+            for (int i = 0; i < 50; ++i)
+            {
+                int sessionVarId = i % 10;
+                if (i % 3 == 0)
+                {
+                    string content = new string((char)(contentChar), 40 * (sessionVarId + 1));
+                    contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
+                    await client.PutAsync($"Home/S/{sessionVarId}", new StringContent(content));
+                }
+                else
+                {
+                    await client.GetAsync($"Home/S/{sessionVarId}");
+                }
+            }
+        }
+
         static void Main(string[] args)
         {
             // Create a client with a cookie jar.
             var baseAddress = new Uri(args[0]);
             var cookieJar = new CookieContainer();
-            var handler = new HttpClientHandler()
+            // Create 100 HTTP clients, to simulate 100 browsers hitting the website.
+            HttpClient[] clients = new HttpClient[100];
+            for (int i = 0; i < clients.Length; ++i)
             {
-                CookieContainer = cookieJar
-            };
-            var client = new HttpClient(handler) { BaseAddress = baseAddress };
+                var handler = new HttpClientHandler()
+                {
+                    CookieContainer = cookieJar
+                };
+                clients[i] = new HttpClient(handler) { BaseAddress = baseAddress };
+            }
             var stopwatch = new Stopwatch();
+            Task[] tasks = new Task[clients.Length];
             stopwatch.Start();
-            // Add 20 session vars:
-            for (int i = 0; i < 20; ++i)
+            for (int i = 0; i < tasks.Length; ++i)
             {
-                string content = new string((char)('A' + i), 40 * (i+1));
-                client.PutAsync($"Home/S/{i}", new StringContent(content)).Wait();
+                int task = i;
+                tasks[task] = Task.Run(async () => await TaskMainAsync(clients[task]));
             }
-            // Read and write the session vars a bunch of times.
-            uint contentChar = 'A';
-            for (int i = 0; i < 5000; ++i)
-            {
-                int cookieId = i % 20;
-                if (i % 3 == 0)
-                {
-                    string content = new string((char)(contentChar), 40 * (cookieId + 1));
-                    contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
-                    client.PutAsync($"Home/S/{cookieId}", new StringContent(content)).Wait();
-                }
-                else
-                {
-                    client.GetAsync($"Home/S/{cookieId}").Wait();
-                }
-            }
+            Task.WaitAll(tasks);
             stopwatch.Stop();
             Console.WriteLine(stopwatch.ElapsedMilliseconds);
             // Console.Write(client.GetAsync("Home/S").Result.Content.ReadAsStringAsync().Result);
