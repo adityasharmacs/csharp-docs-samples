@@ -93,6 +93,7 @@ namespace WebApp.Services
 
         public override SessionStateStoreData GetItem(HttpContext context, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
         {
+            Debug.WriteLine("{0}: GetItem({1})", DateTime.Now, id);
             return GetItemImpl(false, context, id, out locked, out lockAge,
                 out lockId, out actions);
         }
@@ -115,6 +116,7 @@ namespace WebApp.Services
             out TimeSpan lockAge, out object lockId,
             out SessionStateActions actions)
         {
+            Debug.WriteLine("{0}: GetItemExclusive({1})", DateTime.Now, id);
             try
             {
                 return GetItemImpl(true, context, id, out locked, out lockAge,
@@ -186,6 +188,7 @@ namespace WebApp.Services
 
         public override void ReleaseItemExclusive(HttpContext context, string id, object lockId)
         {
+            Debug.WriteLine("{0}: ReleaseItemExclusive({1})", DateTime.Now, id);
             using (var transaction = _datastore.BeginTransaction())
             {
                 var entity = transaction.Lookup(EntityKeyFromSessionId(id));
@@ -226,6 +229,7 @@ namespace WebApp.Services
 
         public override void RemoveItem(HttpContext context, string id, object lockId, SessionStateStoreData item)
         {
+            Debug.WriteLine("{0}: RemoveItem({1})", DateTime.Now, id);
             var key = EntityKeyFromSessionId(id);
             using (var transaction = _datastore.BeginTransaction())
             {
@@ -241,6 +245,7 @@ namespace WebApp.Services
 
         public override void ResetItemTimeout(HttpContext context, string id)
         {
+            Debug.WriteLine("{0}: ResetItemTimeout({1})", DateTime.Now, id);
             var key = EntityKeyFromSessionId(id);
             using (var transaction = _datastore.BeginTransaction())
             {
@@ -253,6 +258,7 @@ namespace WebApp.Services
 
         public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId, bool newItem)
         {
+            Debug.WriteLine("{0}: SetAndReleaseItemExclusive({1})", DateTime.Now, id);
             var key = EntityKeyFromSessionId(id);
             var entities = new List<Google.Datastore.V1.Entity>();
             if (item.Items.Dirty)
