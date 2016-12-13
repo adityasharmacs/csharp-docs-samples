@@ -7,3 +7,5 @@ TestResults/
 *.csproj.user
 .idea/
 *.iml
+PublishProfiles/
+*.sln.DotSettings.user

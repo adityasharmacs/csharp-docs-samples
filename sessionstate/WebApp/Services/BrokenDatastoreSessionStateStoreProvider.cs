@@ -10,33 +10,7 @@ using System.Web.SessionState;
 
 namespace WebApp.Services
 {
-    struct SessionLock
-    {
-        public string Id;
-        public int Count;
-        public DateTime DateLocked;
-    };
-
-    struct SessionRelease
-    {
-        public string Id;
-        public int Count;
-    }
-
-    struct SessionExpirationDate
-    {
-        public string Id;
-        public DateTime XDate;
-    }
-
-    struct Session
-    {
-        public DateTime DateCreated;
-        public SessionStateActions Flags;
-        public byte[] Items;
-    }
-
-    public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
+    public class BrokenDatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
         // Stores a session in datastore.
         // The metadata for the session is stored in a parent entity.
@@ -68,7 +42,7 @@ namespace WebApp.Services
             FLAGS,
         };
 
-        public DatastoreSessionStateStoreProvider()
+        public BrokenDatastoreSessionStateStoreProvider()
         {
             _keyFactory = _datastore.CreateKeyFactory("Session");
         }
@@ -86,7 +60,7 @@ namespace WebApp.Services
                 [LOCK_ID] = 0,
                 [TIMEOUT] = timeout,
                 [LOCKED] = false,
-                [FLAGS] = (int) flags
+                [FLAGS] = (int)flags
             };
             foreach (string prop in UNINDEXED_PROPERTIES)
             {
@@ -127,13 +101,13 @@ namespace WebApp.Services
         private static SessionStateStoreData Deserialize(HttpContext context,
             byte[] serializedItems, int timeout)
         {
-            SessionStateItemCollection items = 
+            SessionStateItemCollection items =
                 serializedItems != null && serializedItems.Length > 0 ?
                 SessionStateItemCollection.Deserialize(
                     new BinaryReader(new MemoryStream(serializedItems))) :
                 new SessionStateItemCollection();
 
-            return new SessionStateStoreData(items, 
+            return new SessionStateStoreData(items,
                 SessionStateUtility.GetSessionStaticObjects(context), timeout);
         }
 
@@ -159,9 +133,9 @@ namespace WebApp.Services
             }
         }
 
-        public SessionStateStoreData GetItemImpl(bool exclusive, 
-            HttpContext context, string id, out bool locked, 
-            out TimeSpan lockAge, out object lockId, 
+        public SessionStateStoreData GetItemImpl(bool exclusive,
+            HttpContext context, string id, out bool locked,
+            out TimeSpan lockAge, out object lockId,
             out SessionStateActions actions)
         {
             var key = EntityKeyFromSessionId(id);
@@ -169,7 +143,7 @@ namespace WebApp.Services
             {
                 var entities = transaction.Lookup(key, ItemsKeyFromEntityKey(key));
                 var entity = entities[0];
-                if (entity == null || 
+                if (entity == null ||
                     (DateTime)entity[EXPIRES] < DateTime.UtcNow)
                 {
                     lockAge = TimeSpan.Zero;
@@ -205,11 +179,11 @@ namespace WebApp.Services
                     return items == null ? CreateNewStoreData(context, (int)entity[TIMEOUT]) :
                         Deserialize(context, items[ITEMS].BlobValue.ToArray(), (int)entity[TIMEOUT]);
                 }
-            }            
+            }
         }
 
         public override void InitializeRequest(HttpContext context)
-        {            
+        {
         }
 
         public override void ReleaseItemExclusive(HttpContext context, string id, object lockId)
@@ -334,4 +308,3 @@ namespace WebApp.Services
         }
     }
 }
- 
