@@ -210,7 +210,6 @@
     </Compile>
     <Compile Include="Models\SessionVariable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\BrokenDatastoreSessionStateStoreProvider.cs" />
     <Compile Include="Services\DatastoreSessionStateStoreProvider.cs" />
   </ItemGroup>
   <ItemGroup>
