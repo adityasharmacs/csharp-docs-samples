@@ -19,6 +19,7 @@ namespace WebClient
             {
                 string content = new string((char)('A' + i), 40 * (i + 1));
                 await client.PutAsync($"Home/S/{i}", new StringContent(content));
+                await Task.Delay(1000);
             }
             // Read and write the session vars a bunch of times.
             uint contentChar = 'A';
@@ -27,6 +28,7 @@ namespace WebClient
                 int sessionVarId = i % 10;
                 if (i % 3 == 0)
                 {
+                    await Task.Delay(1000);
                     string content = new string((char)(contentChar), 40 * (sessionVarId + 1));
                     contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
                     await client.PutAsync($"Home/S/{sessionVarId}", new StringContent(content));

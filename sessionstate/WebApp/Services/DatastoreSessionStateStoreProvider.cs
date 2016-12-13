@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Web;
@@ -16,8 +17,7 @@ namespace WebApp.Services
         // And the items (payload) are stored in a child entity.
 
         readonly Google.Datastore.V1.DatastoreDb _datastore =
-            Google.Datastore.V1.DatastoreDb.Create(
-                Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID"));
+            Google.Datastore.V1.DatastoreDb.Create("surferjeff-test2");
         readonly string _applicationName =
             System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath;
         readonly Google.Datastore.V1.KeyFactory _keyFactory;
@@ -115,8 +115,20 @@ namespace WebApp.Services
             out TimeSpan lockAge, out object lockId,
             out SessionStateActions actions)
         {
-            return GetItemImpl(true, context, id, out locked, out lockAge,
-                out lockId, out actions);
+            try
+            {
+                return GetItemImpl(true, context, id, out locked, out lockAge,
+                    out lockId, out actions);
+            }
+            catch (Grpc.Core.RpcException e) when (e.Status.StatusCode == Grpc.Core.StatusCode.Aborted)
+            {
+                Debug.WriteLine("Too much contention.");
+                locked = true;
+                lockAge = TimeSpan.Zero;
+                lockId = 0;
+                actions = SessionStateActions.None;
+                return null;
+            }
         }
 
         public SessionStateStoreData GetItemImpl(bool exclusive, 
@@ -127,7 +139,8 @@ namespace WebApp.Services
             var key = EntityKeyFromSessionId(id);
             using (var transaction = _datastore.BeginTransaction())
             {
-                var entity = transaction.Lookup(key);
+                var entities = transaction.Lookup(key, ItemsKeyFromEntityKey(key));
+                var entity = entities[0];
                 if (entity == null || 
                     (DateTime)entity[EXPIRES] < DateTime.UtcNow)
                 {
@@ -152,16 +165,15 @@ namespace WebApp.Services
                     entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes((int)entity[TIMEOUT]);
                     entity[FLAGS] = (int)SessionStateActions.None;
                     transaction.Update(entity);
+                    transaction.Commit();
                 }
                 if (actions == SessionStateActions.InitializeItem)
                 {
-                    if (exclusive) transaction.Commit();
                     return CreateNewStoreData(context, (int)entity[TIMEOUT]);
                 }
                 else
                 {
-                    var items = transaction.Lookup(ItemsKeyFromEntityKey(key));
-                    if (exclusive) transaction.Commit();
+                    var items = entities[1];
                     return items == null ? CreateNewStoreData(context, (int)entity[TIMEOUT]) :
                         Deserialize(context, items[ITEMS].BlobValue.ToArray(), (int)entity[TIMEOUT]);
                 }
@@ -242,28 +254,33 @@ namespace WebApp.Services
         public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId, bool newItem)
         {
             var key = EntityKeyFromSessionId(id);
-            var itemBlob = Serialize((SessionStateItemCollection)item.Items);
-            var items = new Google.Datastore.V1.Entity()
+            var entities = new List<Google.Datastore.V1.Entity>();
+            if (item.Items.Dirty)
             {
-                Key = ItemsKeyFromEntityKey(key),
-                [ITEMS] = itemBlob
-            };
+                var itemBlob = Serialize((SessionStateItemCollection)item.Items);
+                var items = new Google.Datastore.V1.Entity()
+                {
+                    Key = ItemsKeyFromEntityKey(key),
+                    [ITEMS] = itemBlob
+                };
+                entities.Add(items);
+            }
             Google.Datastore.V1.Entity entity;
             if (newItem)
             {
-                entity = NewEntity(id, item.Timeout);
-                _datastore.Upsert(entity, items);
+                entities.Add(entity = NewEntity(id, item.Timeout));
+                _datastore.Upsert(entities.ToArray());
             }
             else
             {
                 using (var transaction = _datastore.BeginTransaction())
                 {
-                    entity = transaction.Lookup(key);
+                    entities.Add(entity = transaction.Lookup(key));
                     if (!LockIdsMatch(lockId, entity[LOCK_ID]))
                         return;
                     entity[EXPIRES] = DateTime.UtcNow + TimeSpan.FromMinutes(item.Timeout);
                     entity[LOCKED] = false;
-                    transaction.Upsert(entity, items);
+                    transaction.Upsert(entities);
                     transaction.Commit();
                 }
             }
