@@ -229,7 +229,7 @@ namespace WebApp.Services
                 {
                     sessionLock.Count += 1;
                     sessionLock.DateLocked = DateTime.UtcNow;
-                    transaction.Update(ToEntity(sessionLock));
+                    transaction.Upsert(ToEntity(sessionLock));
                     transaction.Commit();
                 }
                 SessionItems? sessionItems = SessionItemsFromEntity(entities[0]);
@@ -314,7 +314,7 @@ namespace WebApp.Services
             Debug.WriteLine("{0}: ResetItemTimeout({1})", DateTime.Now, id);
             SessionExpirationDate expirationDate = SessionExpirationDateFromEntity(id, 
                 _datastore.Lookup(_expirationDateKeyFactory.CreateKey(id)));
-            expirationDate.XDate = DateTime.Now.AddMinutes(expirationDate.TimeOutInMinutes);
+            expirationDate.XDate = DateTime.UtcNow.AddMinutes(expirationDate.TimeOutInMinutes);
             _datastore.Upsert(ToEntity(expirationDate));
         }
 
