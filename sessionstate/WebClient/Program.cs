@@ -26,22 +26,22 @@ namespace WebClient
 
     class Program
     {
-        static async Task TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
+        // Returns the average page fetch time.
+        static async Task<double> TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
         {
-            // Create a client with a cookie jar.
-            var cookieJar = new CookieContainer();
-            // Create 100 HTTP clients, to simulate 100 browsers hitting the website.
             var handler = new HttpClientHandler()
             {
-                CookieContainer = cookieJar
+                CookieContainer = new CookieContainer()
             };
             HttpClient client = new HttpClient(handler) { BaseAddress = baseAddress };
-
+            Stopwatch stopwatch = new Stopwatch();
             // Add 10 session vars:
             for (int i = 0; i < 10; ++i)
             {
                 string content = new string((char)('A' + i), 40 * (i + 1));
+                stopwatch.Start();
                 await client.PutAsync($"Home/S/{i}", new StringContent(content));
+                stopwatch.Stop();
                 await Task.Delay(delayInMilliseconds);
             }
             // Read and write the session vars a bunch of times.
@@ -54,13 +54,18 @@ namespace WebClient
                 {
                     string content = new string((char)(contentChar), 40 * (sessionVarId + 1));
                     contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
+                    stopwatch.Start();
                     await client.PutAsync($"Home/S/{sessionVarId}", new StringContent(content));
+                    stopwatch.Stop();
                 }
                 else
                 {
+                    stopwatch.Start();
                     await client.GetAsync($"Home/S/{sessionVarId}");
+                    stopwatch.Stop();
                 }
             }
+            return stopwatch.ElapsedMilliseconds / 60.0;
         }
 
         static int Main(string[] args)
@@ -75,7 +80,7 @@ namespace WebClient
             }
             Uri baseAddress = new Uri(options.BaseUri);
             var stopwatch = new Stopwatch();
-            var tasks = new Task[options.ClientCount];
+            var tasks = new Task<double>[options.ClientCount];
             stopwatch.Start();
             for (int i = 0; i < tasks.Length; ++i)
             {
@@ -83,7 +88,9 @@ namespace WebClient
             }
             Task.WaitAll(tasks);
             stopwatch.Stop();
-            Console.WriteLine(stopwatch.ElapsedMilliseconds);
+            Console.WriteLine("Total elapsed seconds: {0}", stopwatch.ElapsedMilliseconds / 1000.0);
+            var averagePageFetchTime = tasks.Select((task) => task.Result).Average();
+            Console.WriteLine("Average page fetch time in milliseconds: {0}", averagePageFetchTime);
             return 0;
         }
     }
