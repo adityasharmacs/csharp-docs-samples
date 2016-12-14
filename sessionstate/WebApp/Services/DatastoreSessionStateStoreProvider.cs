@@ -134,7 +134,8 @@ namespace WebApp.Services
             using (var transaction = _datastore.BeginTransaction())
             {
                 transaction.Upsert(ToEntity(expirationDate));
-                transaction.Delete(_sessionKeyFactory.CreateKey(id));
+                transaction.Delete(_sessionKeyFactory.CreateKey(id),
+                    _releaseKeyFactory.CreateKey(id), _lockKeyFactory.CreateKey(id));
                 transaction.Commit();
             }
         }
@@ -192,7 +193,7 @@ namespace WebApp.Services
 
         public SessionStateStoreData GetItemImpl(bool exclusive, 
             HttpContext context, string id, out bool locked, 
-            out TimeSpan lockAge, out object lockId, 
+            out TimeSpan lockAge, out object lockIdObject, 
             out SessionStateActions actions)
         {
             using (var transaction = _datastore.BeginTransaction())
@@ -207,7 +208,7 @@ namespace WebApp.Services
                 {
                     lockAge = TimeSpan.Zero;
                     locked = false;
-                    lockId = null;
+                    lockIdObject = null;
                     actions = SessionStateActions.None;
                     return null;
                 }
@@ -217,11 +218,12 @@ namespace WebApp.Services
                 lockAge = locked ? DateTime.UtcNow - sessionLock.DateLocked
                     : TimeSpan.Zero;
                 int timeout = expirationDate.Value.TimeOutInMinutes;
-                lockId = new LockId()
+                var lockId = new LockId()
                 {
                     LockCount = sessionLock.Count,
                     TimeoutInMinutes = timeout
                 };
+                lockIdObject = lockId;
                 actions = SessionStateActions.None;
                 if (locked)
                     return null;
@@ -231,6 +233,8 @@ namespace WebApp.Services
                     sessionLock.DateLocked = DateTime.UtcNow;
                     transaction.Upsert(ToEntity(sessionLock));
                     transaction.Commit();
+                    locked = true;
+                    lockId.LockCount = sessionLock.Count;                    
                 }
                 SessionItems? sessionItems = SessionItemsFromEntity(entities[0]);
                 return sessionItems == null ? CreateNewStoreData(context, timeout) :
