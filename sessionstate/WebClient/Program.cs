@@ -1,4 +1,6 @@
-﻿using System;
+﻿using CommandLine;
+using CommandLine.Text;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,9 +12,21 @@ using System.Timers;
 
 namespace WebClient
 {
+    class Options
+    {
+        [Option('d', "delay", DefaultValue = 1000, HelpText = "Milliseconds to delay between page fetches.")]
+        public int Delay { get; set; }
+
+        [Option('c', "clients", DefaultValue = 100, HelpText = "Number of HTTP clients.")]
+        public int ClientCount { get; set; }
+
+        [Option('u', "baseUri", Required = true, HelpText = "The base url running the WebApp.")]
+        public string BaseUri { get; set; }
+    }
+
     class Program
     {
-        static async Task TaskMainAsync(Uri baseAddress)
+        static async Task TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
         {
             // Create a client with a cookie jar.
             var cookieJar = new CookieContainer();
@@ -28,13 +42,13 @@ namespace WebClient
             {
                 string content = new string((char)('A' + i), 40 * (i + 1));
                 await client.PutAsync($"Home/S/{i}", new StringContent(content));
-                await Task.Delay(1000);
+                await Task.Delay(delayInMilliseconds);
             }
             // Read and write the session vars a bunch of times.
             uint contentChar = 'A';
             for (int i = 0; i < 50; ++i)
             {
-                await Task.Delay(1000);
+                await Task.Delay(delayInMilliseconds);
                 int sessionVarId = i % 10;
                 if (i % 3 == 0)
                 {
@@ -49,20 +63,28 @@ namespace WebClient
             }
         }
 
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            Uri baseAddress = new Uri(args[0]);
+            var options = new Options();
+            var parsed = Parser.Default.ParseArguments(args, options);
+            if (!parsed)
+            {
+                Console.WriteLine(
+                    HelpText.AutoBuild(options).RenderParsingErrorsText(options, 0));
+                return -1;
+            }
+            Uri baseAddress = new Uri(options.BaseUri);
             var stopwatch = new Stopwatch();
-            var tasks = new Task[100];
+            var tasks = new Task[options.ClientCount];
             stopwatch.Start();
             for (int i = 0; i < tasks.Length; ++i)
             {
-                tasks[i] = Task.Run(async () => await TaskMainAsync(baseAddress));
+                tasks[i] = Task.Run(async () => await TaskMainAsync(baseAddress, options.Delay));
             }
             Task.WaitAll(tasks);
             stopwatch.Stop();
             Console.WriteLine(stopwatch.ElapsedMilliseconds);
-            // Console.Write(client.GetAsync("Home/S").Result.Content.ReadAsStringAsync().Result);
+            return 0;
         }
     }
 }
