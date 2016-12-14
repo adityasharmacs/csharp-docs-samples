@@ -229,7 +229,7 @@ namespace WebApp.Services
                     return null;
                 if (exclusive)
                 {
-                    sessionLock.Count += 1;
+                    sessionLock.Count = sessionRelease.Count + 1;
                     sessionLock.DateLocked = DateTime.UtcNow;
                     transaction.Upsert(ToEntity(sessionLock));
                     transaction.Commit();
@@ -345,7 +345,7 @@ namespace WebApp.Services
             }
             SessionRelease sessionRelease = new SessionRelease();
             sessionRelease.Id = id;
-            sessionRelease.Count = lockId.LockCount;         
+            sessionRelease.Count = newItem ? 0 : lockId.LockCount;         
             entities.Add(ToEntity(sessionRelease));
             using (var transaction = _datastore.BeginTransaction())
             {

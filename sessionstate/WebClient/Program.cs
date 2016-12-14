@@ -12,8 +12,17 @@ namespace WebClient
 {
     class Program
     {
-        static async Task TaskMainAsync(HttpClient client)
+        static async Task TaskMainAsync(Uri baseAddress)
         {
+            // Create a client with a cookie jar.
+            var cookieJar = new CookieContainer();
+            // Create 100 HTTP clients, to simulate 100 browsers hitting the website.
+            var handler = new HttpClientHandler()
+            {
+                CookieContainer = cookieJar
+            };
+            HttpClient client = new HttpClient(handler) { BaseAddress = baseAddress };
+
             // Add 10 session vars:
             for (int i = 0; i < 10; ++i)
             {
@@ -25,10 +34,10 @@ namespace WebClient
             uint contentChar = 'A';
             for (int i = 0; i < 50; ++i)
             {
+                await Task.Delay(1000);
                 int sessionVarId = i % 10;
                 if (i % 3 == 0)
                 {
-                    await Task.Delay(1000);
                     string content = new string((char)(contentChar), 40 * (sessionVarId + 1));
                     contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
                     await client.PutAsync($"Home/S/{sessionVarId}", new StringContent(content));
@@ -42,26 +51,13 @@ namespace WebClient
 
         static void Main(string[] args)
         {
-            // Create a client with a cookie jar.
-            var baseAddress = new Uri(args[0]);
-            var cookieJar = new CookieContainer();
-            // Create 100 HTTP clients, to simulate 100 browsers hitting the website.
-            HttpClient[] clients = new HttpClient[100];
-            for (int i = 0; i < clients.Length; ++i)
-            {
-                var handler = new HttpClientHandler()
-                {
-                    CookieContainer = cookieJar
-                };
-                clients[i] = new HttpClient(handler) { BaseAddress = baseAddress };
-            }
+            Uri baseAddress = new Uri(args[0]);
             var stopwatch = new Stopwatch();
-            Task[] tasks = new Task[clients.Length];
+            var tasks = new Task[100];
             stopwatch.Start();
             for (int i = 0; i < tasks.Length; ++i)
             {
-                int task = i;
-                tasks[task] = Task.Run(async () => await TaskMainAsync(clients[task]));
+                tasks[i] = Task.Run(async () => await TaskMainAsync(baseAddress));
             }
             Task.WaitAll(tasks);
             stopwatch.Stop();
