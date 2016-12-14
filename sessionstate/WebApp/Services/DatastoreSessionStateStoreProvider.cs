@@ -7,15 +7,17 @@ using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.SessionState;
-using Google.Datastore.V1;
 
 namespace WebApp.Services
 {
-    struct SessionLock
+    class SessionLock
     {
         public string Id;
         public int Count;
         public DateTime DateLocked;
+        // Expiration date of the whole session, not just the lock.
+        public DateTime ExpirationDate;
+        public int TimeOutInMinutes;
     };
 
     struct SessionRelease
@@ -24,23 +26,10 @@ namespace WebApp.Services
         public int Count;
     }
 
-    struct SessionExpirationDate
-    {
-        public string Id;
-        public DateTime XDate;
-        public int TimeOutInMinutes;
-    }
-
     struct SessionItems
     {
         public string Id;
         public byte[] Items;
-    }
-
-    class LockId
-    {
-        public int LockCount { get; set; }
-        public int TimeoutInMinutes { get; set; }
     }
 
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
@@ -50,11 +39,11 @@ namespace WebApp.Services
         // And the items (payload) are stored in a child entity.
 
         readonly Google.Datastore.V1.DatastoreDb _datastore =
-            Google.Datastore.V1.DatastoreDb.Create("surferjeff-test2");
+            Google.Datastore.V1.DatastoreDb.Create("bookshelf-dotnet");
         readonly string _applicationName =
             System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath;
         readonly Google.Datastore.V1.KeyFactory _sessionKeyFactory,
-            _expirationDateKeyFactory, _releaseKeyFactory, _lockKeyFactory;
+            _releaseKeyFactory, _lockKeyFactory;
 
         // Property names for the datastore entity.
         const string
@@ -67,7 +56,6 @@ namespace WebApp.Services
         public DatastoreSessionStateStoreProvider()
         {
             _sessionKeyFactory = _datastore.CreateKeyFactory("Session");
-            _expirationDateKeyFactory = _datastore.CreateKeyFactory("SessionXDate");
             _lockKeyFactory = _datastore.CreateKeyFactory("SessionLock");
             _releaseKeyFactory = _datastore.CreateKeyFactory("SessionRelease");
         }
@@ -86,7 +74,9 @@ namespace WebApp.Services
             entity.Key = _lockKeyFactory.CreateKey(sessionLock.Id);
             entity[LOCK_COUNT] = sessionLock.Count;
             entity[LOCK_DATE] = sessionLock.DateLocked;
-            ExcludeFromIndexes(entity, LOCK_COUNT, LOCK_DATE);
+            entity[TIMEOUT] = sessionLock.TimeOutInMinutes;
+            entity[EXPIRES] = sessionLock.ExpirationDate;
+            ExcludeFromIndexes(entity, LOCK_COUNT, LOCK_DATE, TIMEOUT);
             return entity;
         }
 
@@ -96,16 +86,6 @@ namespace WebApp.Services
             entity.Key = _releaseKeyFactory.CreateKey(sessionRelease.Id);
             entity[LOCK_COUNT] = sessionRelease.Count;
             ExcludeFromIndexes(entity, LOCK_COUNT);
-            return entity;
-        }
-
-        Google.Datastore.V1.Entity ToEntity(SessionExpirationDate expirationDate)
-        {
-            var entity = new Google.Datastore.V1.Entity();
-            entity.Key = _expirationDateKeyFactory.CreateKey(expirationDate.Id);
-            entity[TIMEOUT] = expirationDate.TimeOutInMinutes;
-            entity[EXPIRES] = expirationDate.XDate;
-            ExcludeFromIndexes(entity, TIMEOUT);
             return entity;
         }
 
@@ -127,15 +107,17 @@ namespace WebApp.Services
         public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
             Debug.WriteLine("{0}: CreateUninitializedItem({1})", DateTime.Now, id);
-            SessionExpirationDate expirationDate = new SessionExpirationDate();
-            expirationDate.Id = id;
-            expirationDate.XDate = DateTime.UtcNow.AddMinutes(timeout);
-            expirationDate.TimeOutInMinutes = timeout;
+            var sessionLock = new SessionLock();
+            sessionLock.Id = id;
+            sessionLock.ExpirationDate = DateTime.UtcNow.AddMinutes(timeout);
+            sessionLock.TimeOutInMinutes = timeout;
+            sessionLock.DateLocked = DateTime.UtcNow;
+            sessionLock.Count = 0;
             using (var transaction = _datastore.BeginTransaction())
             {
-                transaction.Upsert(ToEntity(expirationDate));
+                transaction.Upsert(ToEntity(sessionLock));
                 transaction.Delete(_sessionKeyFactory.CreateKey(id),
-                    _releaseKeyFactory.CreateKey(id), _lockKeyFactory.CreateKey(id));
+                    _releaseKeyFactory.CreateKey(id));
                 transaction.Commit();
             }
         }
@@ -193,7 +175,7 @@ namespace WebApp.Services
 
         public SessionStateStoreData GetItemImpl(bool exclusive, 
             HttpContext context, string id, out bool locked, 
-            out TimeSpan lockAge, out object lockIdObject, 
+            out TimeSpan lockAge, out object lockId, 
             out SessionStateActions actions)
         {
             using (var transaction = _datastore.BeginTransaction())
@@ -201,29 +183,21 @@ namespace WebApp.Services
                 var entities = transaction.Lookup(
                     _sessionKeyFactory.CreateKey(id),
                     _lockKeyFactory.CreateKey(id),
-                    _expirationDateKeyFactory.CreateKey(id),
                     _releaseKeyFactory.CreateKey(id));
-                SessionExpirationDate? expirationDate = ExpirationDateFromEntity(entities[2]);
-                if (expirationDate == null || expirationDate.Value.XDate < DateTime.UtcNow)
+                SessionLock sessionLock = SessionLockFromEntity(entities[1]);
+                if (sessionLock == null || sessionLock.ExpirationDate < DateTime.UtcNow)
                 {
                     lockAge = TimeSpan.Zero;
                     locked = false;
-                    lockIdObject = null;
+                    lockId = null;
                     actions = SessionStateActions.None;
                     return null;
                 }
-                SessionLock sessionLock = SessionLockFromEntity(id, entities[1]);
-                SessionRelease sessionRelease = SessionReleaseFromEntity(id, entities[3]);
+                SessionRelease sessionRelease = SessionReleaseFromEntity(id, entities[2]);
                 locked = sessionLock.Count > sessionRelease.Count;
                 lockAge = locked ? DateTime.UtcNow - sessionLock.DateLocked
                     : TimeSpan.Zero;
-                int timeout = expirationDate.Value.TimeOutInMinutes;
-                var lockId = new LockId()
-                {
-                    LockCount = sessionLock.Count,
-                    TimeoutInMinutes = timeout
-                };
-                lockIdObject = lockId;
+                lockId = sessionLock;
                 actions = SessionStateActions.None;
                 if (locked)
                     return null;
@@ -231,18 +205,20 @@ namespace WebApp.Services
                 {
                     sessionLock.Count = sessionRelease.Count + 1;
                     sessionLock.DateLocked = DateTime.UtcNow;
+                    sessionLock.ExpirationDate = 
+                        DateTime.UtcNow.AddMinutes(sessionLock.TimeOutInMinutes);
                     transaction.Upsert(ToEntity(sessionLock));
                     transaction.Commit();
                     locked = true;
-                    lockId.LockCount = sessionLock.Count;                    
                 }
                 SessionItems? sessionItems = SessionItemsFromEntity(entities[0]);
-                return sessionItems == null ? CreateNewStoreData(context, timeout) :
-                    Deserialize(context, sessionItems.Value.Items, timeout);
+                return sessionItems == null ? 
+                    CreateNewStoreData(context, sessionLock.TimeOutInMinutes) :
+                    Deserialize(context, sessionItems.Value.Items, sessionLock.TimeOutInMinutes);
             }            
         }
 
-        private SessionItems? SessionItemsFromEntity(Entity entity)
+        private SessionItems? SessionItemsFromEntity(Google.Datastore.V1.Entity entity)
         {
             if (null == entity)
                 return null;
@@ -252,19 +228,20 @@ namespace WebApp.Services
             return sessionItems;
         }
 
-        private SessionLock SessionLockFromEntity(string id, Entity entity)
+        private SessionLock SessionLockFromEntity(Google.Datastore.V1.Entity entity)
         {
+            if (null == entity)
+                return null;
             SessionLock sessionLock = new SessionLock();
-            sessionLock.Id = id;
-            if (entity != null)
-            {
-                sessionLock.Count = (int)entity[LOCK_COUNT];
-                sessionLock.DateLocked = (DateTime)entity[LOCK_DATE];
-            }
+            sessionLock.Id = entity.Key.Path.First().Name;
+            sessionLock.Count = (int)entity[LOCK_COUNT];
+            sessionLock.DateLocked = (DateTime)entity[LOCK_DATE];
+            sessionLock.ExpirationDate = (DateTime)entity[EXPIRES];
+            sessionLock.TimeOutInMinutes = (int)entity[TIMEOUT];
             return sessionLock;
         }
 
-        private SessionRelease SessionReleaseFromEntity(string id, Entity entity)
+        private SessionRelease SessionReleaseFromEntity(string id, Google.Datastore.V1.Entity entity)
         {
             SessionRelease sessionRelease = new SessionRelease();
             sessionRelease.Id = id;
@@ -273,17 +250,6 @@ namespace WebApp.Services
                 sessionRelease.Count = (int)entity[LOCK_COUNT];
             }
             return sessionRelease;
-        }
-
-        private SessionExpirationDate? ExpirationDateFromEntity(Entity entity)
-        {
-            if (null == entity)
-                return null;
-            SessionExpirationDate expirationDate = new SessionExpirationDate();
-            expirationDate.Id = entity.Key.Path.First().Name;
-            expirationDate.TimeOutInMinutes = (int) entity[TIMEOUT];
-            expirationDate.XDate = (DateTime)entity[EXPIRES];
-            return expirationDate;
         }
 
         public override void InitializeRequest(HttpContext context)
@@ -295,7 +261,7 @@ namespace WebApp.Services
             Debug.WriteLine("{0}: ReleaseItemExclusive({1})", DateTime.Now, id);
             SessionRelease release = new SessionRelease();
             release.Id = id;
-            release.Count = ((LockId)lockId).LockCount;
+            release.Count = ((SessionLock)lockId).Count;
             _datastore.Upsert(ToEntity(release));
         }
 
@@ -307,7 +273,6 @@ namespace WebApp.Services
             {
                 transaction.Delete(_sessionKeyFactory.CreateKey(id),
                         _lockKeyFactory.CreateKey(id),
-                        _expirationDateKeyFactory.CreateKey(id),
                         _releaseKeyFactory.CreateKey(id));
                 transaction.Commit();
             }
@@ -316,25 +281,14 @@ namespace WebApp.Services
         public override void ResetItemTimeout(HttpContext context, string id)
         {
             Debug.WriteLine("{0}: ResetItemTimeout({1})", DateTime.Now, id);
-            SessionExpirationDate expirationDate = SessionExpirationDateFromEntity(id, 
-                _datastore.Lookup(_expirationDateKeyFactory.CreateKey(id)));
-            expirationDate.XDate = DateTime.UtcNow.AddMinutes(expirationDate.TimeOutInMinutes);
-            _datastore.Upsert(ToEntity(expirationDate));
+            // Ignore it.  To minimize writes to datastore, we reset the timeout
+            // when we lock the session.
         }
 
-        private SessionExpirationDate SessionExpirationDateFromEntity(string id, Entity entity)
-        {
-            SessionExpirationDate expirationDate = new SessionExpirationDate();
-            expirationDate.Id = id;
-            expirationDate.TimeOutInMinutes = (int) entity[TIMEOUT];
-            expirationDate.XDate = (DateTime)entity[EXPIRES];
-            return expirationDate;
-        }
-
-        public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockIdObject, bool newItem)
+        public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId, bool newItem)
         {
             Debug.WriteLine("{0}: SetAndReleaseItemExclusive({1})", DateTime.Now, id);
-            LockId lockId = (LockId)lockIdObject;
+            SessionLock sessionLock = (SessionLock)lockId;
             var entities = new List<Google.Datastore.V1.Entity>();
             if (item.Items.Dirty)
             {
@@ -345,7 +299,7 @@ namespace WebApp.Services
             }
             SessionRelease sessionRelease = new SessionRelease();
             sessionRelease.Id = id;
-            sessionRelease.Count = newItem ? 0 : lockId.LockCount;         
+            sessionRelease.Count = newItem ? 0 : sessionLock.Count;         
             entities.Add(ToEntity(sessionRelease));
             using (var transaction = _datastore.BeginTransaction())
             {
