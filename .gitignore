@@ -9,3 +9,4 @@ TestResults/
 *.iml
 PublishProfiles/
 *.sln.DotSettings.user
+.vs/
