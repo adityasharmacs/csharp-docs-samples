@@ -45,7 +45,7 @@ namespace WebApp.Services
         static Task _sweepTask;
         static Object _sweepTaskLock = new object();
 
-        // Property names for the datastore entity.
+        // Property names for the datastore entities.
         const string
             EXPIRES = "expires",
             LOCK_DATE = "lockDate",
@@ -295,23 +295,36 @@ namespace WebApp.Services
         {            
         }
 
-        public override void ReleaseItemExclusive(HttpContext context, string id, object lockId)
+        public override void ReleaseItemExclusive(HttpContext context, string id, object lockIdObject)
         {
             Debug.WriteLine("{0}: ReleaseItemExclusive({1})", DateTime.Now, id);
-            SessionLock sessionLock = (SessionLock)lockId;
+            SessionLock lockId = (SessionLock)lockIdObject;
             SessionItems sessionItems = new SessionItems();
             sessionItems.Id = id;
-            sessionItems.ReleaseCount = sessionLock.LockCount;
-            sessionItems.Items = sessionLock.Items;
-            _datastore.Upsert(ToEntity(sessionItems));
+            sessionItems.ReleaseCount = lockId.LockCount;
+            sessionItems.Items = lockId.Items;
+            using (var transaction = _datastore.BeginTransaction())
+            {
+                SessionLock sessionLock = SessionLockFromEntity(
+                    transaction.Lookup(_lockKeyFactory.CreateKey(id)));
+                if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
+                    return;  // Something else locked it in the meantime.
+                transaction.Upsert(ToEntity(sessionItems));
+                transaction.Commit();
+            }
         }
 
 
-        public override void RemoveItem(HttpContext context, string id, object lockId, SessionStateStoreData item)
+        public override void RemoveItem(HttpContext context, string id, object lockIdObject, SessionStateStoreData item)
         {
             Debug.WriteLine("{0}: RemoveItem({1})", DateTime.Now, id);
+            SessionLock lockId = (SessionLock)lockIdObject;
             using (var transaction = _datastore.BeginTransaction())
             {
+                SessionLock sessionLock = SessionLockFromEntity(
+                    transaction.Lookup(_lockKeyFactory.CreateKey(id)));
+                if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
+                    return;  // Something else locked it in the meantime.
                 transaction.Delete(_sessionKeyFactory.CreateKey(id),
                         _lockKeyFactory.CreateKey(id));
                 transaction.Commit();
@@ -325,15 +338,28 @@ namespace WebApp.Services
             // when we lock the session.
         }
 
-        public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId, bool newItem)
+        public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockIdObject, bool newItem)
         {
             Debug.WriteLine("{0}: SetAndReleaseItemExclusive({1})", DateTime.Now, id);
-            SessionLock sessionLock = (SessionLock)lockId;
+            SessionLock lockId = (SessionLock)lockIdObject;
             SessionItems sessionItems = new SessionItems();
             sessionItems.Id = id;
-            sessionItems.Items = item.Items.Dirty || newItem ? Serialize((SessionStateItemCollection)item.Items) : sessionLock.Items;
-            sessionItems.ReleaseCount = newItem ? 0 : sessionLock.LockCount;
-            _datastore.Upsert(ToEntity(sessionItems));
+            sessionItems.Items = item.Items.Dirty || newItem ? Serialize((SessionStateItemCollection)item.Items) : lockId.Items;
+            sessionItems.ReleaseCount = newItem ? 0 : lockId.LockCount;
+            if (newItem)
+            {
+                _datastore.Upsert(ToEntity(sessionItems));
+                return;
+            }
+            using (var transaction = _datastore.BeginTransaction())
+            {
+                SessionLock sessionLock = SessionLockFromEntity(
+                    transaction.Lookup(_lockKeyFactory.CreateKey(id)));
+                if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
+                    return;  // Something else locked it in the meantime.
+                transaction.Upsert(ToEntity(sessionItems));
+                transaction.Commit();
+            }
         }
 
         private byte[] Serialize(SessionStateItemCollection items)
