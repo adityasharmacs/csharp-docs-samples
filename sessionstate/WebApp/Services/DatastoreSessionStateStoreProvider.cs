@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Google.Datastore.V1;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.SessionState;
 
@@ -32,16 +34,16 @@ namespace WebApp.Services
 
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
-        // Stores a session in datastore.
-        // The metadata for the session is stored in a parent entity.
-        // And the items (payload) are stored in a child entity.
+        const string GOOGLE_PROJECT_ID = "bookshelf-dotnet";
+        const string APPLICATION_NAME = ""; // "WebApp";
 
-        readonly Google.Datastore.V1.DatastoreDb _datastore =
-            Google.Datastore.V1.DatastoreDb.Create("bookshelf-dotnet");
-        readonly string _applicationName =
-            System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath;
+        const string SESSION_KIND = "Session";
+        const string SESSION_LOCK_KIND = "SessionLock";
+        readonly Google.Datastore.V1.DatastoreDb _datastore;
         readonly Google.Datastore.V1.KeyFactory _sessionKeyFactory,
             _lockKeyFactory;
+        static Task _sweepTask;
+        static Object _sweepTaskLock = new object();
 
         // Property names for the datastore entity.
         const string
@@ -54,8 +56,64 @@ namespace WebApp.Services
 
         public DatastoreSessionStateStoreProvider()
         {
-            _sessionKeyFactory = _datastore.CreateKeyFactory("Session");
-            _lockKeyFactory = _datastore.CreateKeyFactory("SessionLock");
+            _datastore = Google.Datastore.V1.DatastoreDb.Create(GOOGLE_PROJECT_ID, APPLICATION_NAME);
+            _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
+            _lockKeyFactory = _datastore.CreateKeyFactory(SESSION_LOCK_KIND);
+            lock (_sweepTaskLock)
+            {
+                if (_sweepTask == null)
+                {
+                    _sweepTask = Task.Run(() => SweepTaskMain());
+                }
+            }
+        }
+
+        async Task SweepTaskMain()
+        {
+            var random = System.Security.Cryptography.RandomNumberGenerator.Create();
+            var randomByte = new byte[1];
+            while (true)
+            {
+                random.GetBytes(randomByte);
+                // Not a perfect distrubution, but fine for our limited purposes.
+                int randomMinute = randomByte[0] % 60;
+                Debug.WriteLine("Delaying {0} minutes before sweeping...", randomMinute);
+                await Task.Delay(TimeSpan.FromMinutes(randomMinute));
+                // Find old sessions to clean up
+                var now = DateTime.UtcNow;
+                var query = new Query(SESSION_LOCK_KIND)
+                {
+                    Filter = Filter.LessThan(EXPIRES, now),
+                    Projection = { "__key__" }
+                };
+                try
+                {
+                    foreach (Entity lockEntity in _datastore.RunQueryLazily(query))
+                    {
+                        try
+                        {
+                            using (var transaction = _datastore.BeginTransaction())
+                            {
+                                var sessionLock =
+                                    SessionLockFromEntity(transaction.Lookup(lockEntity.Key));
+                                if (sessionLock == null || sessionLock.ExpirationDate > now)
+                                    continue;
+                                transaction.Delete(lockEntity.Key,
+                                    _sessionKeyFactory.CreateKey(lockEntity.Key.Path.First().Name));
+                                transaction.Commit();
+                            }
+                        }
+                        catch (Grpc.Core.RpcException e)
+                        {
+                            Debug.WriteLine(e.Message);
+                        }
+                    }
+                }
+                catch (Grpc.Core.RpcException e)
+                {
+                    Debug.WriteLine(e.Message);
+                }
+            }
         }
 
         void ExcludeFromIndexes(Google.Datastore.V1.Entity entity, params string[] properties)
