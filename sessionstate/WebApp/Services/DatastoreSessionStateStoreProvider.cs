@@ -31,7 +31,7 @@ namespace WebApp.Services
         public byte[] Items;
     };
 
-    struct SessionItems
+    class SessionItems
     {
         public string Id;
         public byte[] Items;
@@ -57,6 +57,7 @@ namespace WebApp.Services
             ITEMS = "items";
         const string SESSION_KIND = "Session";
         const string SESSION_LOCK_KIND = "SessionLock";
+        const string SWEEP_LOCK_KIND = "SweepLock";
         readonly CallSettings _callSettings =
             CallSettings.FromCallTiming(CallTiming.FromRetry(new RetrySettings(
                 new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
@@ -112,17 +113,55 @@ namespace WebApp.Services
                 random.GetBytes(randomByte);
                 // Not a perfect distrubution, but fine for our limited purposes.
                 int randomMinute = randomByte[0] % 60;
-                _log.InfoFormat("Delaying {0} minutes before sweeping...", randomMinute);
+                _log.DebugFormat("Delaying {0} minutes before checking sweep lock.", randomMinute);
                 await Task.Delay(TimeSpan.FromMinutes(randomMinute));
-                // Find old sessions to clean up
-                var now = DateTime.UtcNow;
-                var query = new Query(SESSION_LOCK_KIND)
-                {
-                    Filter = Filter.LessThan(EXPIRES, now),
-                    Projection = { "__key__" }
-                };
+                // Use a lock to make sure no clients are sweeping at the same time, or
+                // sweeping more often than once per hour.
                 try
                 {
+                    using (var transaction = await _datastore.BeginTransactionAsync(_callSettings))
+                    {
+                        const string SWEEP_BEGIN_DATE = "beginDate",
+                            SWEEPER = "sweeper";
+                        var key = _datastore.CreateKeyFactory(SWEEP_LOCK_KIND).CreateKey(1);
+                        Entity sweepLock = await transaction.LookupAsync(key, _callSettings) ??
+                            new Entity() { Key = key };
+                        bool sweep = true;
+                        try
+                        {
+                            sweep =
+                                DateTime.UtcNow - ((DateTime)sweepLock[SWEEP_BEGIN_DATE]) > TimeSpan.FromHours(1);
+                        }
+                        catch (Exception e)
+                        {
+                            _log.Error("Error reading sweep begin date.", e);
+                        }
+                        if (!sweep)
+                        {
+                            _log.Debug("Not yet time to sweep.");
+                            continue;
+                        }
+                        sweepLock[SWEEP_BEGIN_DATE] = DateTime.UtcNow;
+                        sweepLock[SWEEPER] = Environment.MachineName;
+                        transaction.Upsert(sweepLock);
+                        await transaction.CommitAsync(_callSettings);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _log.Error("Error acquiring sweep lock.", e);
+                    continue;
+                }
+                try
+                {
+                    _log.Debug("Beginning sweep.");
+                    // Find old sessions to clean up
+                    var now = DateTime.UtcNow;
+                    var query = new Query(SESSION_LOCK_KIND)
+                    {
+                        Filter = Filter.LessThan(EXPIRES, now),
+                        Projection = { "__key__" }
+                    };
                     foreach (Entity lockEntity in _datastore.RunQueryLazily(query))
                     {
                         try
