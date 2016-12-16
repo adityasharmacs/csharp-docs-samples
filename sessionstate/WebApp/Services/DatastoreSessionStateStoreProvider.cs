@@ -358,15 +358,30 @@ namespace WebApp.Services
             SessionLock lockId = (SessionLock)lockIdObject;
             SessionItems sessionItems = new SessionItems();
             sessionItems.Id = id;
-            sessionItems.Items = item.Items.Dirty || newItem ? Serialize((SessionStateItemCollection)item.Items) : lockId.Items;
-            sessionItems.ReleaseCount = newItem ? 0 : lockId.LockCount;
             if (newItem)
             {
-                _datastore.Upsert(ToEntity(sessionItems));
+                sessionItems.Items = Serialize((SessionStateItemCollection)item.Items);
+                sessionItems.ReleaseCount = 0;
+                SessionLock sessionLock = new SessionLock
+                {
+                    Id = id,
+                    TimeOutInMinutes = item.Timeout,
+                    ExpirationDate = DateTime.UtcNow.AddMinutes(item.Timeout),
+                    DateLocked = DateTime.UtcNow,
+                    LockCount = 0
+                };
+                using (var transaction = _datastore.BeginTransaction())
+                {
+                    transaction.Upsert(ToEntity(sessionItems), ToEntity(sessionLock));
+                    transaction.Commit();
+                }
                 return;
             }
             using (var transaction = _datastore.BeginTransaction())
             {
+                sessionItems.Items = item.Items.Dirty ? 
+                    Serialize((SessionStateItemCollection)item.Items) : lockId.Items;
+                sessionItems.ReleaseCount = lockId.LockCount;
                 SessionLock sessionLock = SessionLockFromEntity(
                     transaction.Lookup(_lockKeyFactory.CreateKey(id)));
                 if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
