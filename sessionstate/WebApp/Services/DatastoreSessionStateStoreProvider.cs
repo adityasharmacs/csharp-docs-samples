@@ -1,14 +1,18 @@
 ﻿using Google.Datastore.V1;
+using log4net;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Configuration;
 using System.Web.SessionState;
+using System.Xml;
 
 namespace WebApp.Services
 {
@@ -34,14 +38,10 @@ namespace WebApp.Services
 
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
-        const string GOOGLE_PROJECT_ID = "bookshelf-dotnet";
-        const string APPLICATION_NAME = ""; // "WebApp";
-
-        const string SESSION_KIND = "Session";
-        const string SESSION_LOCK_KIND = "SessionLock";
         readonly Google.Datastore.V1.DatastoreDb _datastore;
         readonly Google.Datastore.V1.KeyFactory _sessionKeyFactory,
             _lockKeyFactory;
+        readonly ILog _log;
         static Task _sweepTask;
         static Object _sweepTaskLock = new object();
 
@@ -53,10 +53,24 @@ namespace WebApp.Services
             RELEASE_COUNT = "releaseCount",
             TIMEOUT = "timeout",
             ITEMS = "items";
+        const string SESSION_KIND = "Session";
+        const string SESSION_LOCK_KIND = "SessionLock";
 
         public DatastoreSessionStateStoreProvider()
         {
-            _datastore = Google.Datastore.V1.DatastoreDb.Create(GOOGLE_PROJECT_ID, APPLICATION_NAME);
+            // Read the google project id and the application name from the config.
+            Configuration cfg =
+              WebConfigurationManager.OpenWebConfiguration(
+                  System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath);
+            var appSettings = (AppSettingsSection)cfg.GetSection("appSettings");
+            string projectId = appSettings.Settings["GoogleProjectId"]?.Value;
+            string applicationName = appSettings.Settings["ApplicationName"]?.Value ?? "";
+            if (string.IsNullOrWhiteSpace(projectId) || projectId == "YOUR-PROJECT" + "-ID")
+            {
+                throw new ConfigurationErrorsException("Set the googleProjectId in Web.config");
+            }
+            _log = LogManager.GetLogger(this.GetType());
+            _datastore = Google.Datastore.V1.DatastoreDb.Create(projectId, applicationName);
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
             _lockKeyFactory = _datastore.CreateKeyFactory(SESSION_LOCK_KIND);
             lock (_sweepTaskLock)
