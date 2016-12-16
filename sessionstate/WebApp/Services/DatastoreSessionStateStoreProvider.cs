@@ -1,4 +1,4 @@
-﻿using Google.Datastore.V1;
+﻿using Google.Cloud.Datastore.V1;
 using log4net;
 using System;
 using System.Collections;
@@ -38,8 +38,8 @@ namespace WebApp.Services
 
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
-        readonly Google.Datastore.V1.DatastoreDb _datastore;
-        readonly Google.Datastore.V1.KeyFactory _sessionKeyFactory,
+        readonly DatastoreDb _datastore;
+        readonly KeyFactory _sessionKeyFactory,
             _lockKeyFactory;
         readonly ILog _log;
         static Task _sweepTask;
@@ -70,7 +70,7 @@ namespace WebApp.Services
                 throw new ConfigurationErrorsException("Set the googleProjectId in Web.config");
             }
             _log = LogManager.GetLogger(this.GetType());
-            _datastore = Google.Datastore.V1.DatastoreDb.Create(projectId, applicationName);
+            _datastore = DatastoreDb.Create(projectId, applicationName);
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
             _lockKeyFactory = _datastore.CreateKeyFactory(SESSION_LOCK_KIND);
             lock (_sweepTaskLock)
@@ -130,7 +130,7 @@ namespace WebApp.Services
             }
         }
 
-        void ExcludeFromIndexes(Google.Datastore.V1.Entity entity, params string[] properties)
+        void ExcludeFromIndexes(Entity entity, params string[] properties)
         {
             foreach (string prop in properties)
             {
@@ -138,9 +138,9 @@ namespace WebApp.Services
             }
         }
 
-        Google.Datastore.V1.Entity ToEntity(SessionLock sessionLock)
+        Entity ToEntity(SessionLock sessionLock)
         {
-            var entity = new Google.Datastore.V1.Entity();
+            var entity = new Entity();
             entity.Key = _lockKeyFactory.CreateKey(sessionLock.Id);
             entity[LOCK_COUNT] = sessionLock.LockCount;
             entity[LOCK_DATE] = sessionLock.DateLocked;
@@ -150,9 +150,9 @@ namespace WebApp.Services
             return entity;
         }
 
-        Google.Datastore.V1.Entity ToEntity(SessionItems sessionItems)
+        Entity ToEntity(SessionItems sessionItems)
         {
-            var entity = new Google.Datastore.V1.Entity();
+            var entity = new Entity();
             entity.Key = _sessionKeyFactory.CreateKey(sessionItems.Id);
             entity[ITEMS] = sessionItems.Items;
             entity[RELEASE_COUNT] = sessionItems.ReleaseCount;
@@ -276,7 +276,7 @@ namespace WebApp.Services
             }            
         }
 
-        private SessionItems SessionItemsFromEntity(string id, Google.Datastore.V1.Entity entity)
+        private SessionItems SessionItemsFromEntity(string id, Entity entity)
         {
             SessionItems sessionItems = new SessionItems();
             sessionItems.Id = id;
@@ -292,7 +292,7 @@ namespace WebApp.Services
             return sessionItems;
         }
 
-        private SessionLock SessionLockFromEntity(Google.Datastore.V1.Entity entity)
+        private SessionLock SessionLockFromEntity(Entity entity)
         {
             if (null == entity)
                 return null;
@@ -405,6 +405,8 @@ namespace WebApp.Services
         {
             return false;
         }
+
+
     }
 }
  
