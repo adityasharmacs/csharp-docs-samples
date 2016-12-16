@@ -189,10 +189,9 @@ namespace WebApp.Services
 
         public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
+            _log.DebugFormat("CreateUninitializedItem({0})", id);
             LogExceptions("CreateUninitializedItem()", () =>
             {
-
-                _log.DebugFormat("CreateUninitializedItem({0})", id);
                 var sessionLock = new SessionLock();
                 sessionLock.Id = id;
                 sessionLock.ExpirationDate = DateTime.UtcNow.AddMinutes(timeout);
@@ -389,6 +388,11 @@ namespace WebApp.Services
             _log.DebugFormat("SetAndReleaseItemExclusive({0})", id);
             LogExceptions("SetAndReleaseItemExclusive()", () =>
             {
+#if DEBUG
+                // To test the exception handling code.
+                if (null != item.Items["throwthrowthrow"])
+                    throw new Exception("throwthrowthrow");
+#endif
                 SessionLock lockId = (SessionLock)lockIdObject;
                 SessionItems sessionItems = new SessionItems();
                 sessionItems.Id = id;
@@ -440,8 +444,6 @@ namespace WebApp.Services
         {
             return false;
         }
-
-
     }
 }
  
