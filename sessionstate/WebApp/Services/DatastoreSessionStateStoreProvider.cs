@@ -40,10 +40,9 @@ namespace WebApp.Services
 
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
-        readonly DatastoreDb _datastore;
-        readonly KeyFactory _sessionKeyFactory,
-            _lockKeyFactory;
-        readonly ILog _log;
+        DatastoreDb _datastore;
+        KeyFactory _sessionKeyFactory, _lockKeyFactory;
+        ILog _log;
         static Task _sweepTask;
         static Object _sweepTaskLock = new object();
 
@@ -64,19 +63,14 @@ namespace WebApp.Services
                 new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
                 Expiration.FromTimeout(TimeSpan.FromSeconds(30)))));
 
-        public DatastoreSessionStateStoreProvider()
+        public override void Initialize(string name, NameValueCollection config)
         {
-            // Read the google project id and the application name from the config.
-            Configuration cfg =
-              WebConfigurationManager.OpenWebConfiguration(
-                  System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath);
-            var appSettings = (AppSettingsSection)cfg.GetSection("appSettings");
-            string projectId = appSettings.Settings["GoogleProjectId"]?.Value;
-            string applicationName = appSettings.Settings["ApplicationName"]?.Value ?? "";
+            string projectId = config["projectId"];
             if (string.IsNullOrWhiteSpace(projectId) || projectId == "YOUR-PROJECT" + "-ID")
             {
-                throw new ConfigurationErrorsException("Set the googleProjectId in Web.config");
+                throw new ConfigurationErrorsException("Set the projectId in Web.config");
             }
+            string applicationName = config["applicationName"] ?? "";
             log4net.Config.XmlConfigurator.Configure();
             _log = LogManager.GetLogger(this.GetType());
             _datastore = DatastoreDb.Create(projectId, applicationName);
