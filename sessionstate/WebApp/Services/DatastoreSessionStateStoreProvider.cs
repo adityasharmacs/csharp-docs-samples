@@ -25,7 +25,7 @@ namespace WebApp.Services
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
         // Datastore limits writes to 1 per second per entity group.  
-        // Therefore, implement a session that can be locked and unlocked in
+        // Therefore, to implement a session that can be locked and unlocked in
         // under a second, we split the session into two independent Datastore
         // entities.
         // SessionLock gets written to lock the session.  
@@ -84,7 +84,7 @@ namespace WebApp.Services
         }
 
         /// <summary>
-        /// Our connection to Google Cloud Datastore.
+        /// My connection to Google Cloud Datastore.
         /// </summary>
         DatastoreDb _datastore;
         KeyFactory _sessionKeyFactory, _lockKeyFactory;
@@ -138,7 +138,6 @@ namespace WebApp.Services
                 }
             }
         }
-
 
         public override SessionStateStoreData CreateNewStoreData(HttpContext context, int timeout)
         {
