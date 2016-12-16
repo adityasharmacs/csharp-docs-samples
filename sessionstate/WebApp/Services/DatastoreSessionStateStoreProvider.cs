@@ -1,4 +1,6 @@
-﻿using Google.Cloud.Datastore.V1;
+﻿using Google.Api.Gax;
+using Google.Api.Gax.Grpc;
+using Google.Cloud.Datastore.V1;
 using log4net;
 using System;
 using System.Collections;
@@ -55,6 +57,11 @@ namespace WebApp.Services
             ITEMS = "items";
         const string SESSION_KIND = "Session";
         const string SESSION_LOCK_KIND = "SessionLock";
+        readonly CallSettings _callSettings =
+            CallSettings.FromCallTiming(CallTiming.FromRetry(new RetrySettings(
+                new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
+                new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
+                Expiration.FromTimeout(TimeSpan.FromSeconds(30)))));
 
         public DatastoreSessionStateStoreProvider()
         {
@@ -91,7 +98,7 @@ namespace WebApp.Services
                 random.GetBytes(randomByte);
                 // Not a perfect distrubution, but fine for our limited purposes.
                 int randomMinute = randomByte[0] % 60;
-                Debug.WriteLine("Delaying {0} minutes before sweeping...", randomMinute);
+                _log.InfoFormat("Delaying {0} minutes before sweeping...", randomMinute);
                 await Task.Delay(TimeSpan.FromMinutes(randomMinute));
                 // Find old sessions to clean up
                 var now = DateTime.UtcNow;
@@ -106,26 +113,26 @@ namespace WebApp.Services
                     {
                         try
                         {
-                            using (var transaction = _datastore.BeginTransaction())
+                            using (var transaction = _datastore.BeginTransaction(_callSettings))
                             {
                                 var sessionLock =
-                                    SessionLockFromEntity(transaction.Lookup(lockEntity.Key));
+                                    SessionLockFromEntity(transaction.Lookup(lockEntity.Key, _callSettings));
                                 if (sessionLock == null || sessionLock.ExpirationDate > now)
                                     continue;
                                 transaction.Delete(lockEntity.Key,
                                     _sessionKeyFactory.CreateKey(lockEntity.Key.Path.First().Name));
-                                transaction.Commit();
+                                transaction.Commit(_callSettings);
                             }
                         }
                         catch (Grpc.Core.RpcException e)
                         {
-                            Debug.WriteLine(e.Message);
+                            _log.Error(e.Message);
                         }
                     }
                 }
                 catch (Grpc.Core.RpcException e)
                 {
-                    Debug.WriteLine(e.Message);
+                    _log.Error(e.Message);
                 }
             }
         }
@@ -175,11 +182,18 @@ namespace WebApp.Services
             sessionLock.TimeOutInMinutes = timeout;
             sessionLock.DateLocked = DateTime.UtcNow;
             sessionLock.LockCount = 0;
-            using (var transaction = _datastore.BeginTransaction())
+            try
             {
-                transaction.Upsert(ToEntity(sessionLock));
-                transaction.Delete(_sessionKeyFactory.CreateKey(id));
-                transaction.Commit();
+                using (var transaction = _datastore.BeginTransaction(_callSettings))
+                {
+                    transaction.Upsert(ToEntity(sessionLock));
+                    transaction.Delete(_sessionKeyFactory.CreateKey(id));
+                    transaction.Commit(_callSettings);
+                }
+            }
+            catch (Grpc.Core.RpcException e)
+            {
+                _log.Error(e.Message);
             }
         }
 
@@ -217,20 +231,8 @@ namespace WebApp.Services
             out SessionStateActions actions)
         {
             Debug.WriteLine("{0}: GetItemExclusive({1})", DateTime.Now, id);
-            try
-            {
-                return GetItemImpl(true, context, id, out locked, out lockAge,
-                    out lockId, out actions);
-            }
-            catch (Grpc.Core.RpcException e) when (e.Status.StatusCode == Grpc.Core.StatusCode.Aborted)
-            {
-                Debug.WriteLine("Too much contention.");
-                locked = true;
-                lockAge = TimeSpan.Zero;
-                lockId = 0;
-                actions = SessionStateActions.None;
-                return null;
-            }
+            return GetItemImpl(true, context, id, out locked, out lockAge,
+                out lockId, out actions);
         }
 
         public SessionStateStoreData GetItemImpl(bool exclusive, 
@@ -238,42 +240,56 @@ namespace WebApp.Services
             out TimeSpan lockAge, out object lockId, 
             out SessionStateActions actions)
         {
-            using (var transaction = _datastore.BeginTransaction())
+            try
             {
-                var entities = transaction.Lookup(
-                    _sessionKeyFactory.CreateKey(id),
-                    _lockKeyFactory.CreateKey(id));
-                SessionLock sessionLock = SessionLockFromEntity(entities[1]);
-                if (sessionLock == null || sessionLock.ExpirationDate < DateTime.UtcNow)
+                using (var transaction = _datastore.BeginTransaction(_callSettings))
                 {
-                    lockAge = TimeSpan.Zero;
-                    locked = false;
-                    lockId = null;
+                    var entities = transaction.Lookup(new Key[]
+                    {
+                        _sessionKeyFactory.CreateKey(id),
+                        _lockKeyFactory.CreateKey(id)
+                    }, _callSettings);
+                    SessionLock sessionLock = SessionLockFromEntity(entities[1]);
+                    if (sessionLock == null || sessionLock.ExpirationDate < DateTime.UtcNow)
+                    {
+                        lockAge = TimeSpan.Zero;
+                        locked = false;
+                        lockId = null;
+                        actions = SessionStateActions.None;
+                        return null;
+                    }
+                    SessionItems sessionItems = SessionItemsFromEntity(id, entities[0]);
+                    sessionLock.Items = sessionItems.Items;
+                    locked = sessionLock.LockCount > sessionItems.ReleaseCount;
+                    lockAge = locked ? DateTime.UtcNow - sessionLock.DateLocked
+                        : TimeSpan.Zero;
+                    lockId = sessionLock;
                     actions = SessionStateActions.None;
-                    return null;
+                    if (locked)
+                        return null;
+                    if (exclusive)
+                    {
+                        sessionLock.LockCount = sessionItems.ReleaseCount + 1;
+                        sessionLock.DateLocked = DateTime.UtcNow;
+                        sessionLock.ExpirationDate = 
+                            DateTime.UtcNow.AddMinutes(sessionLock.TimeOutInMinutes);
+                        transaction.Upsert(ToEntity(sessionLock));
+                        transaction.Commit(_callSettings);
+                        locked = true;
+                    }
+                    return Deserialize(context, sessionItems.Items, 
+                        sessionLock.TimeOutInMinutes);
                 }
-                SessionItems sessionItems = SessionItemsFromEntity(id, entities[0]);
-                sessionLock.Items = sessionItems.Items;
-                locked = sessionLock.LockCount > sessionItems.ReleaseCount;
-                lockAge = locked ? DateTime.UtcNow - sessionLock.DateLocked
-                    : TimeSpan.Zero;
-                lockId = sessionLock;
+            }
+            catch (Grpc.Core.RpcException e)
+            {
+                _log.Error(e.Message);
+                locked = true;
+                lockAge = TimeSpan.Zero;
+                lockId = 0;
                 actions = SessionStateActions.None;
-                if (locked)
-                    return null;
-                if (exclusive)
-                {
-                    sessionLock.LockCount = sessionItems.ReleaseCount + 1;
-                    sessionLock.DateLocked = DateTime.UtcNow;
-                    sessionLock.ExpirationDate = 
-                        DateTime.UtcNow.AddMinutes(sessionLock.TimeOutInMinutes);
-                    transaction.Upsert(ToEntity(sessionLock));
-                    transaction.Commit();
-                    locked = true;
-                }
-                return Deserialize(context, sessionItems.Items, 
-                    sessionLock.TimeOutInMinutes);
-            }            
+                return null;
+            }
         }
 
         private SessionItems SessionItemsFromEntity(string id, Entity entity)
@@ -317,14 +333,14 @@ namespace WebApp.Services
             sessionItems.Id = id;
             sessionItems.ReleaseCount = lockId.LockCount;
             sessionItems.Items = lockId.Items;
-            using (var transaction = _datastore.BeginTransaction())
+            using (var transaction = _datastore.BeginTransaction(_callSettings))
             {
                 SessionLock sessionLock = SessionLockFromEntity(
-                    transaction.Lookup(_lockKeyFactory.CreateKey(id)));
+                    transaction.Lookup(_lockKeyFactory.CreateKey(id), _callSettings));
                 if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
                     return;  // Something else locked it in the meantime.
                 transaction.Upsert(ToEntity(sessionItems));
-                transaction.Commit();
+                transaction.Commit(_callSettings);
             }
         }
 
@@ -333,15 +349,15 @@ namespace WebApp.Services
         {
             Debug.WriteLine("{0}: RemoveItem({1})", DateTime.Now, id);
             SessionLock lockId = (SessionLock)lockIdObject;
-            using (var transaction = _datastore.BeginTransaction())
+            using (var transaction = _datastore.BeginTransaction(_callSettings))
             {
                 SessionLock sessionLock = SessionLockFromEntity(
-                    transaction.Lookup(_lockKeyFactory.CreateKey(id)));
+                    transaction.Lookup(_lockKeyFactory.CreateKey(id), _callSettings));
                 if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
                     return;  // Something else locked it in the meantime.
                 transaction.Delete(_sessionKeyFactory.CreateKey(id),
                         _lockKeyFactory.CreateKey(id));
-                transaction.Commit();
+                transaction.Commit(_callSettings);
             }
         }
 
@@ -370,24 +386,24 @@ namespace WebApp.Services
                     DateLocked = DateTime.UtcNow,
                     LockCount = 0
                 };
-                using (var transaction = _datastore.BeginTransaction())
+                using (var transaction = _datastore.BeginTransaction(_callSettings))
                 {
                     transaction.Upsert(ToEntity(sessionItems), ToEntity(sessionLock));
-                    transaction.Commit();
+                    transaction.Commit(_callSettings);
                 }
                 return;
             }
-            using (var transaction = _datastore.BeginTransaction())
+            using (var transaction = _datastore.BeginTransaction(_callSettings))
             {
                 sessionItems.Items = item.Items.Dirty ? 
                     Serialize((SessionStateItemCollection)item.Items) : lockId.Items;
                 sessionItems.ReleaseCount = lockId.LockCount;
                 SessionLock sessionLock = SessionLockFromEntity(
-                    transaction.Lookup(_lockKeyFactory.CreateKey(id)));
+                    transaction.Lookup(_lockKeyFactory.CreateKey(id), _callSettings));
                 if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
                     return;  // Something else locked it in the meantime.
                 transaction.Upsert(ToEntity(sessionItems));
-                transaction.Commit();
+                transaction.Commit(_callSettings);
             }
         }
 
