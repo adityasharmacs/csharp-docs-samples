@@ -15,6 +15,7 @@
 using CommandLine;
 using CommandLine.Text;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -37,6 +38,18 @@ namespace WebClient
 
     internal class Program
     {
+        private static async Task PutValueAsync(HttpClient client, int key, string value)
+        {
+            var formData = new Dictionary<string, string>()
+            {
+                ["Key"] = key.ToString(),
+                ["Value"] = value,
+                ["Silent"] = "true",
+            };
+            var formContent = new FormUrlEncodedContent(formData);
+            await client.PostAsync("Home/S", formContent);
+        }
+
         // Returns the average page fetch time.
         private static async Task<double> TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
         {
@@ -46,12 +59,16 @@ namespace WebClient
             };
             HttpClient client = new HttpClient(handler) { BaseAddress = baseAddress };
             Stopwatch stopwatch = new Stopwatch();
+            // Keep our own copy of the session vars to verify that the server
+            // is correctly updating them.
+            var sessionVars = new string[10];
             // Add 10 session vars:
-            for (int i = 0; i < 10; ++i)
+            for (int i = 0; i < sessionVars.Length; ++i)
             {
                 string content = new string((char)('A' + i), 40 * (i + 1));
+                sessionVars[i] = content;
                 stopwatch.Start();
-                await client.PutAsync($"Home/S/{i}", new StringContent(content));
+                await PutValueAsync(client, i, content);
                 stopwatch.Stop();
                 await Task.Delay(delayInMilliseconds);
             }
@@ -64,16 +81,19 @@ namespace WebClient
                 if (i % 3 == 0)
                 {
                     string content = new string((char)(contentChar), 40 * (sessionVarId + 1));
+                    sessionVars[sessionVarId] = content;
                     contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
                     stopwatch.Start();
-                    await client.PutAsync($"Home/S/{sessionVarId}", new StringContent(content));
+                    await PutValueAsync(client, sessionVarId, content);
                     stopwatch.Stop();
                 }
                 else
                 {
                     stopwatch.Start();
-                    await client.GetAsync($"Home/S/{sessionVarId}");
+                    var response = await client.GetAsync($"Home/S/{sessionVarId}");
                     stopwatch.Stop();
+                    var content = await response.Content.ReadAsStringAsync();
+                    Debug.Assert(content == sessionVars[sessionVarId]);
                 }
             }
             return stopwatch.ElapsedMilliseconds / 60.0;

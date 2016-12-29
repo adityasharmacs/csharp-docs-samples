@@ -19,6 +19,7 @@ using log4net;
 using System;
 using System.Collections.Specialized;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -37,17 +38,17 @@ namespace WebApp.Services
         // Therefore, to implement a session that can be locked and unlocked in
         // under a second, we split the session into two independent Datastore
         // entities.
-        // SessionLock gets written to lock the session.
-        // SessionItems gets written to unlock the session.
+        // SessionLockEntity gets written to lock the session.
+        // SessionEntity gets written to unlock the session.
         // The session is locked when
-        //   SessionLock.LockCount > SessionItems.ReleaseCount.
+        //   SessionLockEntity.LockCount > SessionEntity.ReleaseCount.
         // Otherwise, the session is unlocked.
 
         /// <summary>
         /// An entity stored in Datastore.
         /// Gets written to lock a session.
         /// </summary>
-        private class SessionLock
+        private class SessionLockEntity
         {
             /// <summary>
             /// The session id.
@@ -81,7 +82,7 @@ namespace WebApp.Services
             public byte[] Items;
         };
 
-        private class SessionItems
+        private class SessionEntity
         {
             /// <summary>
             /// The session id.
@@ -169,7 +170,7 @@ namespace WebApp.Services
             _log.DebugFormat("CreateUninitializedItem({0})", id);
             LogExceptions("CreateUninitializedItem()", () =>
             {
-                var sessionLock = new SessionLock();
+                var sessionLock = new SessionLockEntity();
                 sessionLock.Id = id;
                 sessionLock.ExpirationDate = DateTime.UtcNow.AddMinutes(timeout);
                 sessionLock.TimeOutInMinutes = timeout;
@@ -218,7 +219,7 @@ namespace WebApp.Services
                         _sessionKeyFactory.CreateKey(id),
                         _lockKeyFactory.CreateKey(id)
                     }, _callSettings);
-                    SessionLock sessionLock = SessionLockFromEntity(entities[1]);
+                    SessionLockEntity sessionLock = SessionLockFromEntity(entities[1]);
                     if (sessionLock == null || sessionLock.ExpirationDate < DateTime.UtcNow)
                     {
                         // No such session.
@@ -228,7 +229,7 @@ namespace WebApp.Services
                         actions = SessionStateActions.None;
                         return null;
                     }
-                    SessionItems sessionItems = SessionItemsFromEntity(id, entities[0]);
+                    SessionEntity sessionItems = SessionFromEntity(id, entities[0]);
                     sessionLock.Items = sessionItems.Items;
                     locked = sessionLock.LockCount > sessionItems.ReleaseCount;
                     lockAge = locked ? DateTime.UtcNow - sessionLock.DateLocked
@@ -268,14 +269,14 @@ namespace WebApp.Services
             _log.DebugFormat("ReleaseItemExclusive({0})", id);
             LogExceptions("ReleaseItemExclusive()", () =>
             {
-                SessionLock lockId = (SessionLock)lockIdObject;
-                SessionItems sessionItems = new SessionItems();
+                SessionLockEntity lockId = (SessionLockEntity)lockIdObject;
+                SessionEntity sessionItems = new SessionEntity();
                 sessionItems.Id = id;
                 sessionItems.ReleaseCount = lockId.LockCount;
                 sessionItems.Items = lockId.Items;
                 using (var transaction = _datastore.BeginTransaction(_callSettings))
                 {
-                    SessionLock sessionLock = SessionLockFromEntity(
+                    SessionLockEntity sessionLock = SessionLockFromEntity(
                         transaction.Lookup(_lockKeyFactory.CreateKey(id), _callSettings));
                     if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
                         return;  // Something else locked it in the meantime.
@@ -291,10 +292,10 @@ namespace WebApp.Services
             _log.DebugFormat("RemoveItem({0})", id);
             LogExceptions("RemoveItem()", () =>
             {
-                SessionLock lockId = (SessionLock)lockIdObject;
+                SessionLockEntity lockId = (SessionLockEntity)lockIdObject;
                 using (var transaction = _datastore.BeginTransaction(_callSettings))
                 {
-                    SessionLock sessionLock = SessionLockFromEntity(
+                    SessionLockEntity sessionLock = SessionLockFromEntity(
                         transaction.Lookup(_lockKeyFactory.CreateKey(id), _callSettings));
                     if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
                         return;  // Something else locked it in the meantime.
@@ -322,15 +323,15 @@ namespace WebApp.Services
                 if (null != item.Items["throwthrowthrow"])
                     throw new Exception("throwthrowthrow");
 #endif
-                SessionLock lockId = (SessionLock)lockIdObject;
-                SessionItems sessionItems = new SessionItems();
+                SessionLockEntity lockId = (SessionLockEntity)lockIdObject;
+                SessionEntity sessionItems = new SessionEntity();
                 sessionItems.Id = id;
                 if (newItem)
                 {
                     // Insert new SessionLock and SessionItems.
                     sessionItems.Items = Serialize((SessionStateItemCollection)item.Items);
                     sessionItems.ReleaseCount = 0;
-                    SessionLock sessionLock = new SessionLock
+                    SessionLockEntity sessionLock = new SessionLockEntity
                     {
                         Id = id,
                         TimeOutInMinutes = item.Timeout,
@@ -352,7 +353,7 @@ namespace WebApp.Services
                         Serialize((SessionStateItemCollection)item.Items) : lockId.Items;
                     // Unlock the session.
                     sessionItems.ReleaseCount = lockId.LockCount;
-                    SessionLock sessionLock = SessionLockFromEntity(
+                    SessionLockEntity sessionLock = SessionLockFromEntity(
                         transaction.Lookup(_lockKeyFactory.CreateKey(id), _callSettings));
                     if (sessionLock == null || sessionLock.LockCount != lockId.LockCount)
                         return;  // Something else locked it in the meantime.
@@ -406,7 +407,7 @@ namespace WebApp.Services
         /// <summary>
         /// Pack a SessionLock into a Datastore entity.
         /// </summary>
-        private Entity ToEntity(SessionLock sessionLock)
+        private Entity ToEntity(SessionLockEntity sessionLock)
         {
             var entity = new Entity();
             entity.Key = _lockKeyFactory.CreateKey(sessionLock.Id);
@@ -421,7 +422,7 @@ namespace WebApp.Services
         /// <summary>
         /// Pack a SessionItems into a Datastore entity.
         /// </summary>
-        private Entity ToEntity(SessionItems sessionItems)
+        private Entity ToEntity(SessionEntity sessionItems)
         {
             var entity = new Entity();
             entity.Key = _sessionKeyFactory.CreateKey(sessionItems.Id);
@@ -445,14 +446,14 @@ namespace WebApp.Services
         }
 
         /// <summary>
-        /// Unpack a SessionItems instance from a Datastore entity.
+        /// Unpack a SessionEntity instance from a Datastore entity.
         /// </summary>
         /// <param name="id">The id to use if entity in null.</param>
         /// <param name="entity">The datastore entity.</param>
         /// <returns>A SessionItems instance.  Never returns null.</returns>
-        private SessionItems SessionItemsFromEntity(string id, Entity entity)
+        private SessionEntity SessionFromEntity(string id, Entity entity)
         {
-            SessionItems sessionItems = new SessionItems();
+            SessionEntity sessionItems = new SessionEntity();
             sessionItems.Id = id;
             if (entity != null)
             {
@@ -467,15 +468,15 @@ namespace WebApp.Services
         }
 
         /// <summary>
-        /// Unpack a SessionLock from a Datastore entity.
+        /// Unpack a SessionLockEntity from a Datastore entity.
         /// </summary>
         /// <param name="entity">The datastore entity.</param>
         /// <returns>A SessionLock instance.  Returns null if entity is null.</returns>
-        private SessionLock SessionLockFromEntity(Entity entity)
+        private SessionLockEntity SessionLockFromEntity(Entity entity)
         {
             if (null == entity)
                 return null;
-            SessionLock sessionLock = new SessionLock();
+            SessionLockEntity sessionLock = new SessionLockEntity();
             sessionLock.Id = entity.Key.Path.First().Name;
             sessionLock.LockCount = (int)entity[LOCK_COUNT];
             sessionLock.DateLocked = (DateTime)entity[LOCK_DATE];

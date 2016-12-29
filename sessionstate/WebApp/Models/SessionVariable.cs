@@ -18,5 +18,7 @@ namespace WebApp.Models
     {
         public string Key { get; set; }
         public string Value { get; set; }
+        // When true, no page content is returned.
+        public bool? Silent { get; set; }
     }
 }

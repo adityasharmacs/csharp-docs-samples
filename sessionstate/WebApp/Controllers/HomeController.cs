@@ -54,14 +54,9 @@ namespace WebApp.Controllers
         {
             Session[svar.Key] = svar.Value;
             ViewBag.Keys = Session.Keys;
+            if (svar.Silent.HasValue && (bool)svar.Silent)
+                return new EmptyResult();
             return View();
-        }
-
-        [HttpPut]
-        public ActionResult S(string id, [System.Web.Http.FromBody]string value)
-        {
-            Session[id] = value;
-            return new EmptyResult();
         }
     }
 }
