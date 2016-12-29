@@ -14,18 +14,15 @@
 using CommandLine;
 using CommandLine.Text;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using System.Timers;
 
 namespace WebClient
 {
-    class Options
+    internal class Options
     {
         [Option('d', "delay", DefaultValue = 1000, HelpText = "Milliseconds to delay between page fetches.")]
         public int Delay { get; set; }
@@ -37,10 +34,10 @@ namespace WebClient
         public string BaseUri { get; set; }
     }
 
-    class Program
+    internal class Program
     {
         // Returns the average page fetch time.
-        static async Task<double> TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
+        private static async Task<double> TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
         {
             var handler = new HttpClientHandler()
             {
@@ -81,7 +78,7 @@ namespace WebClient
             return stopwatch.ElapsedMilliseconds / 60.0;
         }
 
-        static int Main(string[] args)
+        private static int Main(string[] args)
         {
             var options = new Options();
             var parsed = Parser.Default.ParseArguments(args, options);

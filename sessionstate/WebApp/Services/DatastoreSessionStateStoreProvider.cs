@@ -16,18 +16,13 @@ using Google.Api.Gax.Grpc;
 using Google.Cloud.Datastore.V1;
 using log4net;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
-using System.Web.Configuration;
 using System.Web.SessionState;
-using System.Xml;
 
 namespace WebApp.Services
 {
@@ -37,13 +32,13 @@ namespace WebApp.Services
     /// </summary>
     public class DatastoreSessionStateStoreProvider : SessionStateStoreProviderBase
     {
-        // Datastore limits writes to 1 per second per entity group.  
+        // Datastore limits writes to 1 per second per entity group.
         // Therefore, to implement a session that can be locked and unlocked in
         // under a second, we split the session into two independent Datastore
         // entities.
-        // SessionLock gets written to lock the session.  
+        // SessionLock gets written to lock the session.
         // SessionItems gets written to unlock the session.
-        // The session is locked when 
+        // The session is locked when
         //   SessionLock.LockCount > SessionItems.ReleaseCount.
         // Otherwise, the session is unlocked.
 
@@ -51,46 +46,53 @@ namespace WebApp.Services
         /// An entity stored in Datastore.
         /// Gets written to lock a session.
         /// </summary>
-        class SessionLock
+        private class SessionLock
         {
             /// <summary>
             /// The session id.
             /// </summary>
             public string Id;
+
             /// <summary>
             /// How many times has the session been locked?
             /// </summary>
             public int LockCount;
+
             /// <summary>
             /// When was the last time the session was locked?
             /// </summary>
             public DateTime DateLocked;
+
             /// <summary>
             /// When will the session expire?
             /// </summary>
             public DateTime ExpirationDate;
+
             /// <summary>
             /// After how many minutes will the session timeout?
             /// </summary>
             public int TimeOutInMinutes;
+
             /// <summary>
-            /// The serialized items.  This property is not stored as part of 
+            /// The serialized items.  This property is not stored as part of
             /// the SessionLock Datastore entity.
             /// </summary>
             public byte[] Items;
         };
 
-        class SessionItems
+        private class SessionItems
         {
             /// <summary>
             /// The session id.
             /// </summary>
             public string Id;
+
             /// <summary>
             /// The serialized items.
             public byte[] Items;
+
             /// <summary>
-            /// How many times has the lock been released?  
+            /// How many times has the lock been released?
             /// If ReleaseCount == LockCount, then the session is unlocked.
             /// </summary>
             public int ReleaseCount;
@@ -99,19 +101,22 @@ namespace WebApp.Services
         /// <summary>
         /// My connection to Google Cloud Datastore.
         /// </summary>
-        DatastoreDb _datastore;
-        KeyFactory _sessionKeyFactory, _lockKeyFactory;
-        ILog _log;
+        private DatastoreDb _datastore;
+
+        private KeyFactory _sessionKeyFactory, _lockKeyFactory;
+        private ILog _log;
+
         /// <summary>
         /// Only run one sweep task per process.
         /// </summary>
-        static Task _sweepTask;
-        static Object _sweepTaskLock = new object();
+        private static Task _sweepTask;
+
+        private static Object _sweepTaskLock = new object();
 
         /// <summary>
-        /// Property names and kind names for the datastore entities. 
+        /// Property names and kind names for the datastore entities.
         /// </summary>
-        const string
+        private const string
             EXPIRES = "expires",
             LOCK_DATE = "lockDate",
             LOCK_COUNT = "lockCount",
@@ -120,11 +125,11 @@ namespace WebApp.Services
             ITEMS = "items",
             SESSION_KIND = "Session",
             SESSION_LOCK_KIND = "SessionLock";
-        
+
         /// <summary>
         /// Retry Datastore operations when they fail.
         /// </summary>
-        readonly CallSettings _callSettings =
+        private readonly CallSettings _callSettings =
             CallSettings.FromCallTiming(CallTiming.FromRetry(new RetrySettings(
                 new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
                 new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
@@ -178,8 +183,8 @@ namespace WebApp.Services
             });
         }
 
-        public override SessionStateStoreData GetItem(HttpContext context, 
-            string id, out bool locked, out TimeSpan lockAge, 
+        public override SessionStateStoreData GetItem(HttpContext context,
+            string id, out bool locked, out TimeSpan lockAge,
             out object lockId, out SessionStateActions actions)
         {
             _log.DebugFormat("GetItem({0})", id);
@@ -197,12 +202,13 @@ namespace WebApp.Services
                 out lockId, out actions);
         }
 
-        public SessionStateStoreData GetItemImpl(bool exclusive, 
-            HttpContext context, string id, out bool locked, 
-            out TimeSpan lockAge, out object lockId, 
+        public SessionStateStoreData GetItemImpl(bool exclusive,
+            HttpContext context, string id, out bool locked,
+            out TimeSpan lockAge, out object lockId,
             out SessionStateActions actions)
         {
-            try { 
+            try
+            {
                 using (var transaction = _datastore.BeginTransaction(_callSettings))
                 {
                     // Look up both entities in datastore.
@@ -235,13 +241,13 @@ namespace WebApp.Services
                         // Lock the session.
                         sessionLock.LockCount = sessionItems.ReleaseCount + 1;
                         sessionLock.DateLocked = DateTime.UtcNow;
-                        sessionLock.ExpirationDate = 
+                        sessionLock.ExpirationDate =
                             DateTime.UtcNow.AddMinutes(sessionLock.TimeOutInMinutes);
                         transaction.Upsert(ToEntity(sessionLock));
                         transaction.Commit(_callSettings);
                         locked = true;
                     }
-                    return Deserialize(context, sessionItems.Items, 
+                    return Deserialize(context, sessionItems.Items,
                         sessionLock.TimeOutInMinutes);
                 }
             }
@@ -277,7 +283,6 @@ namespace WebApp.Services
                 }
             });
         }
-
 
         public override void RemoveItem(HttpContext context, string id, object lockIdObject,
             SessionStateStoreData item)
@@ -384,7 +389,7 @@ namespace WebApp.Services
         /// </summary>
         /// <param name="message">Print this message if an exception is thrown.</param>
         /// <param name="action">The action to exceute.</param>
-        void LogExceptions(string message, Action action)
+        private void LogExceptions(string message, Action action)
         {
             try
             {
@@ -400,7 +405,7 @@ namespace WebApp.Services
         /// <summary>
         /// Pack a SessionLock into a Datastore entity.
         /// </summary>
-        Entity ToEntity(SessionLock sessionLock)
+        private Entity ToEntity(SessionLock sessionLock)
         {
             var entity = new Entity();
             entity.Key = _lockKeyFactory.CreateKey(sessionLock.Id);
@@ -415,7 +420,7 @@ namespace WebApp.Services
         /// <summary>
         /// Pack a SessionItems into a Datastore entity.
         /// </summary>
-        Entity ToEntity(SessionItems sessionItems)
+        private Entity ToEntity(SessionItems sessionItems)
         {
             var entity = new Entity();
             entity.Key = _sessionKeyFactory.CreateKey(sessionItems.Id);
@@ -430,7 +435,7 @@ namespace WebApp.Services
         /// </summary>
         /// <param name="entity">A datastore entity.</param>
         /// <param name="properties">Property names to exclude from indexes.</param>
-        void ExcludeFromIndexes(Entity entity, params string[] properties)
+        private void ExcludeFromIndexes(Entity entity, params string[] properties)
         {
             foreach (string prop in properties)
             {
@@ -499,7 +504,7 @@ namespace WebApp.Services
         /// The main loop of a Task that periodically cleans up expired sessions.
         /// Never returns.
         /// </summary>
-        async Task SweepTaskMain()
+        private async Task SweepTaskMain()
         {
             var random = System.Security.Cryptography.RandomNumberGenerator.Create();
             var randomByte = new byte[1];
@@ -588,4 +593,3 @@ namespace WebApp.Services
         }
     }
 }
- 
