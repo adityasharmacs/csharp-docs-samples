@@ -216,7 +216,6 @@
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\HomeController.cs" />
-    <Compile Include="Controllers\UnusedController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -270,7 +269,6 @@
     <Content Include="fonts\glyphicons-halflings-regular.ttf" />
     <Content Include="fonts\glyphicons-halflings-regular.eot" />
     <Content Include="packages.config" />
-    <None Include="Project_Readme.html" />
     <Content Include="Scripts\jquery-1.10.2.min.map" />
   </ItemGroup>
   <PropertyGroup>
