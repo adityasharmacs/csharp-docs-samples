@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Datastore.V1;
@@ -109,9 +110,9 @@ namespace WebApp.Services
         /// <summary>
         /// Only run one sweep task per process.
         /// </summary>
-        private static Task _sweepTask;
+        private static Task s_sweepTask;
 
-        private static Object _sweepTaskLock = new object();
+        private static readonly Object s_sweepTaskLock = new object();
 
         /// <summary>
         /// Property names and kind names for the datastore entities.
@@ -148,11 +149,11 @@ namespace WebApp.Services
             _datastore = DatastoreDb.Create(projectId, applicationName);
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
             _lockKeyFactory = _datastore.CreateKeyFactory(SESSION_LOCK_KIND);
-            lock (_sweepTaskLock)
+            lock (s_sweepTaskLock)
             {
-                if (_sweepTask == null)
+                if (s_sweepTask == null)
                 {
-                    _sweepTask = Task.Run(() => SweepTaskMain());
+                    s_sweepTask = Task.Run(() => SweepTaskMain());
                 }
             }
         }
