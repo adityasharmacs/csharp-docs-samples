@@ -621,7 +621,7 @@ namespace WebApp.Services
             _stopWatch.Stop();
             if (_stopWatch.ElapsedMilliseconds >= _millisecondsTooLong)
             {
-                _log.WarnFormat("{0} took {1} milliseconds!", 
+                _log.WarnFormat("{0} took {1} milliseconds!",
                     _name, _stopWatch.ElapsedMilliseconds);
             }
         }
