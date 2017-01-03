@@ -93,7 +93,12 @@ namespace WebClient
                 {
                     var response = await client.GetAsync($"Home/S/{sessionVarId}");
                     var content = await response.Content.ReadAsStringAsync();
-                    Debug.Assert(content == sessionVars[sessionVarId]);
+                    if (content != sessionVars[sessionVarId])
+                    {
+                        Console.WriteLine("Expected to find {0} at Home/S/{1}.  Found {2}",
+                            sessionVars[sessionVarId], sessionVarId, content);
+                        Environment.Exit(-1);
+                    }
                 }
                 stopwatch.Stop();
             }
