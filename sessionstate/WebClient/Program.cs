@@ -34,6 +34,9 @@ namespace WebClient
 
         [Option('u', "baseUri", Required = true, HelpText = "The base url running the WebApp.")]
         public string BaseUri { get; set; }
+
+        [Option('s', "sizeMultiplier", DefaultValue = 40, HelpText = "Multiplier for session value size.")]
+        public int SizeMultiplier { get; set; }
     }
 
     internal class Program
@@ -51,7 +54,7 @@ namespace WebClient
         }
 
         // Returns the average page fetch time.
-        private static async Task<double> TaskMainAsync(Uri baseAddress, int delayInMilliseconds)
+        private static async Task<double> TaskMainAsync(Uri baseAddress, int delayInMilliseconds, int sizeMultiplier)
         {
             var handler = new HttpClientHandler()
             {
@@ -65,7 +68,7 @@ namespace WebClient
             // Add 10 session vars:
             for (int i = 0; i < sessionVars.Length; ++i)
             {
-                string content = new string((char)('A' + i), 40 * (i + 1));
+                string content = new string((char)('A' + i), sizeMultiplier * (i + 1));
                 sessionVars[i] = content;
                 stopwatch.Start();
                 await PutValueAsync(client, i, content);
@@ -77,24 +80,22 @@ namespace WebClient
             for (int i = 0; i < 50; ++i)
             {
                 await Task.Delay(delayInMilliseconds);
+                stopwatch.Start();
                 int sessionVarId = i % 10;
                 if (i % 3 == 0)
                 {
-                    string content = new string((char)(contentChar), 40 * (sessionVarId + 1));
+                    string content = new string((char)(contentChar), sizeMultiplier * (sessionVarId + 1));
                     sessionVars[sessionVarId] = content;
                     contentChar = contentChar == 'Z' ? 'A' : contentChar + 1;
-                    stopwatch.Start();
                     await PutValueAsync(client, sessionVarId, content);
-                    stopwatch.Stop();
                 }
                 else
                 {
-                    stopwatch.Start();
                     var response = await client.GetAsync($"Home/S/{sessionVarId}");
-                    stopwatch.Stop();
                     var content = await response.Content.ReadAsStringAsync();
                     Debug.Assert(content == sessionVars[sessionVarId]);
                 }
+                stopwatch.Stop();
             }
             return stopwatch.ElapsedMilliseconds / 60.0;
         }
@@ -115,7 +116,8 @@ namespace WebClient
             stopwatch.Start();
             for (int i = 0; i < tasks.Length; ++i)
             {
-                tasks[i] = Task.Run(async () => await TaskMainAsync(baseAddress, options.Delay));
+                tasks[i] = Task.Run(async () => await TaskMainAsync(baseAddress, 
+                    options.Delay, options.SizeMultiplier));
             }
             Task.WaitAll(tasks);
             stopwatch.Stop();
