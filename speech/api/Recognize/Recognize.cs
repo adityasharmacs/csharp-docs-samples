@@ -45,10 +45,34 @@ namespace GoogleCloudSamples
         }
         // [END speech_sync_recognize]
 
+        // [START speech_async_recognize]
+        static object AsyncRecognize(string filePath)
+        {
+            var speech = SpeechClient.Create();
+            var longOperation = speech.AsyncRecognize(new RecognitionConfig()
+            {
+                Encoding = RecognitionConfig.Types.AudioEncoding.Linear16,
+                SampleRate = 16000,
+            }, RecognitionAudio.FromFile(filePath));
+            longOperation = longOperation.PollUntilCompleted();
+            var response = longOperation.Result;
+            foreach (var result in response.Results)
+            {
+                foreach (var alternative in result.Alternatives)
+                {
+                    Console.WriteLine(alternative.Transcript);
+                }
+            }
+            return 0;
+        }
+        // [END speech_async_recognize]
+
         static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<SyncOptions>(args).MapResult(
+            Parser.Default.ParseArguments<
+                SyncOptions, AsyncOptions>(args).MapResult(
                 (SyncOptions opts) => SyncRecognize(opts.FilePath),
+                (AsyncOptions opts) => AsyncRecognize(opts.FilePath),
                 errs => 1);
         }
     }
