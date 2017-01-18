@@ -10,22 +10,23 @@ namespace GoogleCloudSamples
 {
     class Options
     {
-        [Option('a', "async", Default = false, HelpText =
-            "Make an asynchronous request", Required = false)]
-        public bool Async { get; set; }
-
-        [Option('m', "stream", Default = false, HelpText =
-            "Stream the request a few kilobytes at a time. Simulates audio"
-            + "arriving from a microphone.", Required = false)]
-        public bool Stream { get; set; }
-
-        [Value(0, HelpText = "A path to a sound file.", Required = true)]
+        [Value(0, HelpText = "A path to a sound file.  Encoding must be "
+            + "Linear16 with a sample rate of 16000.", Required = true)]
         public string FilePath { get; set; }
-
     }
+
+    [Verb("sync", HelpText = "Detects speech in an audio file.")]
+    class SyncOptions : Options { }
+
+    [Verb("async", HelpText = "Creates a job to detect speech in an audio "
+        + "file, and waits for the job to complete.")]
+    class AsyncOptions : Options { }
+
+
     class Recognize
     {
-        static void SyncRecognize(string filePath)
+        // [START speech_sync_recognize]
+        static object SyncRecognize(string filePath)
         {
             var speech = SpeechClient.Create();
             var response = speech.SyncRecognize(new RecognitionConfig()
@@ -40,13 +41,15 @@ namespace GoogleCloudSamples
                     Console.WriteLine(alternative.Transcript);
                 }
             }
+            return 0;
         }
-        
+        // [END speech_sync_recognize]
+
         static void Main(string[] args)
         {
-            var result = Parser.Default.ParseArguments<Options>(args);
-            var options = result.WithParsed<Options>()
-            SyncRecognize(args[0]);
+            Parser.Default.ParseArguments<SyncOptions>(args).MapResult(
+                (SyncOptions opts) => SyncRecognize(opts.FilePath),
+                errs => 1);
         }
     }
 }
