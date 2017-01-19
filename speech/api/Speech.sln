@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Recognize", "Recognize\Reco
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickStart", "QuickStart\QuickStart.csproj", "{FCC55D41-1D56-4EF6-801D-6E0BFD0E3086}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpeechTest", "SpeechTest\SpeechTest.csproj", "{84BAD046-BA54-43B7-846C-1CE1DCB46AE5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +50,10 @@ Global
 		{FCC55D41-1D56-4EF6-801D-6E0BFD0E3086}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FCC55D41-1D56-4EF6-801D-6E0BFD0E3086}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FCC55D41-1D56-4EF6-801D-6E0BFD0E3086}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84BAD046-BA54-43B7-846C-1CE1DCB46AE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84BAD046-BA54-43B7-846C-1CE1DCB46AE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84BAD046-BA54-43B7-846C-1CE1DCB46AE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84BAD046-BA54-43B7-846C-1CE1DCB46AE5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

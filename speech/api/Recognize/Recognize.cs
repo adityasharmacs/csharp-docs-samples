@@ -34,7 +34,7 @@ namespace GoogleCloudSamples
     class AsyncOptions : Options { }
 
 
-    class Recognize
+    public class Recognize
     {
         // [START speech_sync_recognize]
         static object SyncRecognize(string filePath)
@@ -78,7 +78,7 @@ namespace GoogleCloudSamples
         }
         // [END speech_async_recognize]
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             Parser.Default.ParseArguments<
                 SyncOptions, AsyncOptions>(args).MapResult(
