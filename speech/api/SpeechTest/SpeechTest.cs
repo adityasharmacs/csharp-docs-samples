@@ -13,12 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 using Xunit;
 
 namespace GoogleCloudSamples
 {
     public class QuickStartTest
-    {        
+    {
         readonly CommandLineRunner _quickStart = new CommandLineRunner()
         {
             VoidMain = QuickStart.Main,

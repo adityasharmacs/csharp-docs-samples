@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 using CommandLine;
 using Google.Cloud.Speech.V1Beta1;
 using System;

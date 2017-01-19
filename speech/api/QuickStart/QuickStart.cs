@@ -15,6 +15,7 @@
  */
 
 // [START speech_quickstart]
+
 using Google.Cloud.Speech.V1Beta1;
 // [END speech_quickstart]
 using System;
