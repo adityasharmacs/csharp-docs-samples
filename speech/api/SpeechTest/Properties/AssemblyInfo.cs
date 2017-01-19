@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("SpeechTest")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Google")]
 [assembly: AssemblyProduct("SpeechTest")]
-[assembly: AssemblyCopyright("Copyright \u00A9  2017")]
+[assembly: AssemblyCopyright("Copyright \u00A9 Google Inc. 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
