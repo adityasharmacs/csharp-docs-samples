@@ -12,16 +12,8 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+Import-Module -DisableNameChecking ..\..\..\BuildTools.psm1
+
 dotnet restore
 dotnet build
-
-$url = 'http://localhost:5556'
-$job = Start-Job -ArgumentList (Get-Location), $url -ScriptBlock { 
-  Set-Location $args[0]
-  $env:ASPNETCORE_URLS = $args[1]
-  dotnet run
-}
-casperjs test.js $url
-Stop-Job $job
-Receive-Job $job
-Remove-Job $job
+Run-KestrelTest 5557

@@ -548,6 +548,46 @@ function Run-IISExpressTest($SiteName = '', $ApplicationhostConfig = '',
 
 ##############################################################################
 #.SYNOPSIS
+# Run the website, then run the test javascript file with casper.
+#
+#.PARAMETER PortNumber
+# The port number to run the kestrel server on.
+#
+#.DESCRIPTION
+# Throws an exception if the test fails.
+#
+##############################################################################
+function Run-KestrelTest([Parameter(mandatory=$true)]$PortNumber, $TestJs = 'test.js', [switch]$LeaveRunning = $false) {
+    $url = "http://localhost:$PortNumber"
+    $job = Start-Job -ArgumentList (Get-Location), $url -ScriptBlock { 
+        Set-Location $args[0]
+        $env:ASPNETCORE_URLS = $args[1]
+        dotnet run
+    }
+    Try
+    {
+        Start-Sleep -Seconds 2  # Wait for web process to start up.
+        casperjs $TestJs $url
+        if ($LASTEXITCODE) {
+            # Try again
+            casperjs $TestJs $url
+            if ($LASTEXITCODE) {
+                throw "Casperjs failed with error code $LASTEXITCODE"
+            }
+        }
+    }
+    Finally
+    {
+        if (!$LeaveRunning) {
+            Stop-Job $job
+            Receive-Job $job
+            Remove-Job $job
+        }
+    }
+}
+
+##############################################################################
+#.SYNOPSIS
 # Migrate the database.
 #
 #.DESCRIPTION
