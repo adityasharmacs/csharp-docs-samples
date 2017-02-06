@@ -16,5 +16,5 @@
 
 dotnet restore
 dotnet publish
-Copy-Item .\app.yaml, .\Dockerfile .\bin\debug\netcoreapp1.0\publish
+Copy-Item .\appengine\app.yaml, .\appengine\Dockerfile .\bin\debug\netcoreapp1.0\publish
 gcloud app deploy --quiet --promote .\bin\debug\netcoreapp1.0\publish\app.yaml
