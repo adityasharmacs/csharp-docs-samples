@@ -566,15 +566,7 @@ function Run-KestrelTest([Parameter(mandatory=$true)]$PortNumber, $TestJs = 'tes
     }
     Try
     {
-        Start-Sleep -Seconds 2  # Wait for web process to start up.
-        casperjs $TestJs $url
-        if ($LASTEXITCODE) {
-            # Try again
-            casperjs $TestJs $url
-            if ($LASTEXITCODE) {
-                throw "Casperjs failed with error code $LASTEXITCODE"
-            }
-        }
+        Run-CasperJs $TestJs, $Url
     }
     Finally
     {
@@ -584,6 +576,45 @@ function Run-KestrelTest([Parameter(mandatory=$true)]$PortNumber, $TestJs = 'tes
             Remove-Job $job
         }
     }
+}
+
+function Run-CasperJs($TestJs='test.js', $Url) {
+    Start-Sleep -Seconds 2  # Wait for web process to start up.
+    casperjs $TestJs $Url
+    if ($LASTEXITCODE) {
+        # Try again
+        Start-Sleep -Seconds 2  # Wait for web process to start up.
+        casperjs $TestJs $Url
+        if ($LASTEXITCODE) {
+            throw "Casperjs failed with error code $LASTEXITCODE"
+        }
+    }
+}
+
+##############################################################################
+#.SYNOPSIS
+# Deploy a dotnet core application to appengine and test it.
+#
+#.DESCRIPTION
+# Assumes the app was already build with "dotnet publish."
+# Assumes there is a subdirectory called appengine containing app.yaml and Dockerfile.
+#
+#.PARAMETER DllName
+# The name of the built binary.  Defaults to the current directory name.
+##############################################################################
+function Deploy-CasperJsTest($testJs ='test.js') {
+    Copy-Item .\appengine\app.yaml, .\appengine\Dockerfile .\bin\debug\netcoreapp1.0\publish
+    while ($true) {
+        gcloud app deploy --quiet --no-promote -v deploytest .\bin\debug\netcoreapp1.0\publish\app.yaml
+        if ($LASTEXITCODE -eq 0) {
+            break
+        }
+        if (++$deployCount > 2) {
+            throw "gcloud app deploy failed with exit code $LASTEXITCODE"
+        }
+    }
+    gcloud app describe | where {$_ -match 'defaultHostName:\s+(\S+)' }
+    Run-CasperJs $testJs ("https://deploytest-dot-" + $matches[1])
 }
 
 ##############################################################################

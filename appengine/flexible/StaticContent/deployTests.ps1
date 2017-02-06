@@ -12,9 +12,8 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-# Import-Module -DisableNameChecking ..\..\..\BuildTools.psm1
+Import-Module -DisableNameChecking ..\..\..\BuildTools.psm1
 
 dotnet restore
 dotnet publish
-Copy-Item .\appengine\app.yaml, .\appengine\Dockerfile .\bin\debug\netcoreapp1.0\publish
-gcloud app deploy --quiet --promote .\bin\debug\netcoreapp1.0\publish\app.yaml
+Deploy-CasperJsTest
