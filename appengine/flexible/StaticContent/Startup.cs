@@ -33,8 +33,10 @@ namespace StaticContent
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole();
+            // [START staticfiles]
             app.UseDefaultFiles();
             app.UseStaticFiles();
+            // [END staticfiles]
 
             if (env.IsDevelopment())
             {
