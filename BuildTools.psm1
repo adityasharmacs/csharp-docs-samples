@@ -311,8 +311,7 @@ function UpFind-File([string[]]$Masks = '*')
 #.EXAMPLE
 # Run-Tests
 ##############################################################################
-function Run-TestScripts
-{
+function Run-TestScripts($TimeoutSeconds=300) {
     $scripts = When-Empty -ArgList ($input + $args) -ScriptBlock { Find-Files -Masks '*runtests*.ps1' } | Get-Item
     $rootDir = pwd
     # Keep running lists of successes and failures.
@@ -335,7 +334,7 @@ function Run-TestScripts
                     throw "FAILED with exit code $LASTEXITCODE"
                 }
             }
-            if (Wait-Job $job -Timeout 300) {
+            if (Wait-Job $job -Timeout $TimeoutSeconds) {
                 Receive-Job $job
                 $jobState = $job.State
             } else {
