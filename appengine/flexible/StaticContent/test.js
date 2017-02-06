@@ -18,9 +18,10 @@ var host = casper.cli.args[0];
 
 casper.start(host + '/', function (response) {
     this.test.assertEquals(200, response.status);
+    this.test.assertSelectorHasText('title', 'Hello Static World');
 });
 
 casper.run(function () {
-    this.test.done(1);
+    this.test.done(2);
     this.test.renderResults(true);
 });
