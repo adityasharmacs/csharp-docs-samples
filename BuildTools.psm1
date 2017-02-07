@@ -603,7 +603,7 @@ function Run-CasperJs($TestJs='test.js', $Url) {
 # The name of the built binary.  Defaults to the current directory name.
 ##############################################################################
 function Deploy-CasperJsTest($testJs ='test.js') {
-    Copy-Item .\appengine\app.yaml, .\appengine\Dockerfile .\bin\debug\netcoreapp1.0\publish
+    Copy-Item .\appengine\*.yaml, .\appengine\Dockerfile .\bin\debug\netcoreapp1.0\publish
     while ($true) {
         gcloud app deploy --quiet --no-promote -v deploytest .\bin\debug\netcoreapp1.0\publish\app.yaml
         if ($LASTEXITCODE -eq 0) {
