@@ -1,0 +1,5 @@
+﻿runtime: custom
+env: flex
+
+env_variables:
+    GOOGLE_PROJECT_ID: YOUR-PROJECT-ID
