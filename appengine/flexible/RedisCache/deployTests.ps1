@@ -16,4 +16,8 @@ Import-Module -DisableNameChecking ..\..\..\BuildTools.psm1
 
 dotnet restore
 dotnet publish
-Deploy-CasperJsTest
+BackupAndEdit-TextFile "app.yaml" `
+    @{"your-redis-config-string" = $env:REDIS_CONFIG} `
+{
+    Deploy-CasperJsTest
+}
