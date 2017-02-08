@@ -15,14 +15,37 @@ namespace RedisCache.Controllers
         {
             _cache = cache;
         }
-        public IActionResult Index()
+
+        [HttpGet]
+        [HttpPost]
+        public IActionResult Index(WhoForm whoForm)
         {
             var model = new WhoCount()
             {
                 Who = _cache.GetString("who") ?? "",
                 Count = int.Parse(_cache.GetString("count") ?? "0"),
             };
+            if (ModelState.IsValid && HttpContext.Request.Method.ToUpper() == "POST")
+            {
+                model.Who = whoForm.Who;
+                model.Count += 1;
+                _cache.SetString("who", model.Who ?? "");
+                _cache.SetString("count", (model.Count).ToString());
+            }
             return View(model);
+        }
+
+        [HttpPost]
+        public IActionResult Reset()
+        {
+            var model = new WhoCount()
+            {
+                Who = "",
+                Count = 0,
+            };
+            _cache.SetString("who", "");
+            _cache.SetString("count", "0");
+            return View("/Views/Home/Index.cshtml", model);
         }
 
         public IActionResult Error()
