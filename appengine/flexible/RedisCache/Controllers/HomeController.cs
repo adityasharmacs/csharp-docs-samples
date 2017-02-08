@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
+using RedisCache.ViewModels;
 
 namespace RedisCache.Controllers
 {
@@ -16,22 +17,12 @@ namespace RedisCache.Controllers
         }
         public IActionResult Index()
         {
-            _cache.Get("chickens");
-            return View();
-        }
-
-        public IActionResult About()
-        {
-            ViewData["Message"] = "Your application description page.";
-
-            return View();
-        }
-
-        public IActionResult Contact()
-        {
-            ViewData["Message"] = "Your contact page.";
-
-            return View();
+            var model = new WhoCount()
+            {
+                Who = _cache.GetString("who") ?? "",
+                Count = int.Parse(_cache.GetString("count") ?? "0"),
+            };
+            return View(model);
         }
 
         public IActionResult Error()
