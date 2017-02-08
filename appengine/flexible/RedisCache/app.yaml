@@ -2,4 +2,4 @@
 env: flex
 
 env_variables:
-	REDIS_CONFIG: your-redis-config-string
+    REDIS_CONFIG: your-redis-config-string
