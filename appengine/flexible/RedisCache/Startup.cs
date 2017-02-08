@@ -19,6 +19,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Net;
 
 namespace RedisCache
 {
@@ -44,10 +46,37 @@ namespace RedisCache
             // [BEGIN redis_startup]
             services.AddDistributedRedisCache(options =>
             {
-                options.Configuration = Configuration["REDIS_CONFIG"] ?? "localhost:6379";
+                options.Configuration = WorkAroundIssue463(Configuration["REDIS_CONFIG"] ?? "localhost:6379");
                 options.InstanceName = "master";
             });
             // [END redis_startup]
+        }
+
+        /// <summary>
+        /// See https://github.com/StackExchange/StackExchange.Redis/issues/463
+        /// When that issue is fixed, this function is no longer necessary.
+        /// </summary>
+        string WorkAroundIssue463(string redisConfig)
+        {
+            // Resolve all the dns names to IP addresses.
+            string[] chunks = redisConfig.Split(',');
+            var newChunks = chunks.Select(chunk =>
+            {
+                if (chunk.Contains('='))
+                {
+                    return chunk;
+                }
+                string[] hostport = chunk.Split(':');
+                string port = hostport.Length > 1 ? ":" + hostport[1] : "";
+                string host = hostport.Length > 1 ? hostport[0] : chunk;
+                var addresses = Dns.GetHostAddressesAsync(host).Result;
+                if (addresses.Count() == 0)
+                {
+                    return chunk;
+                }
+                return string.Join(",", addresses.Select(x => x.MapToIPv4().ToString() + port));
+            });
+            return string.Join(",", newChunks);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

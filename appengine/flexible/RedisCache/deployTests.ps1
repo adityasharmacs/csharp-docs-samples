@@ -19,5 +19,6 @@ dotnet publish
 BackupAndEdit-TextFile "app.yaml" `
     @{"your-redis-config-string" = $env:REDIS_CONFIG} `
 {
+    Get-Content app.yaml
     Deploy-CasperJsTest
 }

@@ -12,7 +12,6 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "REDIS_CONFIG": "pub-redis-13007.us-central1-1-1.gce.garantiadata.com:13007",
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
