@@ -16,7 +16,12 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
+using Newtonsoft.Json;
 using SendGrid.ViewModels;
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace SendGrid.Controllers
 {
@@ -28,26 +33,54 @@ namespace SendGrid.Controllers
             _cache = cache;
         }
 
-        // [BEGIN redis_cache]
-        [HttpGet]
         [HttpPost]
-        public IActionResult Index(WhoForm whoForm)
+        public async Task<IActionResult> Index(SendForm sendForm)
         {
-            var model = new WhoCount()
+            var model = new HomeIndex();
+            if (ModelState.IsValid)
             {
-                Who = _cache.GetString("who") ?? "",
-                Count = int.Parse(_cache.GetString("count") ?? "0"),
-            };
-            if (ModelState.IsValid && HttpContext.Request.Method.ToUpper() == "POST")
-            {
-                model.Who = whoForm.Who;
-                model.Count += 1;
-                _cache.SetString("who", model.Who ?? "");
-                _cache.SetString("count", (model.Count).ToString());
+                var response = await CallSendGrid(sendForm.Recipient);
             }
             return View(model);
         }
-        // [END redis_cache]
+
+        [HttpGet]
+        public IActionResult Index() => View(new HomeIndex());
+
+
+
+        Task<HttpResponseMessage> CallSendGrid(string recipient)
+        {
+            var request = new
+            {
+                personalizations = new
+                {
+                    to = new[]
+                    {
+                        new {email = recipient}
+                    },
+                    subject = "Hello World!"
+                },
+                from = new
+                {
+                    email = "alice@example.com"
+                },
+                content = new[]
+                {
+                    new {
+                        type = "text/plain",
+                        value = "Hello, World!"
+                    }
+                }
+            };
+            HttpClient sendgrid3 = new HttpClient()
+            {
+                BaseAddress = new Uri("https://api.sendgrid.com/v3")
+            };
+            return sendgrid3.PostAsync("mail/send",
+                new StringContent(JsonConvert.SerializeObject(request)));
+        }
+
 
         [HttpPost]
         public IActionResult Reset()
