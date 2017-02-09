@@ -17,8 +17,7 @@ Import-Module -DisableNameChecking ..\..\..\BuildTools.psm1
 dotnet restore
 dotnet publish
 BackupAndEdit-TextFile "app.yaml" `
-    @{"your-redis-config-string" = $env:REDIS_CONFIG} `
+    @{"your-sendgrid-api-key" = $env:SENDGRID_API_KEY} `
 {
-    Get-Content app.yaml
     Deploy-CasperJsTest
 }

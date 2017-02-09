@@ -20,36 +20,18 @@ currentCount = 0;
 
 casper.start(host + '/', function (response) {
     console.log('Starting ' + host + '/');
-    this.test.assertSelectorHasText('H1', 'Redis Incrementer Sample');
-    currentCount = parseInt(this.fetchText("#CurrentCount"), 10);
-    console.log("Current count is " + currentCount);
-    this.fill('#WhoForm', {
-        'Who': 'test.js',
+    this.test.assertSelectorHasText('H1', 'SendGrid Sample');
+    this.test.assertSelectorHasText('body', 'greeting');
+    this.fill('#SendForm', {
+        'Recipient': 'bob@example.com',
     }, false);
-    console.log("Filled form.");
+    console.log('Filled form.');
 });
 
 casper.thenClick('#Submit', function (response) {
     console.log('Submitted form.');
     this.test.assertEquals(200, response.status);
-    this.test.assertSelectorHasText('#LastIncrementedBy', 'test.js');
-    this.test.assertSelectorHasText('#CurrentCount', currentCount + 1);
-    this.fill('#WhoForm', {
-        'Who': 'anothertest.js',
-    }, false);
-    console.log("Filled another form.");
-});
-
-casper.thenClick('#Submit', function (response) {
-    console.log('Submitted form.');
-    this.test.assertEquals(200, response.status);
-    this.test.assertSelectorHasText('#LastIncrementedBy', 'anothertest.js');
-});
-
-casper.thenClick('#Reset', function (response) {
-    console.log('Clicked Reset.');
-    this.test.assertEquals(200, response.status);
-    this.test.assertSelectorHasText('#CurrentCount', '0');
+    this.test.assertSelectorHasText('body', 'delivered');
 });
 
 casper.run(function () {
