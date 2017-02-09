@@ -27,39 +27,32 @@ namespace SendGrid.Controllers
 {
     public class HomeController : Controller
     {
-        private IDistributedCache _cache;
-        public HomeController(IDistributedCache cache)
-        {
-            _cache = cache;
-        }
-
+        [HttpGet]
         [HttpPost]
         public async Task<IActionResult> Index(SendForm sendForm)
         {
             var model = new HomeIndex();
-            if (ModelState.IsValid)
+            if (ModelState.IsValid && HttpContext.Request.Method.ToUpper() == "POST")
             {
-                var response = await CallSendGrid(sendForm.Recipient);
+                model.Recipient = sendForm.Recipient ?? "";
+                model.sendGridResponse = await CallSendGrid(sendForm.Recipient);
             }
             return View(model);
         }
-
-        [HttpGet]
-        public IActionResult Index() => View(new HomeIndex());
-
 
 
         Task<HttpResponseMessage> CallSendGrid(string recipient)
         {
             var request = new
             {
-                personalizations = new
-                {
-                    to = new[]
-                    {
-                        new {email = recipient}
-                    },
-                    subject = "Hello World!"
+                personalizations = new[] {
+                    new {
+                        to = new[]
+                        {
+                            new {email = recipient}
+                        },
+                        subject = "Hello World!"
+                    }
                 },
                 from = new
                 {
@@ -73,26 +66,13 @@ namespace SendGrid.Controllers
                     }
                 }
             };
-            HttpClient sendgrid3 = new HttpClient()
-            {
-                BaseAddress = new Uri("https://api.sendgrid.com/v3")
-            };
-            return sendgrid3.PostAsync("mail/send",
-                new StringContent(JsonConvert.SerializeObject(request)));
-        }
-
-
-        [HttpPost]
-        public IActionResult Reset()
-        {
-            var model = new WhoCount()
-            {
-                Who = "",
-                Count = 0,
-            };
-            _cache.SetString("who", "");
-            _cache.SetString("count", "0");
-            return View("/Views/Home/Index.cshtml", model);
+            var sendgridApiKey = @"";
+            HttpClient sendgrid3 = new HttpClient();
+            sendgrid3.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", sendgridApiKey);
+            string jsonRequest = JsonConvert.SerializeObject(request);
+            return sendgrid3.PostAsync("https://api.sendgrid.com/v3/mail/send",
+                new StringContent(jsonRequest, System.Text.Encoding.UTF8, "application/json"));
         }
 
         public IActionResult Error()
