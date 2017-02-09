@@ -15,7 +15,6 @@
  */
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 using SendGrid.ViewModels;
 using System;
@@ -27,12 +26,23 @@ namespace SendGrid.Controllers
 {
     public class HomeController : Controller
     {
+        string _sendgridApiKey;
+        public HomeController(SendGridApiKey key)
+        {
+            _sendgridApiKey = key.Key;
+        }
+
         [HttpGet]
         [HttpPost]
         public async Task<IActionResult> Index(SendForm sendForm)
         {
             var model = new HomeIndex();
-            if (ModelState.IsValid && HttpContext.Request.Method.ToUpper() == "POST")
+            if (string.IsNullOrEmpty(_sendgridApiKey) ||
+                "your-sendgrid-api-key" == _sendgridApiKey)
+            {
+                model.MissingApiKey = true;
+            }
+            else if (ModelState.IsValid && HttpContext.Request.Method.ToUpper() == "POST")
             {
                 model.Recipient = sendForm.Recipient ?? "";
                 model.sendGridResponse = await CallSendGrid(sendForm.Recipient);
@@ -40,9 +50,15 @@ namespace SendGrid.Controllers
             return View(model);
         }
 
-
+        // [BEGIN sendgrid]
         Task<HttpResponseMessage> CallSendGrid(string recipient)
         {
+            // As of 2017-02-09, the sendgrid Nuget package is not compatible
+            // with .net core.  So, this code follows the web api spec:
+            // https://sendgrid.com/docs/API_Reference/Web_API_v3/Mail/index.html
+            // If you're using more sendgrid features, consider using swagger
+            // to generate a client from:
+            // https://github.com/sendgrid/sendgrid-oai
             var request = new
             {
                 personalizations = new[] {
@@ -66,14 +82,16 @@ namespace SendGrid.Controllers
                     }
                 }
             };
-            var sendgridApiKey = @"";
             HttpClient sendgrid3 = new HttpClient();
             sendgrid3.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", sendgridApiKey);
+                new System.Net.Http.Headers.AuthenticationHeaderValue(
+                    "Bearer", _sendgridApiKey);
             string jsonRequest = JsonConvert.SerializeObject(request);
             return sendgrid3.PostAsync("https://api.sendgrid.com/v3/mail/send",
-                new StringContent(jsonRequest, System.Text.Encoding.UTF8, "application/json"));
+                new StringContent(jsonRequest, System.Text.Encoding.UTF8, 
+                "application/json"));
         }
+        // [END sendgrid]
 
         public IActionResult Error()
         {
