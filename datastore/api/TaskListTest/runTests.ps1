@@ -11,9 +11,9 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
-Import-Module ..\..\BuildTools.psm1 -DisableNameChecking
+Import-Module ..\..\..\BuildTools.psm1 -DisableNameChecking
 
-Build-Solution
-packages\xunit.runner.console.2.1.0\tools\xunit.console.exe `
-    .\TaskListTest\bin\Debug\DatastoreTest.dll `
+Build-Solution ..\Datastore.sln
+..\packages\xunit.runner.console.2.1.0\tools\xunit.console.exe `
+    .\bin\Debug\DatastoreTest.dll `
     -parallel none
