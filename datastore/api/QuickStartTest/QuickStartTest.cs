@@ -18,7 +18,7 @@ namespace GoogleCloudSamples
     public class QuickStartTest
     {
         [Fact]
-        void TestSomething()
+        void TestMain()
         {
             // Main() will throw an exception if something fails.
             QuickStart.Main(new string[] { });
