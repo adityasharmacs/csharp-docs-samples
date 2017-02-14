@@ -16,9 +16,9 @@ using Google.Cloud.Datastore.V1;
 
 namespace GoogleCloudSamples
 {
-    class QuickStart
+    public class QuickStart
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Your Google Cloud Platform project ID
             string projectId = "YOUR_PROJECT_ID";

@@ -11,11 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace GoogleCloudSamples
@@ -25,6 +20,8 @@ namespace GoogleCloudSamples
         [Fact]
         void TestSomething()
         {
+            // Main() will throw an exception if something fails.
+            QuickStart.Main(new string[] { });
             Assert.True(true);
         }
     }
