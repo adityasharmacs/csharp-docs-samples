@@ -87,5 +87,13 @@ namespace IO.Swagger.Controllers
         {
             return new ObjectResult(message);
         }
+
+        [HttpGet]
+        [Route("/_ah/health")]
+        public virtual IActionResult HealthCheck()
+        {
+            return new StatusCodeResult(200);
+        }
+
     }
 }
