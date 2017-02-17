@@ -3,7 +3,7 @@
 #
 param([string]$EchoUrl)
 
-$result = Invoke-WebRequest "$EchoUrl/echo" -Body "{'message': 'in a bottle'}" -Method POST -ContentType "application/json"
+$result = Invoke-WebRequest $EchoUrl -Body "{'message': 'in a bottle'}" -Method POST -ContentType "application/json"
 if ($result.StatusCode -ne 200) {
 	throw ("Bad status code" + $result.StatusCode)
 }

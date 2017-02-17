@@ -15,10 +15,10 @@
 Import-Module -DisableNameChecking ..\..\..\..\BuildTools.psm1
 
 dotnet restore
-$url="http://localhost:7412"
+$url = "http://localhost:7412"
 $job = Run-Kestrel($url)
 try {
-	.\Test.ps1 $url
+	.\Test.ps1 "$url/echo"
 } finally {
 	Stop-Job $job
 	Receive-Job $job
