@@ -550,7 +550,9 @@ function Run-IISExpressTest($SiteName = '', $ApplicationhostConfig = '',
 #.SYNOPSIS
 # Run the website.
 #
-# The url to serve.
+#.PARAMTER url
+# The partial url to serve.  It should contain the scheme and host.  For
+# example: https://localhost:2342
 #
 #.RETURNS
 # The job running kestrel.

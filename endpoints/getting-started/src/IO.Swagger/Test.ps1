@@ -1,6 +1,13 @@
+##############################################################################
+#.SYNOPSIS
+# Confirms that a given url echos json.
 #
-# Test.ps1
+#.DESCRIPTION
+# Throws an exception if a test fails.
 #
+#.PARAMETER EchoUrl
+# The full url to test.
+##############################################################################
 param([string]$EchoUrl)
 
 $result = Invoke-WebRequest $EchoUrl -Body "{'message': 'in a bottle'}" -Method POST -ContentType "application/json"
