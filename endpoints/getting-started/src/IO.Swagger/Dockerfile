@@ -1,12 +1,6 @@
-FROM microsoft/dotnet:latest
-
-ENV DOTNET_CLI_TELEMETRY_OPTOUT 1
-
-RUN mkdir -p /app/IO.Swagger
-COPY . /app/IO.Swagger
-WORKDIR /app/IO.Swagger
-
-EXPOSE 5000/tcp
-
-RUN ["dotnet", "restore"]
-ENTRYPOINT ["dotnet", "run", "-p", "project.json", "web"]
+FROM b.gcr.io/aspnet-docker/aspnet:1.0.3
+COPY . /app
+WORKDIR /app
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://*:8080
+ENTRYPOINT ["dotnet", "IO.Swagger.dll"]
