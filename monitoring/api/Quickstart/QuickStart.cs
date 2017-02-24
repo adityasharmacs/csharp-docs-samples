@@ -27,7 +27,7 @@ namespace GoogleCloudSamples
         public static void Main(string[] args)
         {
             // Your Google Cloud Platform project ID.
-            string projectId = "bookshelf-dotnet";
+            string projectId = "YOUR-PROJECT-ID";
 
             // Create client.
             MetricServiceClient metricServiceClient = MetricServiceClient.Create();
