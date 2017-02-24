@@ -62,16 +62,20 @@ namespace GoogleCloudSamples
 
         }
 
-        [Fact(Skip = "Todo")]
+        [Fact]
         public void TestCreateCustomMetric()
         {
-
+            var output = _cloudMonitoring.Run("create", s_projectId);
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("metricKind", output.Stdout);
         }
 
-        [Fact(Skip = "Todo")]
+        [Fact]
         public void TestWriteTimeSeriesData()
         {
-
+            var output = _cloudMonitoring.Run("write", s_projectId);
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Pittsburgh", output.Stdout);
         }
 
         [Fact(Skip = "Todo")]
@@ -86,22 +90,34 @@ namespace GoogleCloudSamples
 
         }
 
-        [Fact(Skip = "Todo")]
+        [Fact]
         public void TestReadTimeSeriesData()
         {
-
+            _cloudMonitoring.Run("write", s_projectId);
+            var output = _cloudMonitoring.Run("read", s_projectId,
+                "custom.googleapis.com/stores/daily_sales");
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("123.45", output.Stdout);            
         }
 
-        [Fact(Skip = "Todo")]
+        [Fact]
         public void TestReadTimeSeriesDataFields()
         {
-
+            _cloudMonitoring.Run("write", s_projectId);
+            var output = _cloudMonitoring.Run("readFields", s_projectId,
+                "custom.googleapis.com/stores/daily_sales");
+            Assert.Equal(0, output.ExitCode);
+            Assert.DoesNotContain("123.45", output.Stdout);
+            Assert.Contains("Pittsburgh", output.Stdout);
         }
 
-        [Fact(Skip = "Todo")]
+        [Fact]
         public void TestReadTimeSeriesDataAggregated()
         {
-
+            var output = _cloudMonitoring.Run("readAggregate", s_projectId);
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Now:", output.Stdout);
+            Assert.Contains("10 min ago:", output.Stdout);
         }
     }
 
