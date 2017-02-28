@@ -38,3 +38,19 @@ else
         <p><a href="@Model.MediaLink">Direct link to content.</a></p>
     }
 }
+
+<table>
+    <thead><tr>Http Request Headers</tr></thead>
+    @{
+        IDictionary<string, StringValues> headers = ViewBag.Headers;
+        foreach (string key in headers.Keys)
+        {
+            string header = key;
+            foreach (string value in headers[key])
+            {
+                <tr><td>@header</td><td>@value</td></tr>
+                header = "@nbsp;";
+            }
+        }
+    }
+</table>

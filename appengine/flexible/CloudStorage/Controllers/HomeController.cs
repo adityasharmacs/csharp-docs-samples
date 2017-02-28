@@ -42,6 +42,8 @@ namespace CloudStorage.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
+            ViewBag.Headers = this.HttpContext.Request.Headers;
+
             var model = new HomeIndex();
             if (new string[] { null, "", "your-google-bucket-name" }
                 .Contains(_options.BucketName))
