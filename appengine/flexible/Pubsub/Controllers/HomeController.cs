@@ -15,8 +15,6 @@
  */
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Redis;
 using Microsoft.Extensions.Options;
 using Pubsub.ViewModels;
 
@@ -24,38 +22,25 @@ namespace Pubsub.Controllers
 {
     public class HomeController : Controller
     {
-        private IDistributedCache _cache;
-        private PubsubOptions _redisOptions;
-        public HomeController(IDistributedCache cache, IOptions<PubsubOptions> options)
+        readonly PubsubOptions _pubsubOptions;
+        readonly Google.Cloud.PubSub.V1.PublisherClient _publisher;
+        readonly Google.Cloud.PubSub.V1.SubscriberClient _subscriber;
+
+        public HomeController(IOptions<PubsubOptions> options,
+            Google.Cloud.PubSub.V1.PublisherClient publisher,
+            Google.Cloud.PubSub.V1.SubscriberClient subscriber)
         {
-            _cache = cache;
-            _redisOptions = options.Value;
+            _pubsubOptions = options.Value;
+            _publisher = publisher;
+            _subscriber = subscriber;
         }
 
-        // [BEGIN redis_cache]
         [HttpGet]
         [HttpPost]
         public IActionResult Index(WhoForm whoForm)
         {
-            if (_redisOptions == null || string.IsNullOrEmpty(_redisOptions.Configuration))
-            {
-                return View(new WhoCount() { MissingRedisEndpoint = true });
-            }
-            var model = new WhoCount()
-            {
-                Who = _cache.GetString("who") ?? "",
-                Count = int.Parse(_cache.GetString("count") ?? "0"),
-            };
-            if (ModelState.IsValid && HttpContext.Request.Method.ToUpper() == "POST")
-            {
-                model.Who = whoForm.Who;
-                model.Count += 1;
-                _cache.SetString("who", model.Who ?? "");
-                _cache.SetString("count", (model.Count).ToString());
-            }
-            return View(model);
+            return View(new WhoCount() { MissingRedisEndpoint = true });
         }
-        // [END redis_cache]
 
         [HttpPost]
         public IActionResult Reset()
@@ -65,8 +50,6 @@ namespace Pubsub.Controllers
                 Who = "",
                 Count = 0,
             };
-            _cache.SetString("who", "");
-            _cache.SetString("count", "0");
             return View("/Views/Home/Index.cshtml", model);
         }
 

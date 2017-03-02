@@ -16,11 +16,11 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Redis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 
@@ -44,44 +44,14 @@ namespace Pubsub
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
+            services.AddOptions();
+            services.Configure<PubsubOptions>(
+                Configuration.GetSection("Pubsub"));
             services.AddMvc();
-            string redisEndpoint = Configuration["RedisEndpoint"];
-            redisEndpoint = new string[] { null, "", "your-redis-endpoint" }.Contains(redisEndpoint) ?
-                "" : WorkAroundIssue463(redisEndpoint);
-            // [BEGIN redis_startup]
-            services.AddDistributedPubsub(options =>
-            {
-                options.Configuration = redisEndpoint;
-                options.InstanceName = "master";
-            });
-            // [END redis_startup]
-        }
-
-        /// <summary>
-        /// See https://github.com/StackExchange/StackExchange.Redis/issues/463
-        /// When that issue is fixed, this function is no longer necessary.
-        /// </summary>
-        string WorkAroundIssue463(string redisConfig)
-        {
-            // Resolve all the dns names to IP addresses.
-            string[] chunks = redisConfig.Split(',');
-            var newChunks = chunks.Select(chunk =>
-            {
-                if (chunk.Contains('='))
-                {
-                    return chunk;
-                }
-                string[] hostport = chunk.Split(':');
-                string port = hostport.Length > 1 ? ":" + hostport[1] : "";
-                string host = hostport.Length > 1 ? hostport[0] : chunk;
-                var addresses = Dns.GetHostAddressesAsync(host).Result;
-                if (addresses.Count() == 0)
-                {
-                    return chunk;
-                }
-                return string.Join(",", addresses.Select(x => x.MapToIPv4().ToString() + port));
-            });
-            return string.Join(",", newChunks);
+            services.AddSingleton((provider) =>
+                Google.Cloud.PubSub.V1.PublisherClient.Create());
+            services.AddSingleton((provider) =>
+                Google.Cloud.PubSub.V1.SubscriberClient.Create());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -108,6 +78,40 @@ namespace Pubsub
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            CreateTopicAndSubscription(app.ApplicationServices);
+        }
+
+        void CreateTopicAndSubscription(System.IServiceProvider provider)
+        {
+            var options = provider.GetService<IOptions<PubsubOptions>>().Value;
+            Debug.Assert(options.ProjectId != "your-project-id", 
+                "Set ProjectId to your Google project id in appsettings.json");
+            var topicName = new Google.Cloud.PubSub.V1.TopicName(
+                    options.ProjectId, options.TopicId);
+            try
+            {
+                provider.GetService<Google.Cloud.PubSub.V1.PublisherClient>().CreateTopic(topicName);
+            }
+            catch (Grpc.Core.RpcException e) when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
+            {
+            }
+            var subscriptionName = new Google.Cloud.PubSub.V1.SubscriptionName(
+                    options.ProjectId, options.SubscriptionId);
+            var pushConfig = new Google.Cloud.PubSub.V1.PushConfig()
+            {
+                PushEndpoint = $"https://{options.ProjectId}.appspot.com/Push"
+            };
+            try
+            {
+                provider.GetService<Google.Cloud.PubSub.V1.SubscriberClient>()
+                    .CreateSubscription(subscriptionName, topicName, pushConfig, 20);
+            }
+            catch (Grpc.Core.RpcException e) when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
+            {
+                provider.GetService<Google.Cloud.PubSub.V1.SubscriberClient>()
+                    .ModifyPushConfig(subscriptionName, pushConfig);
+            }
         }
     }
 }
