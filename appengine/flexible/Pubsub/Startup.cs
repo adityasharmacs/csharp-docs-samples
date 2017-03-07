@@ -48,10 +48,6 @@ namespace Pubsub
             services.Configure<PubsubOptions>(
                 Configuration.GetSection("Pubsub"));
             services.AddMvc();
-            services.AddSingleton((provider) =>
-                Google.Cloud.PubSub.V1.PublisherClient.Create());
-            services.AddSingleton((provider) =>
-                Google.Cloud.PubSub.V1.SubscriberClient.Create());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -78,40 +74,6 @@ namespace Pubsub
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
-
-            CreateTopicAndSubscription(app.ApplicationServices);
-        }
-
-        void CreateTopicAndSubscription(System.IServiceProvider provider)
-        {
-            var options = provider.GetService<IOptions<PubsubOptions>>().Value;
-            Debug.Assert(options.ProjectId != "your-project-id", 
-                "Set ProjectId to your Google project id in appsettings.json");
-            var topicName = new Google.Cloud.PubSub.V1.TopicName(
-                    options.ProjectId, options.TopicId);
-            try
-            {
-                provider.GetService<Google.Cloud.PubSub.V1.PublisherClient>().CreateTopic(topicName);
-            }
-            catch (Grpc.Core.RpcException e) when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
-            {
-            }
-            var subscriptionName = new Google.Cloud.PubSub.V1.SubscriptionName(
-                    options.ProjectId, options.SubscriptionId);
-            var pushConfig = new Google.Cloud.PubSub.V1.PushConfig()
-            {
-                PushEndpoint = $"https://{options.ProjectId}.appspot.com/Push"
-            };
-            try
-            {
-                provider.GetService<Google.Cloud.PubSub.V1.SubscriberClient>()
-                    .CreateSubscription(subscriptionName, topicName, pushConfig, 20);
-            }
-            catch (Grpc.Core.RpcException e) when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
-            {
-                provider.GetService<Google.Cloud.PubSub.V1.SubscriberClient>()
-                    .ModifyPushConfig(subscriptionName, pushConfig);
-            }
         }
     }
 }

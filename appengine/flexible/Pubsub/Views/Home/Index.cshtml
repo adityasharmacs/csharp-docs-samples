@@ -16,15 +16,15 @@
 }
 @model Pubsub.ViewModels.MessageList
 
-    
-<H1>Google AppEngine Pubsub Sample</H1>
 @if (Model.MissingProjectId)
 {
+    <h1>Error</h1>
     <p>Set the ProjectId in appsettings.json.</p>
     <p>See the README.md in the project directory for more information.</p>
 }
 else
 {
+    <H1>Google AppEngine Pubsub Sample</H1>
     <div>
         @if (Model.PublishedMessage != null)
         {
