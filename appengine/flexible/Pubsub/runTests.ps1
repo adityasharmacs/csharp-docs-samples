@@ -16,8 +16,8 @@ Import-Module -DisableNameChecking ..\..\..\BuildTools.psm1
 
 dotnet restore
 BackupAndEdit-TextFile "appsettings.json" `
-    @{"your-redis-endpoint" = $env:TEST_REDIS_CONFIG} `
+    @{"your-project-id" = $env:GOOGLE_PROJECT_ID} `
 {
 	dotnet build
-	Run-KestrelTest 5559
+	Run-KestrelTest 5559 localTest.js
 }

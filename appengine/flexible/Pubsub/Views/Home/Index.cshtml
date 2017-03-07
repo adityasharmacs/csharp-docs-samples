@@ -28,8 +28,7 @@ else
     <div>
         @if (Model.PublishedMessage != null)
         {
-            <p>Your message @Model.PublishedMessage was published.</p>
-
+            <p>Your message <span id="PublishedMessage">@Model.PublishedMessage</span> was published.</p>
         }
         <p>Messages received by this instance:</p>
         <ul>
