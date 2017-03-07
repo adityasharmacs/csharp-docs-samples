@@ -16,14 +16,15 @@
 
 namespace Pubsub.ViewModels
 {
-    public class WhoForm
+    public class MessageForm
     {
-        public string Who { get; set; }
+        public string Message { get; set; }
     }
 
-    public class WhoCount : WhoForm
+    public class MessageList : MessageForm
     {
-        public bool MissingRedisEndpoint { get; set; } = false;
-        public int Count { get; set; }
+        public bool MissingProjectId { get; set; } = false;
+        public string[] Messages { get; set; }
+        public string PublishedMessage { get; set; }
     }
 }

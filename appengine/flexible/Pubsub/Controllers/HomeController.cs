@@ -14,43 +14,78 @@
  * the License.
  */
 
+using Google.Cloud.PubSub.V1;
+using Google.Protobuf;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Pubsub.ViewModels;
+using System;
+using System.Collections.Generic;
 
 namespace Pubsub.Controllers
 {
     public class HomeController : Controller
     {
         readonly PubsubOptions _pubsubOptions;
-        readonly Google.Cloud.PubSub.V1.PublisherClient _publisher;
-        readonly Google.Cloud.PubSub.V1.SubscriberClient _subscriber;
+        // See Startup.cs to see how the publisher and subscriber are
+        // instantiated.
+        readonly PublisherClient _publisher;
+        readonly SubscriberClient _subscriber;
+        // Keep the received messages in a list.
+        static List<string> _receivedMessages = new List<string>();
+        static object _receivedMessagesLock = new object();
 
         public HomeController(IOptions<PubsubOptions> options,
-            Google.Cloud.PubSub.V1.PublisherClient publisher,
-            Google.Cloud.PubSub.V1.SubscriberClient subscriber)
+            PublisherClient publisher,
+            SubscriberClient subscriber)
         {
             _pubsubOptions = options.Value;
             _publisher = publisher;
-            _subscriber = subscriber;
+            _subscriber = subscriber;            
         }
 
         [HttpGet]
         [HttpPost]
-        public IActionResult Index(WhoForm whoForm)
+        public IActionResult Index(MessageForm messageForm)
         {
-            return View(new WhoCount() { MissingRedisEndpoint = true });
+            var model = new MessageList();
+            if (!string.IsNullOrEmpty(messageForm.Message))
+            {
+                // Publish the message.
+                var topicName = new TopicName(_pubsubOptions.ProjectId, 
+                    _pubsubOptions.TopicId);
+                var pubsubMessage = new PubsubMessage()
+                {
+                    Data = ByteString.CopyFromUtf8(messageForm.Message)
+                };
+                pubsubMessage.Attributes["token"] = _pubsubOptions.VerificationToken;
+                _publisher.Publish(topicName, new[] { pubsubMessage });
+                model.PublishedMessage = messageForm.Message;
+            }
+            // Render the current list of messages.
+            lock (_receivedMessagesLock)
+            {
+                model.Messages = _receivedMessages.ToArray();
+            }
+            return View(model);
         }
 
+        /// <summary>
+        /// Handle a push request coming from pubsub.
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
         [HttpPost]
-        public IActionResult Reset()
+        [Route("/Push")]
+        public IActionResult Push([FromBody]PushBody body)
         {
-            var model = new WhoCount()
+            var messageBytes = Convert.FromBase64String(body.message.data);
+            string message = System.Text.Encoding.UTF8.GetString(messageBytes);
+            lock (_receivedMessages)
             {
-                Who = "",
-                Count = 0,
-            };
-            return View("/Views/Home/Index.cshtml", model);
+                _receivedMessages.Add(message);
+            }
+            return new StatusCodeResult(200);
         }
 
         public IActionResult Error()
@@ -58,4 +93,22 @@ namespace Pubsub.Controllers
             return View();
         }
     }
+
+    /// <summary>
+    /// Pubsub messages will arrive in this format.
+    /// </summary>
+    public class PushBody
+    {
+        public PushMessage message { get; set; }
+        public string subscription { get; set; }
+    }
+
+    public class PushMessage
+    {
+        public Dictionary<string, string> attributes { get; set; }
+        public string data { get; set; }
+        public string message_id { get; set; }
+        public string publish_time { get; set; }
+    }
+
 }

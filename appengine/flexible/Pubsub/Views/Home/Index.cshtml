@@ -14,27 +14,36 @@
 // limitations under the License.
 //
 }
-@model Pubsub.ViewModels.WhoCount
+@model Pubsub.ViewModels.MessageList
+
     
-<H1>Redis Incrementer Sample</H1>
-@if (Model.MissingRedisEndpoint) 
+<H1>Google AppEngine Pubsub Sample</H1>
+@if (Model.MissingProjectId)
 {
-    <p>Set the configuration variable RedisEndpoint to your Redis endpoint.</p>
+    <p>Set the ProjectId in appsettings.json.</p>
     <p>See the README.md in the project directory for more information.</p>
 }
 else
 {
-    <p>
-    Click the button to increment a counter in Redis.<br>
-    Current count: <span id="CurrentCount">@Model.Count</span><br>
-    Last incremented by: <span id="LastIncrementedBy">@Model.Who</span><br>
-    </p>
-    <form asp-controller="Home" asp-action="Index" id="WhoForm">
-        <label for="who">Your name:</label>
-        <input asp-for="Who" />
-        <button id="Submit" type="submit">Increment</button>
+    <div>
+        @if (Model.PublishedMessage != null)
+        {
+            <p>Your message @Model.PublishedMessage was published.</p>
+
+        }
+        <p>Messages received by this instance:</p>
+        <ul>
+            @foreach (string message in Model.Messages)
+            {
+                <li>@message</li>
+            }
+        </ul>
+        <p><small>Note: because your application is likely running multiple instances, each instance will have a different list of messages.</small></p>
+    </div>
+    <!-- [START form] -->
+    <form asp-controller="Home" asp-action="Index" id="MessageForm">
+        <textarea asp-for="Message" placeholder="Enter message here"></textarea>
+        <input type="submit">
     </form>
-    <form method="POST" asp-controller="Home" asp-action="Reset">
-        <button id="Reset" type="submit">Reset</button>
-    </form>
+    <!-- [END form] -->
 }
