@@ -32,8 +32,8 @@ namespace Pubsub.Controllers
         readonly PublisherClient _publisher;
         readonly SubscriberClient _subscriber;
         // Keep the received messages in a list.
-        static List<string> _receivedMessages = new List<string>();
-        static object _receivedMessagesLock = new object();
+        static List<string> s_receivedMessages = new List<string>();
+        static object s_receivedMessagesLock = new object();
 
         public HomeController(IOptions<PubsubOptions> options,
             PublisherClient publisher,
@@ -44,6 +44,7 @@ namespace Pubsub.Controllers
             _subscriber = subscriber;            
         }
 
+        // [START index]
         [HttpGet]
         [HttpPost]
         public IActionResult Index(MessageForm messageForm)
@@ -63,30 +64,35 @@ namespace Pubsub.Controllers
                 model.PublishedMessage = messageForm.Message;
             }
             // Render the current list of messages.
-            lock (_receivedMessagesLock)
+            lock (s_receivedMessagesLock)
             {
-                model.Messages = _receivedMessages.ToArray();
+                model.Messages = s_receivedMessages.ToArray();
             }
             return View(model);
         }
+        // [END index]
 
+        // [START push]
         /// <summary>
         /// Handle a push request coming from pubsub.
         /// </summary>
-        /// <param name="body"></param>
-        /// <returns></returns>
         [HttpPost]
         [Route("/Push")]
         public IActionResult Push([FromBody]PushBody body)
         {
+            if (body.message.attributes["token"] != _pubsubOptions.VerificationToken)
+            {
+                return new BadRequestResult();
+            }
             var messageBytes = Convert.FromBase64String(body.message.data);
             string message = System.Text.Encoding.UTF8.GetString(messageBytes);
-            lock (_receivedMessages)
+            lock (s_receivedMessages)
             {
-                _receivedMessages.Add(message);
+                s_receivedMessages.Add(message);
             }
-            return new StatusCodeResult(200);
+            return new OkResult();
         }
+        // [END push]
 
         public IActionResult Error()
         {
