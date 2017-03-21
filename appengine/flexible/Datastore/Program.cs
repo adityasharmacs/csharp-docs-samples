@@ -17,7 +17,7 @@
 using Microsoft.AspNetCore.Hosting;
 using System.IO;
 
-namespace CloudSql
+namespace Datastore
 {
     public class Program
     {

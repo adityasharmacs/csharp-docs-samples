@@ -14,18 +14,18 @@
  * the License.
  */
 
+using Google.Cloud.Datastore.V1;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
 using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 
-namespace CloudSql
+namespace Datastore
 {
     public class Startup
     {
@@ -56,60 +56,52 @@ namespace CloudSql
             {
                 app.UseDeveloperExceptionPage();
             }
-            MySqlConnection connection;
-            try
-            {
-                string connectionString = Configuration["CloudSqlConnectionString"];
-                // [START example]
-                connection = new MySqlConnection(connectionString);
-                connection.Open();
-                var createTableCommand = new MySqlCommand(@"CREATE TABLE IF NOT EXISTS visits
-                (time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, user_ip CHAR(64))", connection);
-                createTableCommand.ExecuteNonQuery();
-                // [END example]
-            }
-            catch (Exception e)
+            string projectId = Configuration["GoogleProjectId"];
+            if (new string[] { "your-project-id", "", null}.Contains(projectId))
             {
                 app.Run(async (context) =>
                 {
-                    await context.Response.WriteAsync(string.Format(@"<html>
+                    await context.Response.WriteAsync(@"<html>
                         <head><title>Error</title></head>
-                        <body><p>Set CloudSqlConnectionString to a valid connection string.
-                              <p>{0}
-                              p>See the README.md in the project directory for more information.</p>
+                        <body><p>Set GoogleProjectId to your project id in appsettings.json.
+                              <p>See the README.md in the project directory for more information.</p>
                         </body>
-                        </html>", WebUtility.HtmlEncode(e.Message)));
+                        </html>");
                 });
                 return;
             }
 
+            // [START example]
+            DatastoreDb datastore = DatastoreDb.Create(projectId);
+            var visitKeyFactory = datastore.CreateKeyFactory("visit");
+            // [END example]
             app.Run(async (HttpContext context) =>
             {
                 // [START example]
-                // Insert a visit into the database:
-                using (var insertVisitCommand = new MySqlCommand(
-                        @"INSERT INTO visits (user_ip) values (@user_ip)",
-                        connection))
-                {
-                    insertVisitCommand.Parameters.AddWithValue("@user_ip",
-                        FormatAddress(context.Connection.RemoteIpAddress));
-                    await insertVisitCommand.ExecuteNonQueryAsync();
-                }
+                // Insert a visit into Datastore:
+                Entity newVisit = new Entity();
+                newVisit.Key = visitKeyFactory.CreateIncompleteKey();
+                newVisit["time_stamp"] = DateTime.UtcNow;
+                newVisit["ip_address"] = FormatAddress(
+                    context.Connection.RemoteIpAddress);
+                await datastore.InsertAsync(newVisit);
 
                 // Look up the last 10 visits.
-                using (var lookupCommand = new MySqlCommand(
-                    @"SELECT * FROM visits ORDER BY time_stamp DESC LIMIT 10",
-                    connection))
+                var results = await datastore.RunQueryAsync(new Query("visit")
                 {
-                    List<string> lines = new List<string>();
-                    var reader = await lookupCommand.ExecuteReaderAsync();
-                    while (await reader.ReadAsync())
-                        lines.Add($"{reader.GetString(0)} {reader.GetString(1)}");
-                    await context.Response.WriteAsync(string.Format(@"<html>
-                        <head><title>Visitor Log</title></head>
-                        <body>Last 10 visits:<br>{0}</body>
-                        </html>", string.Join("<br>", lines)));
+                    Order = { { "time_stamp", PropertyOrder.Types.Direction.Descending } },
+                    Limit = 10
+                });
+                await context.Response.WriteAsync(@"<html>
+                    <head><title>Visitor Log</title></head>
+                    <body>Last 10 visits:<br>");
+                foreach (Entity visit in results.Entities)
+                {
+                    await context.Response.WriteAsync(string.Format("{0} {1}<br>",
+                        visit["time_stamp"].TimestampValue,
+                        visit["ip_address"].StringValue));
                 }
+                await context.Response.WriteAsync(@"</body></html>");
                 // [END example]
             });
         }
