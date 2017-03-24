@@ -168,6 +168,13 @@ namespace GoogleCloudSamples
             Assert.Contains("Unlikely", output.Stdout);
         }
 
+        [Fact]
+        public void DetectWeb()
+        {
+            var output = Run("web", @"data\tower.jpg");
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("MatchingImage:", output.Stdout);
+        }
     }
 
     /// <summary>
