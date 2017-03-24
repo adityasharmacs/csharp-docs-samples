@@ -47,6 +47,8 @@ namespace GoogleCloudSamples
     [Verb("logos", HelpText = "Detect logos.")]
     class DetectLogosOptions : ImageOptions { }
 
+    [Verb("crop-hint", HelpText = "Detect crop hint in a local image file.")]
+    class DetectCropHintOptions : ImageOptions { }
 
     public class DetectProgram
     {
@@ -218,6 +220,26 @@ namespace GoogleCloudSamples
             return 0;
         }
 
+        // [START vision_crop_hint_detection]
+        private static object DetectCropHint(string filePath)
+        {
+            var client = ImageAnnotatorClient.Create();
+            var image = Image.FromFile(filePath);
+            CropHintsAnnotation annotation = client.DetectCropHints(image);
+            foreach (CropHint hint in annotation.CropHints)
+            {
+                Console.WriteLine("Confidence: {0}", hint.Confidence);
+                Console.WriteLine("ImportanceFraction: {0}", hint.ImportanceFraction);
+                Console.WriteLine("Bounding Polygon:");
+                foreach (Vertex vertex in hint.BoundingPoly.Vertices)
+                {
+                    Console.WriteLine("\tX:\t{0}\tY:\t{1}", vertex.X, vertex.Y);
+                }
+            }
+            return 0;
+        }
+        // [END vision_crop_hint_detection]
+
         public static void Main(string[] args)
         {
             Parser.Default.ParseArguments<
@@ -227,7 +249,8 @@ namespace GoogleCloudSamples
                 DetectFacesOptions,
                 DetectTextOptions,
                 DetectLogosOptions,
-                DetectLandmarksOptions
+                DetectLandmarksOptions,
+                DetectCropHintOptions
                 >(args)
               .MapResult(
                 (DetectLabelsOptions opts) => DetectLabels(ImageFromArg(opts.FilePath)),
@@ -237,6 +260,7 @@ namespace GoogleCloudSamples
                 (DetectLandmarksOptions opts) => DetectLandmarks(ImageFromArg(opts.FilePath)),
                 (DetectTextOptions opts) => DetectText(ImageFromArg(opts.FilePath)),
                 (DetectLogosOptions opts) => DetectLogos(ImageFromArg(opts.FilePath)),
+                (DetectCropHintOptions opts) => DetectCropHint(ImageFromArg(opts.FilePath)),
                 errs => 1);
         }
     }
