@@ -51,10 +51,7 @@ namespace GoogleCloudSamples
     class DetectCropHintOptions : ImageOptions { }
 
     [Verb("web", HelpText = "Find web pages with matching images.")]
-    class DetectLocalWebOptions : LocalOptions { }
-
-    [Verb("web-gcs", HelpText = "Find web pages with images that match an image stored in Google Cloud Storage.")]
-    class DetectCloudStorageWebOptions : CloudStorageOptions { }
+    class DetectWebOptions : ImageOptions { }
 
     public class DetectProgram
     {
@@ -66,6 +63,7 @@ namespace GoogleCloudSamples
 
         static Image ImageFromUri(string uri)
         {
+            // [START vision_web_detection_gcs]
             // [START vision_logo_detection_gcs]
             // [START vision_text_detection_gcs]
             // [START vision_landmark_detection_gcs]
@@ -82,11 +80,14 @@ namespace GoogleCloudSamples
             // [END vision_landmark_detection_gcs]
             // [END vision_text_detection_gcs]
             // [END vision_logo_detection_gcs]
+            // [END vision_web_detection_gcs]
             return image;
         }
 
         static Image ImageFromFile(string filePath)
         {
+            // [START vision_web_detection]
+            // [START vision_crop_hint_detection]
             // [START vision_logo_detection]
             // [START vision_text_detection]
             // [START vision_landmark_detection]
@@ -103,6 +104,8 @@ namespace GoogleCloudSamples
             // [END vision_landmark_detection]
             // [END vision_text_detection]
             // [END vision_logo_detection]
+            // [END vision_crop_hint_detection]
+            // [END vision_web_detection]
             return image;
         }
 
@@ -162,11 +165,16 @@ namespace GoogleCloudSamples
             // [START vision_image_property_detection]
             // [START vision_image_property_detection_gcs]
             var client = ImageAnnotatorClient.Create();
-            var response = client.DetectSafeSearch(image);
-            Console.WriteLine("Adult: {0}", response.Adult.ToString());
-            Console.WriteLine("Spoof: {0}", response.Spoof.ToString());
-            Console.WriteLine("Medical: {0}", response.Medical.ToString());
-            Console.WriteLine("Violence: {0}", response.Violence.ToString());
+            var response = client.DetectImageProperties(image);
+            string header = "Red\tGreen\tBlue\tAlpha\n";
+            foreach (var color in response.DominantColors.Colors)
+            {
+                Console.Write(header);
+                header = "";
+                Console.WriteLine("{0}\t{0}\t{0}\t{0}",
+                    color.Color.Red, color.Color.Green, color.Color.Blue,
+                    color.Color.Alpha);
+            }
             // [END vision_image_property_detection_gcs]
             // [END vision_image_property_detection]
             return 0;
@@ -221,11 +229,10 @@ namespace GoogleCloudSamples
             return 0;
         }
 
-        // [START vision_crop_hint_detection]
-        private static object DetectCropHint(string filePath)
+        private static object DetectCropHint(Image image)
         {
+            // [START vision_crop_hint_detection]
             var client = ImageAnnotatorClient.Create();
-            var image = Image.FromFile(filePath);
             CropHintsAnnotation annotation = client.DetectCropHints(image);
             foreach (CropHint hint in annotation.CropHints)
             {
@@ -237,15 +244,15 @@ namespace GoogleCloudSamples
                     Console.WriteLine("\tX:\t{0}\tY:\t{1}", vertex.X, vertex.Y);
                 }
             }
+            // [END vision_crop_hint_detection]
             return 0;
         }
-        // [END vision_crop_hint_detection]
 
-        // [START vision_web_detection]
-        private static object DetectWeb(string filePath)
+        private static object DetectWeb(Image image)
         {
+            // [START vision_web_detection_gcs]
+            // [START vision_web_detection]
             var client = ImageAnnotatorClient.Create();
-            var image = Image.FromFile(filePath);
             WebDetection annotation = client.DetectWebInformation(image);
             foreach (var matchingImage in annotation.FullMatchingImages)
             {
@@ -268,40 +275,10 @@ namespace GoogleCloudSamples
                 Console.WriteLine("WebEntity Score:\t{0}\tId:\t{1}\tDescription:\t{2}",
                     entity.Score, entity.EntityId, entity.Description);
             }
+            // [END vision_web_detection]
+            // [END vision_web_detection_gcs]
             return 0;
         }
-        // [END vision_web_detection]
-
-        // [START vision_web_detection_gcs]
-        private static object DetectWeb(string bucketName, string objectName)
-        {
-            var client = ImageAnnotatorClient.Create();
-            var image = Image.FromUri($"gs://{bucketName}/{objectName}");
-            WebDetection annotation = client.DetectWebInformation(image);
-            foreach (var matchingImage in annotation.FullMatchingImages)
-            {
-                Console.WriteLine("MatchingImage Score:\t{0}\tUrl:\t{1}",
-                    matchingImage.Score, matchingImage.Url);
-            }
-            foreach (var page in annotation.PagesWithMatchingImages)
-            {
-                Console.WriteLine("PageWithMatchingImage Score:\t{0}\tUrl:\t{1}",
-                    page.Score, page.Url);
-            }
-            foreach (var matchingImage in annotation.PartialMatchingImages)
-            {
-                Console.WriteLine("PartialMatchingImage Score:\t{0}\tUrl:\t{1}",
-                    matchingImage.Score, matchingImage.Url);
-
-            }
-            foreach (var entity in annotation.WebEntities)
-            {
-                Console.WriteLine("WebEntity Score:\t{0}\tId:\t{1}\tDescription:\t{2}",
-                    entity.Score, entity.EntityId, entity.Description);
-            }
-            return 0;
-        }
-        // [END vision_web_detection_gcs]
 
         public static void Main(string[] args)
         {
@@ -313,7 +290,8 @@ namespace GoogleCloudSamples
                 DetectTextOptions,
                 DetectLogosOptions,
                 DetectLandmarksOptions,
-                DetectCropHintOptions
+                DetectCropHintOptions,
+                DetectWebOptions
                 >(args)
               .MapResult(
                 (DetectLabelsOptions opts) => DetectLabels(ImageFromArg(opts.FilePath)),
@@ -324,8 +302,7 @@ namespace GoogleCloudSamples
                 (DetectTextOptions opts) => DetectText(ImageFromArg(opts.FilePath)),
                 (DetectLogosOptions opts) => DetectLogos(ImageFromArg(opts.FilePath)),
                 (DetectCropHintOptions opts) => DetectCropHint(ImageFromArg(opts.FilePath)),
-                (DetectLocalWebOptions opts) => DetectWeb(opts.FilePath),
-                (DetectCloudStorageWebOptions opts) => DetectWeb(opts.BucketName, opts.ObjectName),
+                (DetectWebOptions opts) => DetectWeb(ImageFromArg(opts.FilePath)),
                 errs => 1);
         }
     }
