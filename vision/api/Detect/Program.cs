@@ -53,6 +53,9 @@ namespace GoogleCloudSamples
     [Verb("web", HelpText = "Find web pages with matching images.")]
     class DetectWebOptions : ImageOptions { }
 
+    [Verb("doc-text", HelpText = "Detect text in a document image.")]
+    class DetectDocTextOptions : ImageOptions { }
+
     public class DetectProgram
     {
         static Image ImageFromArg(string arg)
@@ -63,6 +66,7 @@ namespace GoogleCloudSamples
 
         static Image ImageFromUri(string uri)
         {
+            // [START vision_fulltext_detection_gcs]
             // [START vision_web_detection_gcs]
             // [START vision_logo_detection_gcs]
             // [START vision_text_detection_gcs]
@@ -81,11 +85,13 @@ namespace GoogleCloudSamples
             // [END vision_text_detection_gcs]
             // [END vision_logo_detection_gcs]
             // [END vision_web_detection_gcs]
+            // [END vision_fulltext_detection_gcs]
             return image;
         }
 
         static Image ImageFromFile(string filePath)
         {
+            // [START vision_fulltext_detection]
             // [START vision_web_detection]
             // [START vision_crop_hint_detection]
             // [START vision_logo_detection]
@@ -106,6 +112,7 @@ namespace GoogleCloudSamples
             // [END vision_logo_detection]
             // [END vision_crop_hint_detection]
             // [END vision_web_detection]
+            // [END vision_fulltext_detection]
             return image;
         }
 
@@ -280,6 +287,28 @@ namespace GoogleCloudSamples
             return 0;
         }
 
+        private static object DetectDocText(Image image)
+        {
+            // [START vision_fulltext_detection]
+            // [START vision_fulltext_detection_gcs]
+            var client = ImageAnnotatorClient.Create();
+            var response = client.DetectDocumentText(image);
+            foreach (var page in response.Pages)
+            {
+                foreach (var block in page.Blocks)
+                {
+                    foreach (var paragraph in block.Paragraphs)
+                    {
+                        Console.WriteLine(string.Join("\n", paragraph.Words));
+                    }
+                }
+            }
+            // [END vision_fulltext_detection_gcs]
+            // [END vision_fulltext_detection]
+            return 0;
+        }
+
+
         public static void Main(string[] args)
         {
             Parser.Default.ParseArguments<
@@ -291,7 +320,8 @@ namespace GoogleCloudSamples
                 DetectLogosOptions,
                 DetectLandmarksOptions,
                 DetectCropHintOptions,
-                DetectWebOptions
+                DetectWebOptions,
+                DetectDocTextOptions
                 >(args)
               .MapResult(
                 (DetectLabelsOptions opts) => DetectLabels(ImageFromArg(opts.FilePath)),
@@ -303,6 +333,7 @@ namespace GoogleCloudSamples
                 (DetectLogosOptions opts) => DetectLogos(ImageFromArg(opts.FilePath)),
                 (DetectCropHintOptions opts) => DetectCropHint(ImageFromArg(opts.FilePath)),
                 (DetectWebOptions opts) => DetectWeb(ImageFromArg(opts.FilePath)),
+                (DetectDocTextOptions opts) => DetectDocText(ImageFromArg(opts.FilePath)),
                 errs => 1);
         }
     }

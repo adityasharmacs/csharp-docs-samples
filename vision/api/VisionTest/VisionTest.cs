@@ -175,6 +175,17 @@ namespace GoogleCloudSamples
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("MatchingImage", output.Stdout);
         }
+
+        [Fact]
+        public void DetectDocText()
+        {
+            var output = Run("doc-text", @"data\text.jpg");
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("detectedLanguages", output.Stdout);
+            Assert.Contains("vertices", output.Stdout);
+            Assert.Contains("symbol", output.Stdout);
+        }
+
     }
 
     /// <summary>
