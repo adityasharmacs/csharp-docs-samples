@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Translate": {
+      "commandName": "Project",
+      "commandLineArgs": "-o ja Hello World."
+    }
+  }
+}

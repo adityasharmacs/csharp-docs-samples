@@ -24,6 +24,15 @@ using System.Linq;
 
 namespace GoogleCloudSamples
 {
+    static class ConsoleOutputExtensions
+    {
+        public static void AssertSucceeded(this ConsoleOutput consoleOutput)
+        {
+            Assert.True(0 == consoleOutput.ExitCode,
+                $"Exit code: {consoleOutput.ExitCode}\n{consoleOutput.Stdout}");
+        }
+    };
+
     public class BaseTest
     {
         private readonly string _projectId;
