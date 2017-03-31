@@ -8,7 +8,7 @@ A collection of samples that demonstrate how to call the
 1.  **Follow the instructions in the [root README](../../README.md)**.
 
 4.  Enable APIs for your project.
-    [Click here](https://console.cloud.google.com/flows/enableapi?apiid=translation.googleapis.com&showconfirmation=true)
+    [Click here](https://console.cloud.google.com/flows/enableapi?apiid=translate.googleapis.com&showconfirmation=true)
     to visit Cloud Platform Console and enable the Google Cloud Translation API.
 
 6.  Open [Translate.sln](Translate.sln) with Microsoft Visual Studio version 2012 or later.
