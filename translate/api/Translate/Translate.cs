@@ -15,9 +15,6 @@
 using CommandLine;
 using Google.Cloud.Translation.V2;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace GoogleCloudSamples
 {
@@ -32,7 +29,10 @@ namespace GoogleCloudSamples
         public string SourceLanguage { get; set; }
 
         [Option('t', HelpText = "Target language code.", Default="ru")]
-        public string TargetLanguage { get; set; }    
+        public string TargetLanguage { get; set; }
+
+        [Option('p', HelpText = "Use the premium translation model.")]
+        public bool PremiumModel { get; set; }
     }
 
     [Verb("list", HelpText = "List available languages.")]
@@ -57,7 +57,7 @@ namespace GoogleCloudSamples
             Console.OutputEncoding = System.Text.Encoding.Unicode;
             Parser.Default.ParseArguments<TranslateArgs, ListArgs,
                 DetectArgs>(args).MapResult(
-                (TranslateArgs targs) => Translate(targs),
+                (TranslateArgs targs) => targs.PremiumModel ? TranslateWithModel(targs) : Translate(targs),
                 (ListArgs largs) => largs.TargetLanguage == null ? ListLanguageCodes() : ListLanguages(largs.TargetLanguage),
                 (DetectArgs dargs) => DetectLanguage(dargs.Text),
                 errs => 1);
@@ -111,5 +111,17 @@ namespace GoogleCloudSamples
             return 0;
         }
 
+        static object TranslateWithModel(TranslateArgs args)
+        {
+            // [START translate_text_with_model]
+            TranslationClient client = TranslationClient.Create();
+            var response = client.TranslateText(args.Text,
+                args.TargetLanguage, args.SourceLanguage,
+                TranslationModel.NeuralMachineTranslation);
+            Console.WriteLine("Model: {0}", response.Model);
+            Console.WriteLine(response.TranslatedText);
+            // [END translate_text_with_model]
+            return 0;
+        }
     }
 }

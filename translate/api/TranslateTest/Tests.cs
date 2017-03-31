@@ -34,6 +34,16 @@ namespace GoogleCloudSamples
         }
 
         [Fact]
+        public void TestTranslatePremium()
+        {
+            // TODO: update when 
+            // https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/961
+            // gets fixed.
+            Assert.Throws<Google.GoogleApiException>(() =>
+            _runner.Run("translate", "-p", "Hello World"));
+        }
+
+        [Fact]
         public void TestListCodes()
         {
             ConsoleOutput output = _runner.Run("list");
