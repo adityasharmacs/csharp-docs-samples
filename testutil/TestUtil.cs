@@ -18,9 +18,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
-using Xunit;
 
 namespace GoogleCloudSamples
 {
@@ -28,7 +28,7 @@ namespace GoogleCloudSamples
     {
         public static string RandomName()
         {
-            using (RandomNumberGenerator rng = new RNGCryptoServiceProvider())
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
             {
                 string legalChars = "abcdefhijklmnpqrstuvwxyz";
                 byte[] randomByte = new byte[1];
@@ -96,11 +96,6 @@ namespace GoogleCloudSamples
     {
         public int ExitCode;
         public string Stdout;
-
-        public void AssertSucceeded()
-        {
-            Assert.True(0 == ExitCode, $"Exit code: {ExitCode}\n{Stdout}");
-        }
     };
 
     public class CommandLineRunner
