@@ -19,7 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Translate
+namespace GoogleCloudSamples
 {
     [Verb("translate", HelpText = "Translate text.")]
     class TranslateArgs
@@ -35,7 +35,7 @@ namespace Translate
         public string TargetLanguage { get; set; }    
     }
 
-    public class Program
+    public class Translator
     {
         public static void Main(string[] args)
         {
