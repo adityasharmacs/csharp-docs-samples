@@ -26,11 +26,38 @@ namespace GoogleCloudSamples
         };
 
         [Fact]
-        public void Test1() 
+        public void TestTranslate() 
         {
-            ConsoleOutput output = _runner.Run("Hello World");
+            ConsoleOutput output = _runner.Run("translate", "Hello World");
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("Привет", output.Stdout);
+        }
+
+        [Fact]
+        public void TestListCodes()
+        {
+            ConsoleOutput output = _runner.Run("list");
+            Assert.Equal(0, output.ExitCode);
+            // Confirm that Russian is a listed language code.
+            Assert.Contains("\nru\r", output.Stdout);
+        }
+
+        [Fact]
+        public void TestListLanguages()
+        {
+            ConsoleOutput output = _runner.Run("list", "-t", "en");
+            Assert.Equal(0, output.ExitCode);
+            // Confirm that Russian is a listed language code.
+            Assert.Contains("ru\tRussian", output.Stdout);
+        }
+
+        [Fact]
+        public void TestDetectText()
+        {
+            ConsoleOutput output = _runner.Run("detect", "こんにちは");
+            Assert.Equal(0, output.ExitCode);
+            // Confirm that Japanese is detected.
+            Assert.Contains("ja\tConfidence", output.Stdout);
         }
     }
 }

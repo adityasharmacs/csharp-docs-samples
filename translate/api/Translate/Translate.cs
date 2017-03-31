@@ -28,11 +28,26 @@ namespace GoogleCloudSamples
             Required = true)]
         public string Text { get; set; }
 
-        [Option('i')]
+        [Option('s', HelpText = "Source language code.")]
         public string SourceLanguage { get; set; }
 
-        [Option('o', Default="ru")]
+        [Option('t', HelpText = "Target language code.", Default="ru")]
         public string TargetLanguage { get; set; }    
+    }
+
+    [Verb("list", HelpText = "List available languages.")]
+    class ListArgs
+    {
+        [Option('t', HelpText = "Also list the language name in the target language.")]
+        public string TargetLanguage { get; set; }
+    }
+
+    [Verb("detect", HelpText = "Detects which language some text is written in.")]
+    class DetectArgs
+    {
+        [Value(0, HelpText = "The text to examine.",
+            Required = true)]
+        public string Text { get; set; }
     }
 
     public class Translator
@@ -40,17 +55,61 @@ namespace GoogleCloudSamples
         public static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.Unicode;
-            Parser.Default.ParseArguments<TranslateArgs>(args)
-                .MapResult((TranslateArgs targs) => Translate(targs),
+            Parser.Default.ParseArguments<TranslateArgs, ListArgs,
+                DetectArgs>(args).MapResult(
+                (TranslateArgs targs) => Translate(targs),
+                (ListArgs largs) => largs.TargetLanguage == null ? ListLanguageCodes() : ListLanguages(largs.TargetLanguage),
+                (DetectArgs dargs) => DetectLanguage(dargs.Text),
                 errs => 1);
         }
 
         static object Translate(TranslateArgs args)
         {
+            // [START translate_translate_text]
             TranslationClient client = TranslationClient.Create();
-            var response = client.TranslateText(args.Text, args.TargetLanguage, args.SourceLanguage);
+            var response = client.TranslateText(args.Text, 
+                args.TargetLanguage, args.SourceLanguage);
             Console.WriteLine(response.TranslatedText);
+            // [END translate_translate_text]
             return 0;
         }
+
+        static object ListLanguageCodes()
+        {
+            // [START translate_list_codes]
+            TranslationClient client = TranslationClient.Create();
+            foreach (var language in client.ListLanguages())
+            {
+                Console.WriteLine("{0}", language.Code);
+            }
+            // [END translate_list_codes]
+            return 0;
+        }
+
+        static object ListLanguages(string targetLanguageCode)
+        {
+            // [START translate_list_language_names]
+            TranslationClient client = TranslationClient.Create();
+            foreach (var language in client.ListLanguages(targetLanguageCode))
+            {
+                Console.WriteLine("{0}\t{1}", language.Code, language.Name);
+            }
+            // [END translate_list_language_names]
+            return 0;
+        }
+
+        static object DetectLanguage(string text)
+        {
+
+            // [START translate_detect_language]
+            TranslationClient client = TranslationClient.Create();
+            foreach (var detection in client.DetectLanguage(text))
+            {
+                Console.WriteLine("{0}\tConfidence: {1}", detection.Language, detection.Confidence);
+            }
+            // [END translate_detect_language]
+            return 0;
+        }
+
     }
 }
