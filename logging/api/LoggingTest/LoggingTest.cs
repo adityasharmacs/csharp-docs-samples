@@ -28,10 +28,9 @@ namespace GoogleCloudSamples
     {
         public static void AssertSucceeded(this ConsoleOutput consoleOutput)
         {
-            Assert.True(0 == consoleOutput.ExitCode, 
+            Assert.True(0 == consoleOutput.ExitCode,
                 $"Exit code: {consoleOutput.ExitCode}\n{consoleOutput.Stdout}");
         }
-
     };
 
     public class BaseTest
