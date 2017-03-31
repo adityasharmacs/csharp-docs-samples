@@ -12,12 +12,11 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 //
-using System;
 using Xunit;
 
 namespace GoogleCloudSamples
 {
-    public class Tests
+    public class TranslateTests
     {
         CommandLineRunner _runner = new CommandLineRunner()
         {
@@ -26,7 +25,7 @@ namespace GoogleCloudSamples
         };
 
         [Fact]
-        public void TestTranslate() 
+        public void TestTranslate()
         {
             ConsoleOutput output = _runner.Run("translate", "Hello World");
             Assert.Equal(0, output.ExitCode);
@@ -68,6 +67,23 @@ namespace GoogleCloudSamples
             Assert.Equal(0, output.ExitCode);
             // Confirm that Japanese is detected.
             Assert.Contains("ja\tConfidence", output.Stdout);
+        }
+    }
+
+    public class QuickStartTests
+    {
+        CommandLineRunner _runner = new CommandLineRunner()
+        {
+            Command = "dotnet run -- ",
+            VoidMain = QuickStart.Main
+        };
+
+        [Fact]
+        public void TestQuickStart()
+        {
+            ConsoleOutput output = _runner.Run();
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Привет", output.Stdout);
         }
     }
 }

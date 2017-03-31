@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		global.json = global.json
 	EndProjectSection
 EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "QuickStart", "QuickStart\QuickStart.xproj", "{120CD4E8-E382-473F-BE39-035C5D329FA3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{842E9A62-37B5-4C15-B382-6F4D3DACEFD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{842E9A62-37B5-4C15-B382-6F4D3DACEFD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{842E9A62-37B5-4C15-B382-6F4D3DACEFD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{120CD4E8-E382-473F-BE39-035C5D329FA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{120CD4E8-E382-473F-BE39-035C5D329FA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{120CD4E8-E382-473F-BE39-035C5D329FA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{120CD4E8-E382-473F-BE39-035C5D329FA3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
