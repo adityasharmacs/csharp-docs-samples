@@ -24,7 +24,7 @@ A collection of samples that demonstrate how to call the
 
 10. And run Translate to translate text.
     ```
-	PS C:\Users\Jeffrey Rennie\gitrepos\dotnet-docs-samples\translate\api\Translate> dotnet run
+	PS C:\...\dotnet-docs-samples\translate\api\Translate> dotnet run
 	Project Translate (.NETCoreApp,Version=v1.0) was previously compiled. Skipping compilation.
 	Translate 1.0.0
 	Copyright (C) 1 author
@@ -48,7 +48,7 @@ A collection of samples that demonstrate how to call the
 
 	```
 	```
-	PS C:\Users\Jeffrey Rennie\gitrepos\dotnet-docs-samples\translate\api\Translate> dotnet run -- translate "It will rain today." -t "es"
+	PS C:\...\dotnet-docs-samples\translate\api\Translate> dotnet run -- translate "It will rain today." -t "es"
 	Project Translate (.NETCoreApp,Version=v1.0) was previously compiled. Skipping compilation.
 	Lloverá hoy.
 	```
