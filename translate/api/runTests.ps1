@@ -13,6 +13,7 @@
 # the License.
 Import-Module ..\..\BuildTools.psm1 -DisableNameChecking
 
-Build-Solution
+dotnet restore
+msbuild
 Set-Location TranslateTest
 dotnet test -parallel none
