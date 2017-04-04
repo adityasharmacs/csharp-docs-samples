@@ -26,6 +26,8 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Datastore", "Datastore\Data
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Pubsub", "Pubsub\Pubsub.xproj", "{BC1F61B5-AAAB-4E87-A8DE-638EC381E65C}"
 EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Twilio", "Twilio\Twilio.xproj", "{20058617-F0DE-4F6C-A942-BC6B576B7CA3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,10 @@ Global
 		{BC1F61B5-AAAB-4E87-A8DE-638EC381E65C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC1F61B5-AAAB-4E87-A8DE-638EC381E65C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC1F61B5-AAAB-4E87-A8DE-638EC381E65C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20058617-F0DE-4F6C-A942-BC6B576B7CA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20058617-F0DE-4F6C-A942-BC6B576B7CA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20058617-F0DE-4F6C-A942-BC6B576B7CA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20058617-F0DE-4F6C-A942-BC6B576B7CA3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
