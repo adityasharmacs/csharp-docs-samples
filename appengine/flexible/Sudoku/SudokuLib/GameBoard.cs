@@ -89,5 +89,41 @@ namespace SudokuLib
                 + _board.Substring(start + 9, 3)
                 + _board.Substring(start + 18, 3);
         }
+
+        public IEnumerable<GameBoard> FillNextEmpty()
+        {
+            var nextGameBoards = new List<GameBoard>();
+            int i = _board.IndexOf(' ');
+            if (i > 0)
+            {
+                int rowNumber = i / 9;
+                int colNumber = i % 9;
+                char[] board = _board.ToCharArray();
+                foreach (char move in GetLegalMoves(rowNumber, colNumber))
+                {
+                    board[i] = move;
+                    nextGameBoards.Add(new GameBoard()
+                    {
+                        Board = new string(board)
+                    });
+                }
+            }
+            return nextGameBoards;
+        }
+
+        public char ElementAt(int rowNumber, int colNumber)
+        {
+            Debug.Assert(colNumber >= 0 && colNumber < 9);
+            Debug.Assert(rowNumber >= 0 && rowNumber < 9);
+            return _board.ElementAt(rowNumber * 9 + colNumber);
+        }
+
+        private IEnumerable<char> GetLegalMoves(int rowNumber, int colNumber) =>
+            "123456789".Except(Row(rowNumber).Union(Column(colNumber)).Union(Group(rowNumber, colNumber)));
+
+        public override string ToString()
+        {
+            return _board;
+        }
     }
 }

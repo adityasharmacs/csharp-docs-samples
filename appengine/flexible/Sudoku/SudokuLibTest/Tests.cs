@@ -20,7 +20,7 @@ namespace SudokuLib
 {
     public class Tests
     {
-        static string _boardA =
+        static string s_boardA =
             "123|   |789" +
             "   |   |   " +
             "   |   |   " +
@@ -33,25 +33,68 @@ namespace SudokuLib
             " 2 |  3|   " +
             "3  |   |1  ";
 
-        [Fact]
-        public void Test1() 
+
+        static GameBoard ToGameBoard(string board) => new GameBoard()
         {
-            GameBoard board = new GameBoard()
+            Board = new string(board.Where((c) =>
+                GameBoard.LegalCharacters.Contains(c)).ToArray())
+        };
+
+        GameBoard _boardA = ToGameBoard(s_boardA);
+
+        [Fact]
+        public void TestAccessors() 
+        {
+
+            Assert.Equal("123   789", _boardA.Row(0));
+            Assert.Equal(" 7  5    ", _boardA.Row(4));
+            Assert.Equal("3     1  ", _boardA.Row(8));
+
+            Assert.Equal("1       3", _boardA.Column(0));
+            Assert.Equal("    5    ", _boardA.Column(4));
+            Assert.Equal("9        ", _boardA.Column(8));
+
+            Assert.Equal("123      ", _boardA.Group(0, 0));
+            Assert.Equal("    7    ", _boardA.Group(4, 1));
+            Assert.Equal("      1  ", _boardA.Group(8, 8));
+        }
+
+        [Fact]
+        public void TestFillNextEmpty()
+        {
+            var expectedNextBoards = new[]
             {
-                Board = new string(_boardA.Where((c) => GameBoard.LegalCharacters.Contains(c)).ToArray())
-            };
+                "123|5  |789" +
+                "   |   |   " +
+                "   |   |   " +
+                "---+---+---" +
+                "   |4  |   " +
+                " 7 | 5 |   " +
+                "   |  6| 2 " +
+                "---+---+---" +
+                "  1|   |   " +
+                " 2 |  3|   " +
+                "3  |   |1  ",
 
-            Assert.Equal("123   789", board.Row(0));
-            Assert.Equal(" 7  5    ", board.Row(4));
-            Assert.Equal("3     1  ", board.Row(8));
+                "123|6  |789" +
+                "   |   |   " +
+                "   |   |   " +
+                "---+---+---" +
+                "   |4  |   " +
+                " 7 | 5 |   " +
+                "   |  6| 2 " +
+                "---+---+---" +
+                "  1|   |   " +
+                " 2 |  3|   " +
+                "3  |   |1  "
+            }.Select((board) => ToGameBoard(board));
 
-            Assert.Equal("1       3", board.Column(0));
-            Assert.Equal("    5    ", board.Column(4));
-            Assert.Equal("9        ", board.Column(8));
-
-            Assert.Equal("123      ", board.Group(0, 0));
-            Assert.Equal("    7    ", board.Group(4, 1));
-            Assert.Equal("      1  ", board.Group(8, 8));
+            var nextBoards = _boardA.FillNextEmpty();
+            Assert.Equal(expectedNextBoards.Count(), nextBoards.Count());
+            for (int i = 0; i < expectedNextBoards.Count(); ++i)
+            {
+                Assert.Equal(expectedNextBoards.ElementAt(i).Board, nextBoards.ElementAt(i).Board);
+            }
         }
     }
 }
