@@ -13,17 +13,45 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
+using System.Linq;
 using Xunit;
 
-namespace Tests
+namespace SudokuLib
 {
     public class Tests
     {
+        static string _boardA =
+            "123|   |789" +
+            "   |   |   " +
+            "   |   |   " +
+            "---+---+---" +
+            "   |4  |   " +
+            " 7 | 5 |   " +
+            "   |  6| 2 " +
+            "---+---+---" +
+            "  1|   |   " +
+            " 2 |  3|   " +
+            "3  |   |1  ";
+
         [Fact]
         public void Test1() 
         {
-            Assert.True(true);
+            GameBoard board = new GameBoard()
+            {
+                Board = new string(_boardA.Where((c) => GameBoard.LegalCharacters.Contains(c)).ToArray())
+            };
+
+            Assert.Equal("123   789", board.Row(0));
+            Assert.Equal(" 7  5    ", board.Row(4));
+            Assert.Equal("3     1  ", board.Row(8));
+
+            Assert.Equal("1       3", board.Column(0));
+            Assert.Equal("    5    ", board.Column(4));
+            Assert.Equal("9        ", board.Column(8));
+
+            Assert.Equal("123      ", board.Group(0, 0));
+            Assert.Equal("    7    ", board.Group(4, 1));
+            Assert.Equal("      1  ", board.Group(8, 8));
         }
     }
 }
