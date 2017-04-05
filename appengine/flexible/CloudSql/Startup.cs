@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -45,21 +46,26 @@ namespace CloudSql
         // For more information on how to configure your application, visit http://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddOptions();
+            services.Configure<MySqlConnectionStringBuilder>(
+                Configuration.GetSection("MySqlConnection"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole();
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
             MySqlConnection connection;
+            var appScope = app.ApplicationServices.CreateScope();
             try
             {
-                string connectionString = Configuration["CloudSqlConnectionString"];
+                var connectionString = appScope.ServiceProvider
+                    .GetService<IOptions<MySqlConnectionStringBuilder>>().Value
+                    .GetConnectionString(true);
                 // [START example]
                 connection = new MySqlConnection(connectionString);
                 connection.Open();
