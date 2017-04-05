@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace SudokuLib
@@ -25,6 +26,13 @@ namespace SudokuLib
     {
         private static string _legalCharacters = "123456789 ";
         private static string _blankBoard = new string(' ', 81);
+        private static int[,] s_groupCenters = new int[9, 2]
+        {
+            {1, 1}, {1, 4}, {1, 8},
+            {4, 1}, {4, 4}, {4, 8},
+            {8, 1}, {8, 4}, {8, 8}
+        };
+
         private string _board = _blankBoard;
 
         /// <summary>
@@ -37,6 +45,7 @@ namespace SudokuLib
             get { return _board; }
             set
             {
+                // Validate the board.
                 if (value.Length != 81)
                 {
                     throw new ArgumentException("value", "String must be 81 characters.");
@@ -45,6 +54,18 @@ namespace SudokuLib
                 {
                     if (_legalCharacters.IndexOf(c) < 0)
                         throw new ArgumentOutOfRangeException("value", $"Illegal character: {c}");
+                }
+                for (int i = 0; i < 9; ++i)
+                {
+                    if (!IsLegal(Row(i)))
+                        throw new ArgumentException("value", $"Row {i} contains duplicates: {Row(i)}");
+                    if (!IsLegal(Column(i)))
+                        throw new ArgumentException("value", $"Column {i} contains duplicates: {Column(i)}");
+                    int row = s_groupCenters[i, 0];
+                    int col = s_groupCenters[i, 1];
+                    if (!IsLegal(Group(row, col)))
+                        throw new ArgumentException("value", 
+                            $"Group at row {row} column {col} contains duplicates: {Group(row, col)}");
                 }
                 _board = value;
             }
@@ -90,7 +111,7 @@ namespace SudokuLib
                 + _board.Substring(start + 18, 3);
         }
 
-        public IEnumerable<GameBoard> FillNextEmpty()
+        public IEnumerable<GameBoard> FillNextEmptyCell()
         {
             var nextGameBoards = new List<GameBoard>();
             int i = _board.IndexOf(' ');
@@ -102,10 +123,9 @@ namespace SudokuLib
                 foreach (char move in GetLegalMoves(rowNumber, colNumber))
                 {
                     board[i] = move;
-                    nextGameBoards.Add(new GameBoard()
-                    {
-                        Board = new string(board)
-                    });
+                    var g = new GameBoard();
+                    g._board = new string(board);
+                    nextGameBoards.Add(g);
                 }
             }
             return nextGameBoards;
@@ -118,12 +138,36 @@ namespace SudokuLib
             return _board.ElementAt(rowNumber * 9 + colNumber);
         }
 
+        public bool HasEmptyCell() => _board.IndexOf(' ') >= 0;
+
         private IEnumerable<char> GetLegalMoves(int rowNumber, int colNumber) =>
             "123456789".Except(Row(rowNumber).Union(Column(colNumber)).Union(Group(rowNumber, colNumber)));
 
-        public override string ToString()
+        public override string ToString() => _board;
+
+        /// <summary>
+        /// Confirm that a row, column, or group is legal because it contains
+        /// no duplicate numbers.
+        /// </summary>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        private static bool IsLegal(string group)
         {
-            return _board;
+            var withoutSpaces = group.Where((c) => c != ' ');
+            return withoutSpaces.Count() == withoutSpaces.Distinct().Count();
+        }
+
+        public string ToPrettyString()
+        {
+            var s = new StringBuilder();
+            for (int i = 0; i < Board.Length;  i += 9)
+            {
+                s.AppendFormat("{0}|{1}|{2}\n", _board.Substring(i, 3),
+                    _board.Substring(i + 3, 3), _board.Substring(i + 6, 3));
+                if (i == 18 || i == 45)
+                    s.AppendLine("---+---+---");
+            }
+            return s.ToString();
         }
     }
 }

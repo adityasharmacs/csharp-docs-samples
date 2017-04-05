@@ -13,6 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
@@ -89,12 +91,32 @@ namespace SudokuLib
                 "3  |   |1  "
             }.Select((board) => ToGameBoard(board));
 
-            var nextBoards = _boardA.FillNextEmpty();
+            var nextBoards = _boardA.FillNextEmptyCell();
             Assert.Equal(expectedNextBoards.Count(), nextBoards.Count());
             for (int i = 0; i < expectedNextBoards.Count(); ++i)
             {
                 Assert.Equal(expectedNextBoards.ElementAt(i).Board, nextBoards.ElementAt(i).Board);
             }
+        }
+
+        [Fact]
+        public void TestSolve()
+        {
+            var moves = new Stack<GameBoard>();
+            Console.WriteLine("Solving\n{0}", _boardA.ToPrettyString());
+            moves.Push(_boardA);
+            while (moves.Count > 0)
+            {
+                GameBoard board = moves.Pop();
+                if (!board.HasEmptyCell())
+                {
+                    Console.WriteLine("Solved!\n{0}", board.ToPrettyString());
+                    return;
+                }
+                foreach (var move in board.FillNextEmptyCell())
+                    moves.Push(move);
+            }
+            Console.WriteLine("No solution found.");
         }
     }
 }
