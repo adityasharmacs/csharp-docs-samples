@@ -57,15 +57,15 @@ namespace SudokuLib
                 }
                 for (int i = 0; i < 9; ++i)
                 {
-                    if (!IsLegal(Row(i)))
-                        throw new ArgumentException("value", $"Row {i} contains duplicates: {Row(i)}");
-                    if (!IsLegal(Column(i)))
-                        throw new ArgumentException("value", $"Column {i} contains duplicates: {Column(i)}");
+                    if (!IsLegal(GetRow(i, value)))
+                        throw new ArgumentException("value", $"Row {i} contains duplicates: {GetRow(i, value)}");
+                    if (!IsLegal(GetColumn(i, value)))
+                        throw new ArgumentException("value", $"Column {i} contains duplicates: {GetColumn(i ,value)}");
                     int row = s_groupCenters[i, 0];
                     int col = s_groupCenters[i, 1];
-                    if (!IsLegal(Group(row, col)))
+                    if (!IsLegal(GetGroup(row, col, value)))
                         throw new ArgumentException("value", 
-                            $"Group at row {row} column {col} contains duplicates: {Group(row, col)}");
+                            $"Group at row {row} column {col} contains duplicates: {GetGroup(row, col, value)}");
                 }
                 _board = value;
             }
@@ -78,37 +78,43 @@ namespace SudokuLib
         /// </summary>
         /// <param name="rowNumber"></param>
         /// <returns></returns>
-        public string Row(int rowNumber)
+        public string Row(int rowNumber) => GetRow(rowNumber, _board);
+
+        private static string GetRow(int rowNumber, string board)
         {
             Debug.Assert(rowNumber >= 0 && rowNumber < 9);
-            return _board.Substring(9 * rowNumber, 9);
+            return board.Substring(9 * rowNumber, 9);
         }
 
-        public string Column(int colNumber)
+        private static string GetColumn(int colNumber, string board)
         {
             Debug.Assert(colNumber >= 0 && colNumber < 9);
             char[] column = new char[9];
             for (int i = 0; i < 9; ++i)
             {
-                column[i] = _board[colNumber + (i * 9)];
+                column[i] = board[colNumber + (i * 9)];
             }
             return new string(column);
         }
 
+        public string Column(int colNumber) => GetColumn(colNumber, _board);
         /// <summary>
         /// Returns the elements in the row specified by zero-indexed rowNumber.
         /// </summary>
         /// <param name="rowNumber"></param>
         /// <returns></returns>
         public string Group(int rowNumber, int colNumber)
+            => GetGroup(rowNumber, colNumber, _board);
+
+        private static string GetGroup(int rowNumber, int colNumber, string board)
         {
             Debug.Assert(colNumber >= 0 && colNumber < 9);
             Debug.Assert(rowNumber >= 0 && rowNumber < 9);
             int start = (rowNumber - (rowNumber % 3)) * 9 +
                 colNumber - (colNumber % 3);
-            return _board.Substring(start, 3)
-                + _board.Substring(start + 9, 3)
-                + _board.Substring(start + 18, 3);
+            return board.Substring(start, 3)
+                + board.Substring(start + 9, 3)
+                + board.Substring(start + 18, 3);
         }
 
         public IEnumerable<GameBoard> FillNextEmptyCell()
