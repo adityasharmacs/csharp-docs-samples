@@ -44,7 +44,8 @@
       "version": "1.0.0-preview2-final",
       "type": "build"
     },
-    "Microsoft.AspNetCore.Authentication.Google": "1.1.1"
+    "Microsoft.AspNetCore.Authentication.Google": "1.1.1",
+    "Microsoft.AspNetCore.Authentication.Facebook": "1.1.1"
   },
 
   "tools": {
