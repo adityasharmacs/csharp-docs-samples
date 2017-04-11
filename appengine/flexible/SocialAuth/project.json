@@ -1,4 +1,4 @@
-﻿{
+{
   "userSecretsId": "aspnet-SocialAuth-c0e0dd20-1f4c-4972-9834-1608b42348aa",
 
   "dependencies": {
@@ -43,7 +43,8 @@
     "Microsoft.VisualStudio.Web.CodeGenerators.Mvc": {
       "version": "1.0.0-preview2-final",
       "type": "build"
-    }
+    },
+    "Microsoft.AspNetCore.Authentication.Google": "1.1.1"
   },
 
   "tools": {

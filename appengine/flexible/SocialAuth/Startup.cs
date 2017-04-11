@@ -41,8 +41,9 @@ namespace SocialAuth
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
+            string connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(connectionString));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -81,6 +82,11 @@ namespace SocialAuth
             app.UseIdentity();
 
             // Add external authentication middleware below. To configure them please see http://go.microsoft.com/fwlink/?LinkID=532715
+            app.UseGoogleAuthentication(new GoogleOptions()
+            {
+                ClientId = Configuration["Authentication:Google:ClientId"],
+                ClientSecret = Configuration["Authentication:Google:ClientSecret"]
+            });
 
             app.UseMvc(routes =>
             {
