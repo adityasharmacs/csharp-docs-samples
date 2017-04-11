@@ -24,6 +24,7 @@ using SocialAuth.Data;
 using SocialAuth.Models;
 using SocialAuth.Services;
 using Microsoft.AspNetCore.Mvc;
+using GoogleCloudSamples;
 
 namespace SocialAuth
 {
@@ -41,7 +42,7 @@ namespace SocialAuth
                 // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
                 builder.AddUserSecrets();
             }
-
+            builder.Add(new MetadataConfigurationSource());
             builder.AddEnvironmentVariables();
             Configuration = builder.Build();
         }
