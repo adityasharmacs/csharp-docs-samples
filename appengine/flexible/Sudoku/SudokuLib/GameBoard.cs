@@ -22,10 +22,16 @@ using System.Threading.Tasks;
 
 namespace SudokuLib
 {
+    /// <summary>
+    /// Represents a valid Sudoku gameboard.
+    /// </summary>
     public class GameBoard
     {
+        // Legal characters that can appear in _board.
         private static string _legalCharacters = "123456789 ";
+        // An empty game board.  The initial state.
         private static string _blankBoard = new string(' ', 81);
+        // A group is one of the 9 3x3 regions in the sudoku board.
         private static int[,] s_groupCenters = new int[9, 2]
         {
             {1, 1}, {1, 4}, {1, 8},
@@ -39,6 +45,9 @@ namespace SudokuLib
         /// The Sudoku game board is represented as an 81-character long string.
         /// The first 9 characters are row 1.  The next 9 are row 2, etc.
         /// The only acceptable characters are 1-9 and space.
+        /// 
+        /// If you try to set Board to an invalid state, it will throw an 
+        /// exception.
         /// </summary>
         public string Board
         {
@@ -71,13 +80,15 @@ namespace SudokuLib
             }
         }
 
+        /// <summary>
+        /// The set of characters that can appear in a valid game board.
+        /// </summary>
         public static string LegalCharacters { get { return _legalCharacters; } }
 
         /// <summary>
         /// Returns the elements in the row specified by zero-indexed rowNumber.
         /// </summary>
-        /// <param name="rowNumber"></param>
-        /// <returns></returns>
+        /// <param name="rowNumber">Must be in the set [0,9).</param>
         public string Row(int rowNumber) => GetRow(rowNumber, _board);
 
         private static string GetRow(int rowNumber, string board)
@@ -85,6 +96,12 @@ namespace SudokuLib
             Debug.Assert(rowNumber >= 0 && rowNumber < 9);
             return board.Substring(9 * rowNumber, 9);
         }
+
+        /// <summary>
+        /// Returns the elements in the column specified by zero-indexed colNumber.
+        /// </summary>
+        /// <param name="colNumber">Must be in the set [0,9)</param>
+        public string Column(int colNumber) => GetColumn(colNumber, _board);
 
         private static string GetColumn(int colNumber, string board)
         {
@@ -97,11 +114,12 @@ namespace SudokuLib
             return new string(column);
         }
 
-        public string Column(int colNumber) => GetColumn(colNumber, _board);
         /// <summary>
-        /// Returns the elements in the row specified by zero-indexed rowNumber.
+        /// Returns the elements in the group specified by zero-indexed
+        /// rowNumber and groupNumber.
         /// </summary>
-        /// <param name="rowNumber"></param>
+        /// <param name="rowNumber">Must be in the set [0,9).</param>
+        /// <param name="colNumber">Must be in the set [0,9).</param>
         /// <returns></returns>
         public string Group(int rowNumber, int colNumber)
             => GetGroup(rowNumber, colNumber, _board);
@@ -117,6 +135,11 @@ namespace SudokuLib
                 + board.Substring(start + 18, 3);
         }
 
+        /// <summary>
+        /// Finds the next legal moves.
+        /// </summary>
+        /// <returns>A list of GameBoards with one fewer empty cell.
+        /// </returns>
         public IEnumerable<GameBoard> FillNextEmptyCell()
         {
             var nextGameBoards = new List<GameBoard>();
@@ -137,17 +160,19 @@ namespace SudokuLib
             return nextGameBoards;
         }
 
-        public char ElementAt(int rowNumber, int colNumber)
-        {
-            Debug.Assert(colNumber >= 0 && colNumber < 9);
-            Debug.Assert(rowNumber >= 0 && rowNumber < 9);
-            return _board.ElementAt(rowNumber * 9 + colNumber);
-        }
-
+        /// <summary>
+        /// Returns true if the game is not complete.
+        /// </summary>
         public bool HasEmptyCell() => _board.IndexOf(' ') >= 0;
 
+        /// <summary>
+        /// Calculates which numbers may be legally placed at rowNumber,
+        /// colNumber.
+        /// </summary>
+        /// <returns>A list of characters that can be legally placed.</returns>
         private IEnumerable<char> GetLegalMoves(int rowNumber, int colNumber) =>
-            "123456789".Except(Row(rowNumber).Union(Column(colNumber)).Union(Group(rowNumber, colNumber)));
+            "123456789".Except(Row(rowNumber).Union(Column(colNumber))
+                .Union(Group(rowNumber, colNumber)));
 
         public override string ToString() => _board;
 
@@ -156,7 +181,6 @@ namespace SudokuLib
         /// no duplicate numbers.
         /// </summary>
         /// <param name="group"></param>
-        /// <returns></returns>
         private static bool IsLegal(string group)
         {
             var withoutSpaces = group.Where((c) => c != ' ');
