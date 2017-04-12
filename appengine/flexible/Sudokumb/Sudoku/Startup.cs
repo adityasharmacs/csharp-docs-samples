@@ -49,8 +49,7 @@ namespace Pubsub
             services.Configure<PubsubOptions>(
                 Configuration.GetSection("Pubsub"));
             services.AddMvc();
-            services.AddSingleton((provider) => PublisherClient.Create());
-            services.AddSingleton((provider) => SubscriberClient.Create());
+            services.AddSingleton((provider) => CreateTopicAndSubscription(provider));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -77,6 +76,39 @@ namespace Pubsub
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+        }
+
+        PublisherClient CreateTopicAndSubscription(System.IServiceProvider provider)
+        {
+            PubsubOptions options = provider.GetService<IOptions<PubsubOptions>>().Value;
+            PublisherClient publisher = PublisherClient.Create();
+            TopicName topicName = new TopicName(options.ProjectId, options.TopicId);
+            try
+            {
+                publisher.CreateTopic(topicName);
+            }
+            catch (Grpc.Core.RpcException e)
+            when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
+            {
+            }
+            var subscriptionName = new SubscriptionName(
+                    options.ProjectId, options.SubscriptionId);
+            var pushConfig = new PushConfig()
+            {
+                PushEndpoint = $"https://{options.ProjectId}.appspot.com/Push"
+            };
+            SubscriberClient subscriber = SubscriberClient.Create();
+            try
+            {
+                subscriber.CreateSubscription(subscriptionName, topicName,
+                    pushConfig, 20);
+            }
+            catch (Grpc.Core.RpcException e)
+            when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
+            {
+                subscriber.ModifyPushConfig(subscriptionName, pushConfig);
+            }
+            return publisher;
         }
     }
 }
