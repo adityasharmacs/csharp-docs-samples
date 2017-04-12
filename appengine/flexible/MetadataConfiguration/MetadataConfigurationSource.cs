@@ -73,11 +73,20 @@ namespace GoogleCloudSamples
                 {
                     Data = attributes;
                 }
+                Data["IAmRunningInGoogleCloud"] = "true";
             }
-            catch (HttpRequestException e)
+            catch (AggregateException ae)
             {
-                Debug.WriteLine("Failed to load attributes from Google metadata. "
-                    + "I assume I'm not running in Google Cloud.");
+                ae.Handle((e) =>
+                {
+                    if (e is HttpRequestException)
+                    {
+                        Debug.WriteLine("Failed to load attributes from Google metadata. "
+                        + "I assume I'm not running in Google Cloud.");
+                        return true;
+                    }
+                    return false;
+                });                 
             }
         }
     }

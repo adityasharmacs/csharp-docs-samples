@@ -25,6 +25,7 @@ using SocialAuth.Models;
 using SocialAuth.Services;
 using Microsoft.AspNetCore.Mvc;
 using GoogleCloudSamples;
+using System.Linq;
 
 namespace SocialAuth
 {
@@ -63,8 +64,15 @@ namespace SocialAuth
 
             services.AddMvc(options =>
             {
-                options.SslPort = 44393;
-                options.Filters.Add(new RequireHttpsAttribute());
+                if (Configuration["IAmRunningInGoogleCloud"] == "true")
+                {
+                    options.Filters.Add(new RequireHttpsOnAppEngine());
+                }
+                else
+                {
+                    options.SslPort = 44393;
+                    options.Filters.Add(new RequireHttpsAttribute());
+                }
             });
 
             // Add application services.
