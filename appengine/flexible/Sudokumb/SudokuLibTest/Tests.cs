@@ -36,13 +36,7 @@ namespace SudokuLib
             "3  |   |1  ";
 
 
-        static GameBoard ToGameBoard(string board) => new GameBoard()
-        {
-            Board = new string(board.Where((c) =>
-                GameBoard.LegalCharacters.Contains(c)).ToArray())
-        };
-
-        GameBoard _boardA = ToGameBoard(s_boardA);
+        GameBoard _boardA = GameBoard.Create(s_boardA);
 
         [Fact]
         public void TestAccessors() 
@@ -89,7 +83,7 @@ namespace SudokuLib
                 "  1|   |   " +
                 " 5 |  3|   " +
                 "3  |   |1  "
-            }.Select((board) => ToGameBoard(board));
+            }.Select((board) => GameBoard.Create(board));
 
             var nextBoards = _boardA.FillNextEmptyCell();
             Assert.Equal(expectedNextBoards.Count(), nextBoards.Count());

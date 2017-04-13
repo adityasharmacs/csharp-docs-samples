@@ -62,7 +62,7 @@ namespace SudokuLib
                 foreach (char c in value)
                 {
                     if (_legalCharacters.IndexOf(c) < 0)
-                        throw new ArgumentOutOfRangeException("value", $"Illegal character: {c}");
+                        throw new ArgumentException("value", $"Illegal character: {c}");
                 }
                 for (int i = 0; i < 9; ++i)
                 {
@@ -79,6 +79,12 @@ namespace SudokuLib
                 _board = value;
             }
         }
+
+        public static GameBoard Create(string board) => new GameBoard()
+        {
+            Board = new string(board.Where((c) =>
+                LegalCharacters.Contains(c)).ToArray())
+        };
 
         /// <summary>
         /// The set of characters that can appear in a valid game board.

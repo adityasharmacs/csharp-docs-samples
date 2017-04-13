@@ -19,48 +19,58 @@ using Google.Protobuf;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Pubsub.ViewModels;
+using SudokuLib;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pubsub.Controllers
 {
     public class HomeController : Controller
     {
         readonly PubsubOptions _options;
-        // Lock protects all the static members.
         readonly PublisherClient _publisher;
+        readonly TopicName _topicName;
+
+        static string s_boardA =
+            "123|   |789" +
+            "   |   |   " +
+            "   |   |   " +
+            "---+---+---" +
+            "   |4  |   " +
+            " 7 | 5 |   " +
+            "   |  6| 2 " +
+            "---+---+---" +
+            "  1|   |   " +
+            " 5 |  3|   " +
+            "3  |   |1  ";
+
 
         public HomeController(IOptions<PubsubOptions> options, 
             PublisherClient publisher)
         {
             _options = options.Value;
             _publisher = publisher;
+            _topicName = new TopicName(_options.ProjectId,
+                    _options.TopicId);
         }
 
         [HttpGet]
-        [HttpPost]
-        public IActionResult Index(MessageForm messageForm)
+        public IActionResult Index()
         {
-            var model = new MessageList();
-            if (!_options.HasGoodProjectId())
+            return View();
+        }
+
+        [HttpPost]
+        [ActionName("Index")]
+        public IActionResult IndexPost()
+        {
+            var pubsubMessage = new PubsubMessage()
             {
-                model.MissingProjectId = true;
-                return View(model);
-            }
-            if (!string.IsNullOrEmpty(messageForm.Message))
-            {
-                // Publish the message.
-                var topicName = new TopicName(_options.ProjectId, 
-                    _options.TopicId);
-                var pubsubMessage = new PubsubMessage()
-                {
-                    Data = ByteString.CopyFromUtf8(messageForm.Message)
-                };
-                pubsubMessage.Attributes["token"] = _options.VerificationToken;
-                _publisher.Publish(topicName, new[] { pubsubMessage });
-                model.PublishedMessage = messageForm.Message;
-            }
-            return View(model);
+                Data = ByteString.CopyFromUtf8(GameBoard.Create(s_boardA).Board)
+            };
+            pubsubMessage.Attributes["token"] = _options.VerificationToken;
+            _publisher.Publish(_topicName, new[] { pubsubMessage }); return View();
         }
 
         /// <summary>
@@ -76,9 +86,31 @@ namespace Pubsub.Controllers
             }
             var messageBytes = Convert.FromBase64String(body.message.data);
             string message = System.Text.Encoding.UTF8.GetString(messageBytes);
+            var board = new SudokuLib.GameBoard();
+            try
+            {
+                board.Board = message;
+            }
+            catch (ArgumentException)
+            {
+                return new BadRequestResult();
+            }
+            var request = new PublishRequest();
+            request.TopicAsTopicName = _topicName;
+            var nextMoves = board.FillNextEmptyCell();
+            foreach (var move in nextMoves)
+            {
+                var nextMessage = new PubsubMessage();
+                nextMessage.Attributes["token"] = _options.VerificationToken;
+                nextMessage.Data = ByteString.CopyFromUtf8(move.Board);
+                request.Messages.Add(nextMessage);
+            }
+            if (request.Messages.Count > 0)
+            {
+                _publisher.Publish(request);
+            }
             return new OkResult();
         }
-        // [END push]
 
         public IActionResult Error()
         {
