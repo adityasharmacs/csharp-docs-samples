@@ -46,7 +46,9 @@
     },
     "Microsoft.AspNetCore.Authentication.Google": "1.1.1",
     "Microsoft.AspNetCore.Authentication.Facebook": "1.1.1",
-    "MetadataConfiguration": "1.0.0-*"
+    "MetadataConfiguration": "1.0.0-*",
+    "Microsoft.AspNetCore.Session": "1.0.0",
+    "Microsoft.Extensions.Caching.SqlServer": "1.1.1"
   },
 
   "tools": {
@@ -88,6 +90,7 @@
       "wwwroot",
       "**/*.cshtml",
       "appsettings.json",
+      "appsettings.*.json",
       "web.config"
     ]
   },

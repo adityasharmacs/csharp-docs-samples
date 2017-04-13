@@ -41,7 +41,7 @@ namespace SocialAuth
             if (env.IsDevelopment())
             {
                 // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
-                builder.AddUserSecrets();
+                // builder.AddUserSecrets();
             }
             builder.Add(new MetadataConfigurationSource());
             builder.AddEnvironmentVariables();
@@ -55,6 +55,12 @@ namespace SocialAuth
         {
             // Add framework services.
             string connectionString = Configuration.GetConnectionString("DefaultConnection");
+            // services.AddSession();
+            services.AddDistributedSqlServerCache((options) =>
+            {
+                options.ConnectionString = connectionString;
+                options.TableName = "Sessions";
+            });
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString));
 
@@ -74,7 +80,6 @@ namespace SocialAuth
                     options.Filters.Add(new RequireHttpsAttribute());
                 }
             });
-
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
