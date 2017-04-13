@@ -30,6 +30,8 @@ namespace SocialAuth
             var proto = context.HttpContext.Request.Headers["X-Forwarded-Proto"];
             if (proto.FirstOrDefault() == "https")
             {
+                context.HttpContext.Request.IsHttps = true;
+                context.HttpContext.Request.Protocol = "https";
                 return;  // Using https like they should.
             }
             if (context.HttpContext.Request.Path
@@ -38,11 +40,16 @@ namespace SocialAuth
                 // Accept health checks from non-ssl connections.
                 return;
             }
-            // Redirect to https.
-            string httpsPath = string.Format("https://{0}{1}{2}",
-                context.HttpContext.Request.Host, context.HttpContext.Request.Path,
-                context.HttpContext.Request.QueryString);
-            context.Result = new RedirectResult(httpsPath);
+
+            // Redirect to https
+            var request = context.HttpContext.Request;
+            var newUrl = string.Concat(
+                                "https://",
+                                request.Host.ToUriComponent(),
+                                request.PathBase.ToUriComponent(),
+                                request.Path.ToUriComponent(),
+                                request.QueryString.ToUriComponent());
+            context.Result = new RedirectResult(newUrl);
         }
     }
 }
