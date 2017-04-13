@@ -13,6 +13,12 @@ namespace SocialAuth.Controllers
             return View();
         }
 
+        [Route("_ah/health")]
+        public IActionResult Health()
+        {
+            return new OkResult();
+        }
+ 
         public IActionResult About()
         {
             ViewData["Message"] = "Your application description page.";

@@ -13,24 +13,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Linq;
+using System;
 
 namespace SocialAuth
 {
-    public class RequireHttpsOnAppEngine : IActionFilter
+    public class RequireHttpsOnAppEngine : IAuthorizationFilter
     {
-        void IActionFilter.OnActionExecuted(ActionExecutedContext context)
-        {            
-        }
+        static PathString s_healthCheckPathString = new PathString("/_ah/health");
 
-        void IActionFilter.OnActionExecuting(ActionExecutingContext context)
+        void IAuthorizationFilter.OnAuthorization(AuthorizationFilterContext context)
         {
             var proto = context.HttpContext.Request.Headers["X-Forwarded-Proto"];
             if (proto.FirstOrDefault() == "https")
             {
                 return;  // Using https like they should.
+            }
+            if (context.HttpContext.Request.Path
+                .StartsWithSegments(s_healthCheckPathString))
+            {
+                // Accept health checks from non-ssl connections.
+                return;
             }
             // Redirect to https.
             string httpsPath = string.Format("https://{0}{1}{2}",
