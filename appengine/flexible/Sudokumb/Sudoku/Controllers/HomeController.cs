@@ -17,12 +17,14 @@
 using Google.Cloud.PubSub.V1;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pubsub.ViewModels;
 using SudokuLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Pubsub.Controllers
 {
@@ -31,6 +33,7 @@ namespace Pubsub.Controllers
         readonly PubsubOptions _options;
         readonly PublisherClient _publisher;
         readonly TopicName _topicName;
+        readonly ILogger _logger;
 
         static string s_boardA =
             "123|   |789" +
@@ -47,12 +50,13 @@ namespace Pubsub.Controllers
 
 
         public HomeController(IOptions<PubsubOptions> options, 
-            PublisherClient publisher)
+            PublisherClient publisher, ILogger<HomeController> logger)
         {
             _options = options.Value;
             _publisher = publisher;
             _topicName = new TopicName(_options.ProjectId,
                     _options.TopicId);
+            _logger = logger;
         }
 
         [HttpGet]
@@ -78,22 +82,24 @@ namespace Pubsub.Controllers
         /// </summary>
         [HttpPost]
         [Route("/Push")]
-        public IActionResult Push([FromBody]PushBody body)
+        public async Task<IActionResult> PushAsync([FromBody]PushBody body)
         {
             if (body.message.attributes["token"] != _options.VerificationToken)
             {
-                return new BadRequestResult();
+                _logger.LogWarning("Request had bad token.");
+                return new OkResult();
             }
             var messageBytes = Convert.FromBase64String(body.message.data);
             string message = System.Text.Encoding.UTF8.GetString(messageBytes);
-            var board = new SudokuLib.GameBoard();
+            var board = new GameBoard();
             try
             {
                 board.Board = message;
             }
             catch (ArgumentException)
             {
-                return new BadRequestResult();
+                _logger.LogWarning("Request had bad game board.");
+                return new OkResult();
             }
             var request = new PublishRequest();
             request.TopicAsTopicName = _topicName;
@@ -107,7 +113,7 @@ namespace Pubsub.Controllers
             }
             if (request.Messages.Count > 0)
             {
-                _publisher.Publish(request);
+                await _publisher.PublishAsync(request);
             }
             return new OkResult();
         }
