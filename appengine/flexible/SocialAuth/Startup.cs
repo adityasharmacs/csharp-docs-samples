@@ -26,6 +26,7 @@ using SocialAuth.Services;
 using Microsoft.AspNetCore.Mvc;
 using GoogleCloudSamples;
 using System.Linq;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace SocialAuth
 {
@@ -41,7 +42,7 @@ namespace SocialAuth
             if (env.IsDevelopment())
             {
                 // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
-                // builder.AddUserSecrets();
+                builder.AddUserSecrets();
             }
             builder.Add(new MetadataConfigurationSource());
             builder.AddEnvironmentVariables();
@@ -54,8 +55,10 @@ namespace SocialAuth
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
+            services.AddOptions();
+            services.Configure<KmsDataProtectionProviderOptions>(
+                          Configuration.GetSection("KmsDataProtection"));
             string connectionString = Configuration.GetConnectionString("DefaultConnection");
-            // services.AddSession();
             services.AddDistributedSqlServerCache((options) =>
             {
                 options.ConnectionString = connectionString;
@@ -80,6 +83,7 @@ namespace SocialAuth
                     options.Filters.Add(new RequireHttpsAttribute());
                 }
             });
+            services.AddSingleton<IDataProtectionProvider, KmsDataProtectionProvider>();
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();

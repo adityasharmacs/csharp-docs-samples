@@ -7,6 +7,7 @@
       "type": "platform"
     },
     "Microsoft.AspNetCore.Authentication.Cookies": "1.0.0",
+    "Microsoft.AspNetCore.DataProtection.Abstractions": "1.1.1",
     "Microsoft.AspNetCore.Diagnostics": "1.0.0",
     "Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore": "1.0.0",
     "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "1.0.0",
@@ -48,7 +49,8 @@
     "Microsoft.AspNetCore.Authentication.Facebook": "1.1.1",
     "MetadataConfiguration": "1.0.0-*",
     "Microsoft.AspNetCore.Session": "1.0.0",
-    "Microsoft.Extensions.Caching.SqlServer": "1.1.1"
+    "Microsoft.Extensions.Caching.SqlServer": "1.1.1",
+    "KmsDataProtectionProvider": "1.0.0-*"
   },
 
   "tools": {
