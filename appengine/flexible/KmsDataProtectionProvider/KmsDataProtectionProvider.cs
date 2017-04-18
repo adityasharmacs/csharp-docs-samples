@@ -60,7 +60,42 @@ namespace GoogleCloudSamples
 
         IDataProtector IDataProtectionProvider.CreateProtector(string purpose)
         {
-            // Encode the purpose as the key id.
+            // Create the crypto key:
+            var parent = string.Format(
+                "projects/{0}/locations/{1}/keyRings/{2}",
+                _options.Value.ProjectId, _options.Value.Location,
+                _options.Value.KeyRing);
+            string rotationPeriod = string.Format("{0}s",
+                    TimeSpan.FromDays(7).TotalSeconds);
+            CryptoKey cryptoKeyToCreate = new CryptoKey()
+            {
+                Purpose = "ENCRYPT_DECRYPT",
+                NextRotationTime = DateTime.UtcNow.AddDays(7),
+                RotationPeriod = rotationPeriod
+            };
+            var request = new ProjectsResource.LocationsResource
+                .KeyRingsResource.CryptoKeysResource.CreateRequest(
+                _kms, cryptoKeyToCreate, parent);
+            string keyId = EscapeKeyId(purpose);
+            request.CryptoKeyId = keyId;
+            string keyName;
+            try
+            {
+                keyName = request.Execute().Name;
+            }
+            catch (Google.GoogleApiException e)
+                when(e.HttpStatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                // Already exists.  Ok.
+                keyName = string.Format("{0}/cryptoKeys/{1}",
+                    parent, keyId);
+            }
+            return new KmsDataProtector(_kms, keyName, (string innerPurpose) =>
+                this.CreateProtector($"{purpose}.{innerPurpose}"));
+        }
+
+        static internal string EscapeKeyId(string purpose)
+        {
             StringBuilder keyIdBuilder = new StringBuilder();
             char prevC = ' ';
             foreach (char c in purpose)
@@ -82,36 +117,12 @@ namespace GoogleCloudSamples
                 prevC = c;
             }
             string keyId = keyIdBuilder.ToString();
-            // Create the crypto key:
-            var parent = string.Format(
-                "projects/{0}/locations/{1}/keyRings/{2}",
-                _options.Value.ProjectId, _options.Value.Location,
-                _options.Value.KeyRing);
-            string rotationPeriod = string.Format("{0}s",
-                    TimeSpan.FromDays(7).TotalSeconds);
-            CryptoKey cryptoKeyToCreate = new CryptoKey()
+            if (keyId.Length > 63)
             {
-                Purpose = "ENCRYPT_DECRYPT",
-                NextRotationTime = DateTime.UtcNow.AddDays(7),
-                RotationPeriod = rotationPeriod
-            };
-            var request = new ProjectsResource.LocationsResource
-                .KeyRingsResource.CryptoKeysResource.CreateRequest(
-                _kms, cryptoKeyToCreate, parent);
-            request.CryptoKeyId = keyId;
-            string keyName;
-            try
-            {
-                keyName = request.Execute().Name;
+                var hash = keyId.GetHashCode();
+                keyId = string.Format("{0}-{1:x8}", keyId.Substring(0, 54), hash);
             }
-            catch (Google.GoogleApiException e)
-                when(e.HttpStatusCode == System.Net.HttpStatusCode.Conflict)
-            {
-                // Already exists.  Ok.
-                keyName = string.Format("{0}/cryptoKeys/{1}",
-                    parent, keyId);
-            }
-            return new KmsDataProtector(_kms, keyName);
+            return keyId;
         }
     }
 
@@ -119,15 +130,19 @@ namespace GoogleCloudSamples
     {
         readonly CloudKMSService _kms;
         readonly string _keyName;
-        public KmsDataProtector(CloudKMSService kms, string keyName)
+        readonly Func<string, IDataProtector> _dataProtectorFactory;
+
+        internal KmsDataProtector(CloudKMSService kms, string keyName,
+            Func<string, IDataProtector> dataProtectorFactory)
         {
             _kms = kms;
             _keyName = keyName;
+            _dataProtectorFactory = dataProtectorFactory;
         }
 
         IDataProtector IDataProtectionProvider.CreateProtector(string purpose)
         {
-            throw new NotImplementedException();
+            return _dataProtectorFactory(purpose);
         }
 
         byte[] IDataProtector.Protect(byte[] plaintext)
