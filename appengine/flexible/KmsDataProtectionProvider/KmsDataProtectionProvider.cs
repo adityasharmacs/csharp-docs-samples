@@ -14,18 +14,31 @@ namespace GoogleCloudSamples
 {
     public class KmsDataProtectionProviderOptions
     {
+        /// <summary>
+        /// Your Google project id.
+        /// </summary>
         public string ProjectId { get; set; }
+        /// <summary>
+        /// global, us-east1, etc.
+        /// </summary>
         public string Location { get; set; } = "global";
+        /// <summary>
+        /// Name of the key ring to store the keys in.
+        /// </summary>
         public string KeyRing { get; set; }
     }
 
     public class KmsDataProtectionProvider : IDataProtectionProvider
     {
+        // The kms service.
         readonly CloudKMSService _kms;
         readonly IOptions<KmsDataProtectionProviderOptions> _options;
+        // Keep a cache of DataProtectors we create to reduce calls to the
+        // _kms service.
         readonly ConcurrentDictionary<string, IDataProtector> _dataProtectorCache = 
             new ConcurrentDictionary<string, IDataProtector>();
-        public KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
+
+        internal KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
         {
             _options = options;
             // Create a KMS service client with credentials.
@@ -70,7 +83,7 @@ namespace GoogleCloudSamples
                 return cached;
             }
             // Create the crypto key:
-            var parent = string.Format(
+            var keyRingName = string.Format(
                 "projects/{0}/locations/{1}/keyRings/{2}",
                 _options.Value.ProjectId, _options.Value.Location,
                 _options.Value.KeyRing);
@@ -84,7 +97,7 @@ namespace GoogleCloudSamples
             };
             var request = new ProjectsResource.LocationsResource
                 .KeyRingsResource.CryptoKeysResource.CreateRequest(
-                _kms, cryptoKeyToCreate, parent);
+                _kms, cryptoKeyToCreate, keyRingName);
             string keyId = EscapeKeyId(purpose);
             request.CryptoKeyId = keyId;
             string keyName;
@@ -97,7 +110,7 @@ namespace GoogleCloudSamples
             {
                 // Already exists.  Ok.
                 keyName = string.Format("{0}/cryptoKeys/{1}",
-                    parent, keyId);
+                    keyRingName, keyId);
             }
             var newProtector = new KmsDataProtector(_kms, keyName, (string innerPurpose) =>
                 this.CreateProtector($"{purpose}.{innerPurpose}"));
@@ -105,7 +118,13 @@ namespace GoogleCloudSamples
             return newProtector;
         }
 
-        static internal string EscapeKeyId(string purpose)
+        /// <summary>
+        /// Creates a key id given a string purpose.
+        /// Key ids must match the regex [a-zA-Z0-9_-]{1,63}.
+        /// </summary>
+        /// <param name="purpose">The purpose of the key.</param>
+        /// <returns>A key id that's safe to pass to Create().</returns>
+        static string EscapeKeyId(string purpose)
         {
             StringBuilder keyIdBuilder = new StringBuilder();
             char prevC = ' ';
@@ -131,15 +150,25 @@ namespace GoogleCloudSamples
             if (keyId.Length > 63)
             {
                 // For strings that are too long to be key ids, tag them with a
-                // has code.
-                int hash = 17;
-                foreach (char c in keyId)
-                {
-                    hash = hash * 31 + c;
-                }
-                keyId = string.Format("{0}-{1:x8}", keyId.Substring(0, 54), hash);
+                // hash code.  Try to put the hash code in the middle.
+                keyId = string.Format("{0}-{1:x8}", keyId.Substring(0, 54), 
+                    QuickHash(keyId));
             }
             return keyId;
+        }
+
+        /// <summary>
+        /// A simple hash function used to avoid collisions when mapping 
+        /// purposes to key ids.  Must be stable across platforms.
+        /// </summary>
+        static int QuickHash(string s)
+        {
+            int hash = 17;
+            foreach (char c in s)
+            {
+                hash = hash * 31 + c;
+            }
+            return hash;
         }
     }
 
