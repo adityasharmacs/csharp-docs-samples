@@ -28,10 +28,17 @@ namespace GoogleCloudSamples
 {
     public class QuickStart
     {
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
             // Your Google Cloud Platform project ID.
-            string projectId = "bookshelf-dotnet";
+            string projectId = "YOUR-PROJECT-ID";
+
+            if (projectId == "YOUR-" + "PROJECT-ID")
+            {
+                Console.Error.WriteLine("Modify Program.cs and replace YOUR-"
+                    + "PROJECT-ID with your google project id.");
+                return -1;
+            }
 
             // Authorize the client using Application Default Credentials.
             // See: https://developers.google.com/identity/protocols/application-default-credentials
@@ -115,6 +122,7 @@ namespace GoogleCloudSamples
                 Ciphertext = Convert.ToBase64String(cipherText)
             }, keyName).Execute();
             Console.WriteLine(Encoding.UTF8.GetString(Convert.FromBase64String(result.Plaintext)));
+            return 0;
         }
     }
 }
