@@ -7,6 +7,8 @@ using Google.Apis.Services;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.DataProtection;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace GoogleCloudSamples
 {
@@ -21,6 +23,8 @@ namespace GoogleCloudSamples
     {
         readonly CloudKMSService _kms;
         readonly IOptions<KmsDataProtectionProviderOptions> _options;
+        readonly ConcurrentDictionary<string, IDataProtector> _dataProtectorCache = 
+            new ConcurrentDictionary<string, IDataProtector>();
         public KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
         {
             _options = options;
@@ -60,6 +64,11 @@ namespace GoogleCloudSamples
 
         IDataProtector IDataProtectionProvider.CreateProtector(string purpose)
         {
+            IDataProtector cached;         
+            if (_dataProtectorCache.TryGetValue(purpose, out cached))
+            {
+                return cached;
+            }
             // Create the crypto key:
             var parent = string.Format(
                 "projects/{0}/locations/{1}/keyRings/{2}",
@@ -90,8 +99,10 @@ namespace GoogleCloudSamples
                 keyName = string.Format("{0}/cryptoKeys/{1}",
                     parent, keyId);
             }
-            return new KmsDataProtector(_kms, keyName, (string innerPurpose) =>
+            var newProtector = new KmsDataProtector(_kms, keyName, (string innerPurpose) =>
                 this.CreateProtector($"{purpose}.{innerPurpose}"));
+            _dataProtectorCache.TryAdd(purpose, newProtector);
+            return newProtector;
         }
 
         static internal string EscapeKeyId(string purpose)
