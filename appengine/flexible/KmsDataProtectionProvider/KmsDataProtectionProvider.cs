@@ -119,7 +119,13 @@ namespace GoogleCloudSamples
             string keyId = keyIdBuilder.ToString();
             if (keyId.Length > 63)
             {
-                var hash = keyId.GetHashCode();
+                // For strings that are too long to be key ids, tag them with a
+                // has code.
+                int hash = 17;
+                foreach (char c in keyId)
+                {
+                    hash = hash * 31 + c;
+                }
                 keyId = string.Format("{0}-{1:x8}", keyId.Substring(0, 54), hash);
             }
             return keyId;
