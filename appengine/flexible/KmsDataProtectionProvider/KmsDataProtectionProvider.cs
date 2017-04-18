@@ -38,7 +38,7 @@ namespace GoogleCloudSamples
         readonly ConcurrentDictionary<string, IDataProtector> _dataProtectorCache = 
             new ConcurrentDictionary<string, IDataProtector>();
 
-        internal KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
+        public KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
         {
             _options = options;
             // Create a KMS service client with credentials.
