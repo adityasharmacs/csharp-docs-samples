@@ -22,7 +22,7 @@ using System;
 // Imports the Google Cloud KMS client library
 using Google.Apis.CloudKMS.v1;
 using Google.Apis.CloudKMS.v1.Data;
-using System.Linq;
+using System.Text;
 
 namespace GoogleCloudSamples
 {
@@ -33,25 +33,19 @@ namespace GoogleCloudSamples
             // Your Google Cloud Platform project ID.
             string projectId = "bookshelf-dotnet";
 
-            // Lists keys in the "global" location.
-            string location = "global";
-
-            // The resource name of the location associated with the key rings.
-            string parent = $"projects/{projectId}/locations/{location}";
-
             // Authorize the client using Application Default Credentials.
             // See: https://developers.google.com/identity/protocols/application-default-credentials
             GoogleCredential credential = 
-                GoogleCredential.GetApplicationDefaultAsync().encryptResult;
+                GoogleCredential.GetApplicationDefaultAsync().Result;
             // Specify the Cloud Key Management Service scope.
             if (credential.IsCreateScopedRequired) 
             {
                 credential = credential.CreateScoped(new[]
                 {
-                    Google.Apis.CloudKMS.v1.CloudKMSService.Scope.CloudPlatform
+                    CloudKMSService.Scope.CloudPlatform
                 });
             }
-            // IdKMSService cloudKms = 
+            var cloudKms = 
                 new CloudKMSService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
@@ -59,11 +53,12 @@ namespace GoogleCloudSamples
             });
 
             // Create the key ring.
-            var parent = string.Format("projects/{0}/locations/global",
-                projectId);
+            string location = "global";
+            // The resource name of the location associated with the key rings.
+            string parent = $"projects/{projectId}/locations/{location}";
             KeyRing keyRingToCreate = new KeyRing();
             var request = new ProjectsResource.LocationsResource
-                .KeyRingsResource.CreateRequest(_kms, keyRingToCreate, parent);
+                .KeyRingsResource.CreateRequest(cloudKms, keyRingToCreate, parent);
             string keyRingId = request.KeyRingId = "QuickStartCore";
             try
             {
@@ -77,8 +72,8 @@ namespace GoogleCloudSamples
             
             // Create the crypto key:
             var keyRingName = string.Format(
-                "projects/{0}/locations/global/keyRings/{1}",
-                projectId, keyRingId);
+                "projects/{0}/locations/{1}/keyRings/{2}",
+                projectId, location, keyRingId);
             string rotationPeriod = string.Format("{0}s",
                     TimeSpan.FromDays(7).TotalSeconds);
             CryptoKey cryptoKeyToCreate = new CryptoKey()
@@ -87,14 +82,14 @@ namespace GoogleCloudSamples
                 NextRotationTime = DateTime.UtcNow.AddDays(7),
                 RotationPeriod = rotationPeriod
             };
-            var request = new ProjectsResource.LocationsResource
-                .KeyRingsResource.CryptoKeysResource.CreateRequest(
-                _kms, cryptoKeyToCreate, keyRingName);
-            string keyId = request.CryptoKeyId = "Key1";
+            string keyId = "Key1";
             string keyName;
             try
             {
-                keyName = request.Execute().Name;
+                keyName = new ProjectsResource.LocationsResource
+                .KeyRingsResource.CryptoKeysResource.CreateRequest(
+                cloudKms, cryptoKeyToCreate, keyRingName)
+                { CryptoKeyId = keyId }.Execute().Name;
             }
             catch (Google.GoogleApiException e)
                 when(e.HttpStatusCode == System.Net.HttpStatusCode.Conflict)
@@ -105,21 +100,21 @@ namespace GoogleCloudSamples
             }
 
             // Encrypt a string.
-            var encryptResult = _kms.Projects.Locations.KeyRings.CryptoKeys
+            var encryptResult = cloudKms.Projects.Locations.KeyRings.CryptoKeys
                 .Encrypt(new EncryptRequest()
             {
-                Plaintext = Convert.ToBase64String("Hello World.")
+                Plaintext = Convert.ToBase64String(Encoding.UTF8.GetBytes("Hello World."))
             }, keyName).Execute();
             var cipherText = 
                 Convert.FromBase64String(encryptResult.Ciphertext);            
 
             // Decrypt the string.
-            var result = _kms.Projects.Locations.KeyRings.CryptoKeys
+            var result = cloudKms.Projects.Locations.KeyRings.CryptoKeys
                 .Decrypt(new DecryptRequest()
             {
                 Ciphertext = Convert.ToBase64String(cipherText)
-            }, _keyName).Execute();
-            Console.WriteLine(Convert.FromBase64String(result.Plaintext));
+            }, keyName).Execute();
+            Console.WriteLine(Encoding.UTF8.GetString(Convert.FromBase64String(result.Plaintext)));
         }
     }
 }
