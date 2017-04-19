@@ -23,6 +23,7 @@ BackupAndEdit-TextFile "appsettings.json" `
 	Run-KestrelTest 5582
 	$after = Get-Date
 	# Wait for 1.5 minutes for the log entry to arrive.
+    gcloud auth activate-service-account --key-file=$env:GOOGLE_APPLICATION_CREDENTIALS
 	$count = 30
 	while ($true) {
 		$log = Get-GcLogEntry -Project $env:GOOGLE_PROJECT_ID `
