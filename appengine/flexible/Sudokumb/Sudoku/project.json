@@ -22,7 +22,8 @@
     "Microsoft.Extensions.Options.ConfigurationExtensions": "1.0.0",
     "Microsoft.VisualStudio.Web.BrowserLink.Loader": "14.0.0",
     "Google.Cloud.PubSub.V1": "1.0.0-beta08",
-    "SudokuLib": "1.0.0-*"
+    "SudokuLib": "1.0.0-*",
+    "Google.Cloud.Diagnostics.AspNetCore": "1.0.0-alpha08"
   },
 
   "tools": {

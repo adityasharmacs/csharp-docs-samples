@@ -14,6 +14,7 @@
  * the License.
  */
 
+using Google.Cloud.Diagnostics.AspNetCore;
 using Google.Cloud.PubSub.V1;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,9 +22,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
 
 namespace Pubsub
 {
@@ -45,6 +43,7 @@ namespace Pubsub
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
+            services.AddGoogleTrace(Configuration["Pubsub:ProjectId"]);
             services.AddOptions();
             services.Configure<PubsubOptions>(
                 Configuration.GetSection("Pubsub"));
@@ -76,6 +75,9 @@ namespace Pubsub
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            app.UseGoogleTrace();
+            app.UseGoogleExceptionLogging(Configuration["Pubsub:ProjectId"], "Sudokumb", "dev");
         }
 
         PublisherClient CreateTopicAndSubscription(System.IServiceProvider provider)
