@@ -24,14 +24,19 @@ using Google.Apis.CloudKMS.v1;
 using Google.Apis.CloudKMS.v1.Data;
 using System.Text;
 
+using static Google.Apis.Http.ConfigurableMessageHandler;
+using Google.Apis.Logging;
+
 namespace GoogleCloudSamples
 {
     public class QuickStart
     {
         public static int Main(string[] args)
         {
+            Google.ApplicationContext.RegisterLogger(new ConsoleLogger(LogLevel.All));
+
             // Your Google Cloud Platform project ID.
-            string projectId = "YOUR-PROJECT-ID";
+            string projectId = "bookshelf-dotnet";
 
             if (projectId == "YOUR-" + "PROJECT-ID")
             {
@@ -58,6 +63,9 @@ namespace GoogleCloudSamples
                 HttpClientInitializer = credential,
                 GZipEnabled = false
             });
+
+            cloudKms.HttpClient.MessageHandler.LogEvents =
+                LogEventType.RequestHeaders | LogEventType.ResponseBody;
 
             // Create the key ring.
             string location = "global";
