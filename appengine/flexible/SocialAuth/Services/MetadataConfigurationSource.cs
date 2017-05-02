@@ -20,7 +20,7 @@ using System.Net.Http;
 using Newtonsoft.Json;
 using System.Diagnostics;
 
-namespace GoogleCloudSamples
+namespace SocialAuth
 {
     public class MetadataConfigurationSource : IConfigurationSource
     {

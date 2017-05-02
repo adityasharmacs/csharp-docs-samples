@@ -24,7 +24,6 @@ using SocialAuth.Data;
 using SocialAuth.Models;
 using SocialAuth.Services;
 using Microsoft.AspNetCore.Mvc;
-using GoogleCloudSamples;
 using System.Linq;
 using Microsoft.AspNetCore.DataProtection;
 
