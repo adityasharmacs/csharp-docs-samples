@@ -7,20 +7,37 @@ using Google.Apis.Services;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.DataProtection;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace GoogleCloudSamples
 {
     public class KmsDataProtectionProviderOptions
     {
+        /// <summary>
+        /// Your Google project id.
+        /// </summary>
         public string ProjectId { get; set; }
+        /// <summary>
+        /// global, us-east1, etc.
+        /// </summary>
         public string Location { get; set; } = "global";
+        /// <summary>
+        /// Name of the key ring to store the keys in.
+        /// </summary>
         public string KeyRing { get; set; }
     }
 
     public class KmsDataProtectionProvider : IDataProtectionProvider
     {
+        // The kms service.
         readonly CloudKMSService _kms;
         readonly IOptions<KmsDataProtectionProviderOptions> _options;
+        // Keep a cache of DataProtectors we create to reduce calls to the
+        // _kms service.
+        readonly ConcurrentDictionary<string, IDataProtector> _dataProtectorCache = 
+            new ConcurrentDictionary<string, IDataProtector>();
+
         public KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
         {
             _options = options;
@@ -60,7 +77,55 @@ namespace GoogleCloudSamples
 
         IDataProtector IDataProtectionProvider.CreateProtector(string purpose)
         {
-            // Encode the purpose as the key id.
+            IDataProtector cached;         
+            if (_dataProtectorCache.TryGetValue(purpose, out cached))
+            {
+                return cached;
+            }
+            // Create the crypto key:
+            var keyRingName = string.Format(
+                "projects/{0}/locations/{1}/keyRings/{2}",
+                _options.Value.ProjectId, _options.Value.Location,
+                _options.Value.KeyRing);
+            string rotationPeriod = string.Format("{0}s",
+                    TimeSpan.FromDays(7).TotalSeconds);
+            CryptoKey cryptoKeyToCreate = new CryptoKey()
+            {
+                Purpose = "ENCRYPT_DECRYPT",
+                NextRotationTime = DateTime.UtcNow.AddDays(7),
+                RotationPeriod = rotationPeriod
+            };
+            var request = new ProjectsResource.LocationsResource
+                .KeyRingsResource.CryptoKeysResource.CreateRequest(
+                _kms, cryptoKeyToCreate, keyRingName);
+            string keyId = EscapeKeyId(purpose);
+            request.CryptoKeyId = keyId;
+            string keyName;
+            try
+            {
+                keyName = request.Execute().Name;
+            }
+            catch (Google.GoogleApiException e)
+                when(e.HttpStatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                // Already exists.  Ok.
+                keyName = string.Format("{0}/cryptoKeys/{1}",
+                    keyRingName, keyId);
+            }
+            var newProtector = new KmsDataProtector(_kms, keyName, (string innerPurpose) =>
+                this.CreateProtector($"{purpose}.{innerPurpose}"));
+            _dataProtectorCache.TryAdd(purpose, newProtector);
+            return newProtector;
+        }
+
+        /// <summary>
+        /// Creates a key id given a string purpose.
+        /// Key ids must match the regex [a-zA-Z0-9_-]{1,63}.
+        /// </summary>
+        /// <param name="purpose">The purpose of the key.</param>
+        /// <returns>A key id that's safe to pass to Create().</returns>
+        static string EscapeKeyId(string purpose)
+        {
             StringBuilder keyIdBuilder = new StringBuilder();
             char prevC = ' ';
             foreach (char c in purpose)
@@ -82,36 +147,28 @@ namespace GoogleCloudSamples
                 prevC = c;
             }
             string keyId = keyIdBuilder.ToString();
-            // Create the crypto key:
-            var parent = string.Format(
-                "projects/{0}/locations/{1}/keyRings/{2}",
-                _options.Value.ProjectId, _options.Value.Location,
-                _options.Value.KeyRing);
-            string rotationPeriod = string.Format("{0}s",
-                    TimeSpan.FromDays(7).TotalSeconds);
-            CryptoKey cryptoKeyToCreate = new CryptoKey()
+            if (keyId.Length > 63)
             {
-                Purpose = "ENCRYPT_DECRYPT",
-                NextRotationTime = DateTime.UtcNow.AddDays(7),
-                RotationPeriod = rotationPeriod
-            };
-            var request = new ProjectsResource.LocationsResource
-                .KeyRingsResource.CryptoKeysResource.CreateRequest(
-                _kms, cryptoKeyToCreate, parent);
-            request.CryptoKeyId = keyId;
-            string keyName;
-            try
-            {
-                keyName = request.Execute().Name;
+                // For strings that are too long to be key ids, tag them with a
+                // hash code.  Try to put the hash code in the middle.
+                keyId = string.Format("{0}-{1:x8}", keyId.Substring(0, 54), 
+                    QuickHash(keyId));
             }
-            catch (Google.GoogleApiException e)
-                when(e.HttpStatusCode == System.Net.HttpStatusCode.Conflict)
+            return keyId;
+        }
+
+        /// <summary>
+        /// A simple hash function used to avoid collisions when mapping 
+        /// purposes to key ids.  Must be stable across platforms.
+        /// </summary>
+        static int QuickHash(string s)
+        {
+            int hash = 17;
+            foreach (char c in s)
             {
-                // Already exists.  Ok.
-                keyName = string.Format("{0}/cryptoKeys/{1}",
-                    parent, keyId);
+                hash = hash * 31 + c;
             }
-            return new KmsDataProtector(_kms, keyName);
+            return hash;
         }
     }
 
@@ -119,15 +176,19 @@ namespace GoogleCloudSamples
     {
         readonly CloudKMSService _kms;
         readonly string _keyName;
-        public KmsDataProtector(CloudKMSService kms, string keyName)
+        readonly Func<string, IDataProtector> _dataProtectorFactory;
+
+        internal KmsDataProtector(CloudKMSService kms, string keyName,
+            Func<string, IDataProtector> dataProtectorFactory)
         {
             _kms = kms;
             _keyName = keyName;
+            _dataProtectorFactory = dataProtectorFactory;
         }
 
         IDataProtector IDataProtectionProvider.CreateProtector(string purpose)
         {
-            throw new NotImplementedException();
+            return _dataProtectorFactory(purpose);
         }
 
         byte[] IDataProtector.Protect(byte[] plaintext)

@@ -31,7 +31,7 @@ namespace SocialAuth
             if (proto.FirstOrDefault() == "https")
             {
                 context.HttpContext.Request.IsHttps = true;
-                context.HttpContext.Request.Protocol = "https";
+                context.HttpContext.Request.Scheme = "https";
                 return;  // Using https like they should.
             }
             if (context.HttpContext.Request.Path
