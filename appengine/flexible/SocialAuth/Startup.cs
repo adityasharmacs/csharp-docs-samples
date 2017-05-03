@@ -73,9 +73,9 @@ namespace SocialAuth
 
             services.AddMvc(options =>
             {
-                options.Filters.Add(typeof(RequireHttpsOnAppEngineAttribute));
                 if (Configuration["IAmRunningInGoogleCloud"] == "true")
                 {
+                    options.Filters.Add(new RequireHttpsOnAppEngineAttribute());
                 }
                 else
                 {
@@ -83,7 +83,6 @@ namespace SocialAuth
                     options.Filters.Add(new RequireHttpsAttribute());
                 }
             });
-            services.AddSingleton<RequireHttpsOnAppEngineAttribute>();
             services.AddSingleton<IDataProtectionProvider, KmsDataProtectionProvider>();
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
