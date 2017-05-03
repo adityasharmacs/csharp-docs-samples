@@ -26,11 +26,14 @@ using SocialAuth.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using Microsoft.AspNetCore.DataProtection;
+using Google.Cloud.Diagnostics.AspNetCore;
 
 namespace SocialAuth
 {
     public class Startup
     {
+        private RequireHttpsOnAppEngine requireHttpsOnAppEngine;
+
         public Startup(IHostingEnvironment env)
         {
             var builder = new ConfigurationBuilder()
@@ -74,7 +77,7 @@ namespace SocialAuth
             {
                 if (Configuration["IAmRunningInGoogleCloud"] == "true")
                 {
-                    options.Filters.Add(new RequireHttpsOnAppEngine());
+                    options.Filters.Add(requireHttpsOnAppEngine = new RequireHttpsOnAppEngine());
                 }
                 else
                 {
@@ -86,12 +89,21 @@ namespace SocialAuth
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
+
+            string projectId = GetProjectId();
+            services.AddGoogleTrace(projectId);
+            services.AddGoogleExceptionLogging(projectId,
+                Configuration["GoogleErrorReporting:ServiceName"],
+                    Configuration["GoogleErrorReporting:Version"]);
         }
+
+        string GetProjectId() => Configuration["KmsDataProtection:ProjectId"];
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
+            loggerFactory.AddGoogle(GetProjectId());
             loggerFactory.AddDebug();
 
             if (env.IsDevelopment())
@@ -103,6 +115,8 @@ namespace SocialAuth
             else
             {
                 app.UseExceptionHandler("/Home/Error");
+                app.UseGoogleExceptionLogging();
+                app.UseGoogleTrace();
             }
 
             app.UseStaticFiles();
@@ -113,13 +127,15 @@ namespace SocialAuth
             app.UseGoogleAuthentication(new GoogleOptions()
             {
                 ClientId = Configuration["Authentication:Google:ClientId"],
-                ClientSecret = Configuration["Authentication:Google:ClientSecret"]
+                ClientSecret = Configuration["Authentication:Google:ClientSecret"],
+                LoggerFactory = loggerFactory
             });
 
             app.UseFacebookAuthentication(new FacebookOptions()
             {
                 AppId = Configuration["Authentication:Facebook:AppId"],
-                AppSecret = Configuration["Authentication:Facebook:AppSecret"]
+                AppSecret = Configuration["Authentication:Facebook:AppSecret"],
+                LoggerFactory = loggerFactory
             });
 
             app.UseMvc(routes =>
@@ -128,6 +144,11 @@ namespace SocialAuth
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            if (requireHttpsOnAppEngine != null)
+            {
+                requireHttpsOnAppEngine.Logger = loggerFactory.CreateLogger<RequireHttpsOnAppEngine>();
+            }
         }
     }
 }

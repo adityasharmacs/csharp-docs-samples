@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Linq;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace SocialAuth
 {
@@ -25,24 +26,33 @@ namespace SocialAuth
     {
         static PathString s_healthCheckPathString = new PathString("/_ah/health");
 
+        public ILogger Logger { get; set; }
+
         void IAuthorizationFilter.OnAuthorization(AuthorizationFilterContext context)
         {
-            var proto = context.HttpContext.Request.Headers["X-Forwarded-Proto"];
-            if (proto.FirstOrDefault() == "https")
+            var request = context.HttpContext.Request;
+            string myUrl = string.Concat(
+                                    request.Scheme, "://",
+                                    request.Host.ToUriComponent(),
+                                    request.PathBase.ToUriComponent(),
+                                    request.Path.ToUriComponent(),
+                                    request.QueryString.ToUriComponent());
+            string proto = request.Headers["X-Forwarded-Proto"]
+                .FirstOrDefault();
+            Logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
+            if (proto == "https")
             {
-                context.HttpContext.Request.IsHttps = true;
-                context.HttpContext.Request.Scheme = "https";
+                request.IsHttps = true;
+                request.Scheme = "https";
                 return;  // Using https like they should.
             }
-            if (context.HttpContext.Request.Path
-                .StartsWithSegments(s_healthCheckPathString))
+            if (request.Path.StartsWithSegments(s_healthCheckPathString))
             {
                 // Accept health checks from non-ssl connections.
                 return;
             }
 
             // Redirect to https
-            var request = context.HttpContext.Request;
             var newUrl = string.Concat(
                                 "https://",
                                 request.Host.ToUriComponent(),

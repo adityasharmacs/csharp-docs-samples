@@ -1,5 +1,2 @@
 runtime: aspnetcore
 env: flex
-
-env_variables:
-  ASPNETCORE_ENVIRONMENT: Development
