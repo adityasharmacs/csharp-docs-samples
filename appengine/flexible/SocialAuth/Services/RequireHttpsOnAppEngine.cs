@@ -39,9 +39,9 @@ namespace SocialAuth
                                     request.QueryString.ToUriComponent());
             string proto = request.Headers["X-Forwarded-Proto"]
                 .FirstOrDefault();
-            Logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
             if (proto == "https")
             {
+                Logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
                 request.IsHttps = true;
                 request.Scheme = "https";
                 return;  // Using https like they should.
@@ -53,6 +53,7 @@ namespace SocialAuth
             }
 
             // Redirect to https
+            Logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
             var newUrl = string.Concat(
                                 "https://",
                                 request.Host.ToUriComponent(),
