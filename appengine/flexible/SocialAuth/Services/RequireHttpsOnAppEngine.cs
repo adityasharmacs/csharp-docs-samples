@@ -49,7 +49,7 @@ namespace SocialAuth
                                     request.QueryString.ToUriComponent());
             string proto = request.Headers["X-Forwarded-Proto"]
                 .FirstOrDefault();
-            if (false && proto == "https")
+            if (proto == "https")
             {
                 _logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
                 request.IsHttps = true;
