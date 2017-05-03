@@ -32,8 +32,6 @@ namespace SocialAuth
 {
     public class Startup
     {
-        private RequireHttpsOnAppEngine requireHttpsOnAppEngine;
-
         public Startup(IHostingEnvironment env)
         {
             var builder = new ConfigurationBuilder()
@@ -75,9 +73,9 @@ namespace SocialAuth
 
             services.AddMvc(options =>
             {
+                options.Filters.Add(typeof(RequireHttpsOnAppEngineAttribute));
                 if (Configuration["IAmRunningInGoogleCloud"] == "true")
                 {
-                    options.Filters.Add(requireHttpsOnAppEngine = new RequireHttpsOnAppEngine());
                 }
                 else
                 {
@@ -85,6 +83,7 @@ namespace SocialAuth
                     options.Filters.Add(new RequireHttpsAttribute());
                 }
             });
+            services.AddSingleton<RequireHttpsOnAppEngineAttribute>();
             services.AddSingleton<IDataProtectionProvider, KmsDataProtectionProvider>();
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
@@ -144,11 +143,6 @@ namespace SocialAuth
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
-
-            if (requireHttpsOnAppEngine != null)
-            {
-                requireHttpsOnAppEngine.Logger = loggerFactory.CreateLogger<RequireHttpsOnAppEngine>();
-            }
         }
     }
 }

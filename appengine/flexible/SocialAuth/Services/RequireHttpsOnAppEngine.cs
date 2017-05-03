@@ -22,13 +22,23 @@ using Microsoft.Extensions.Logging;
 
 namespace SocialAuth
 {
-    public class RequireHttpsOnAppEngine : IAuthorizationFilter
+    public class RequireHttpsOnAppEngine : IActionFilter
     {
         static PathString s_healthCheckPathString = new PathString("/_ah/health");
 
-        public ILogger Logger { get; set; }
+        readonly ILogger _logger;
 
-        void IAuthorizationFilter.OnAuthorization(AuthorizationFilterContext context)
+        public RequireHttpsOnAppEngine(ILogger logger)
+        {
+            _logger = logger;
+        }
+
+        void IActionFilter.OnActionExecuted(ActionExecutedContext context)
+        {
+            // Do nothing.
+        }
+
+        void IActionFilter.OnActionExecuting(ActionExecutingContext context)
         {
             var request = context.HttpContext.Request;
             string myUrl = string.Concat(
@@ -41,7 +51,7 @@ namespace SocialAuth
                 .FirstOrDefault();
             if (proto == "https")
             {
-                Logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
+                _logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
                 request.IsHttps = true;
                 request.Scheme = "https";
                 return;  // Using https like they should.
@@ -53,7 +63,7 @@ namespace SocialAuth
             }
 
             // Redirect to https
-            Logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
+            _logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
             var newUrl = string.Concat(
                                 "https://",
                                 request.Host.ToUriComponent(),
@@ -61,6 +71,23 @@ namespace SocialAuth
                                 request.Path.ToUriComponent(),
                                 request.QueryString.ToUriComponent());
             context.Result = new RedirectResult(newUrl);
+        }
+    }
+
+    public class RequireHttpsOnAppEngineAttribute : Attribute, IFilterFactory
+    {
+        bool IFilterFactory.IsReusable
+        {
+            get
+            {
+                return false;
+            }
+        }
+
+        IFilterMetadata IFilterFactory.CreateInstance(IServiceProvider serviceProvider)
+        {
+            var loggerFactory = (ILoggerFactory) serviceProvider.GetService(typeof(ILoggerFactory));
+            return new RequireHttpsOnAppEngine(loggerFactory.CreateLogger<RequireHttpsOnAppEngine>());
         }
     }
 }
