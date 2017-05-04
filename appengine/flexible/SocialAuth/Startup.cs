@@ -39,12 +39,15 @@ namespace SocialAuth
         {
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true);
+                .AddJsonFile("appsettings.json", optional: true, 
+                    reloadOnChange: true)
+                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", 
+                    optional: true);
 
             if (env.IsDevelopment())
             {
-                // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
+                // For more details on using the user secret store see 
+                // http://go.microsoft.com/fwlink/?LinkID=532709
                 builder.AddUserSecrets();
             }
             builder.Add(new MetadataConfigurationSource());
@@ -61,7 +64,8 @@ namespace SocialAuth
             services.AddOptions();
             services.Configure<KmsDataProtectionProviderOptions>(
                           Configuration.GetSection("KmsDataProtection"));
-            string connectionString = Configuration.GetConnectionString("DefaultConnection");
+            string connectionString = Configuration
+                .GetConnectionString("DefaultConnection");
             services.AddDistributedSqlServerCache((options) =>
             {
                 options.ConnectionString = connectionString;
@@ -75,7 +79,9 @@ namespace SocialAuth
                 .AddDefaultTokenProviders();
 
             services.AddMvc();
-            services.AddSingleton<IDataProtectionProvider, KmsDataProtectionProvider>();
+            services.AddSingleton<IDataProtectionProvider,
+                KmsDataProtectionProvider>();
+
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
