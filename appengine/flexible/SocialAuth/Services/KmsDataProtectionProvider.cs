@@ -27,6 +27,10 @@ namespace SocialAuth.Services
         public string KeyRing { get; set; }
     }
 
+    /// <summary>
+    /// Implements a DataProtectionProvider using Google's Cloud Key
+    /// Management Service.  https://cloud.google.com/kms/
+    /// </summary>
     public class KmsDataProtectionProvider : IDataProtectionProvider
     {
         // The kms service.
@@ -34,10 +38,12 @@ namespace SocialAuth.Services
         readonly IOptions<KmsDataProtectionProviderOptions> _options;
         // Keep a cache of DataProtectors we create to reduce calls to the
         // _kms service.
-        readonly ConcurrentDictionary<string, IDataProtector> _dataProtectorCache =
+        readonly ConcurrentDictionary<string, IDataProtector> 
+            _dataProtectorCache =
             new ConcurrentDictionary<string, IDataProtector>();
 
-        public KmsDataProtectionProvider(IOptions<KmsDataProtectionProviderOptions> options)
+        public KmsDataProtectionProvider(
+            IOptions<KmsDataProtectionProviderOptions> options)
         {
             _options = options;
             // Create a KMS service client with credentials.
@@ -60,8 +66,8 @@ namespace SocialAuth.Services
             var parent = string.Format("projects/{0}/locations/{1}",
                 options.Value.ProjectId, options.Value.Location);
             KeyRing keyRingToCreate = new KeyRing();
-            var request = new ProjectsResource.LocationsResource.KeyRingsResource.CreateRequest(
-                _kms, keyRingToCreate, parent);
+            var request = new ProjectsResource.LocationsResource
+                .KeyRingsResource.CreateRequest(_kms, keyRingToCreate, parent);
             request.KeyRingId = options.Value.KeyRing;
             try
             {
@@ -111,7 +117,8 @@ namespace SocialAuth.Services
                 keyName = string.Format("{0}/cryptoKeys/{1}",
                     keyRingName, keyId);
             }
-            var newProtector = new KmsDataProtector(_kms, keyName, (string innerPurpose) =>
+            var newProtector = new KmsDataProtector(_kms, keyName, 
+                (string innerPurpose) =>
                 this.CreateProtector($"{purpose}.{innerPurpose}"));
             _dataProtectorCache.TryAdd(purpose, newProtector);
             return newProtector;
@@ -149,7 +156,7 @@ namespace SocialAuth.Services
             if (keyId.Length > 63)
             {
                 // For strings that are too long to be key ids, tag them with a
-                // hash code.  Try to put the hash code in the middle.
+                // hash code.
                 keyId = string.Format("{0}-{1:x8}", keyId.Substring(0, 54),
                     QuickHash(keyId));
             }

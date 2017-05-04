@@ -22,14 +22,20 @@ using System.Diagnostics;
 
 namespace SocialAuth
 {
+    /// <summary>
+    /// A ConfigurationSource that populates copies Google Compute Engine
+    /// metadata into the configuration.
+    /// </summary>
     public class MetadataConfigurationSource : IConfigurationSource
     {
         readonly MetadataConfigurationOptions _options;
-        public MetadataConfigurationSource(MetadataConfigurationOptions options = null)
+        public MetadataConfigurationSource(
+            MetadataConfigurationOptions options = null)
         {
             _options = options ?? new MetadataConfigurationOptions();
         }
-        IConfigurationProvider IConfigurationSource.Build(IConfigurationBuilder builder)
+        IConfigurationProvider IConfigurationSource.Build(
+            IConfigurationBuilder builder)
         {
             return new MetadataConfigurationProvider(_options);
         }
@@ -37,20 +43,37 @@ namespace SocialAuth
 
     public class MetadataConfigurationOptions
     {
+        /// <summary>
+        /// When copying metadata fields to configuration variables, replace
+        /// -s with :s in the variable name.  Useful because metadata field
+        /// names cannot contain :s.
+        /// </summary>
         public bool ReplaceHyphensWithColons { get; set; } = true;
     }
 
+    /// <summary>
+    /// A ConfigurationProvider that populates copies Google Compute Engine
+    /// metadata into the configuration.
+    /// 
+    /// TODO: Implement OnReload() and GetReloadToken().
+    /// </summary>
     public class MetadataConfigurationProvider : ConfigurationProvider
     {
+        /// <summary>
+        /// The HttpClient used to fetch metadata.
+        /// </summary>
         readonly HttpClient _http;
         readonly MetadataConfigurationOptions _options;
 
-        public MetadataConfigurationProvider(MetadataConfigurationOptions options)
+        public MetadataConfigurationProvider(
+            MetadataConfigurationOptions options)
         {
             _options = options;
+            // Initialize the HttpClient we use to fetch metadata.
             _http = new HttpClient()
             {
-                BaseAddress = new Uri("http://metadata.google.internal/computeMetadata/v1/")
+                BaseAddress = new Uri(
+                    "http://metadata.google.internal/computeMetadata/v1/")
             };
             _http.DefaultRequestHeaders.Add("Metadata-Flavor", "Google");
         }
@@ -59,6 +82,7 @@ namespace SocialAuth
         {
             try
             {
+                // Fetch the metadata and parse the json response.
                 Dictionary<string, string> attributes =
                     JsonConvert.DeserializeObject<Dictionary<string, string>>(
                     _http.GetAsync("project/attributes/?recursive=true")
@@ -70,7 +94,8 @@ namespace SocialAuth
                     .Result.Content.ReadAsStringAsync().Result);
                 foreach (var instanceAttribute in instanceAttributes)
                 {
-                    attributes[instanceAttribute.Key] = instanceAttribute.Value;
+                    attributes[instanceAttribute.Key] = 
+                        instanceAttribute.Value;
                 }
                 // Replace hyphens with colons.
                 if (_options.ReplaceHyphensWithColons)
@@ -78,7 +103,8 @@ namespace SocialAuth
                     var newData = new Dictionary<string, string>();
                     foreach (var attribute in attributes)
                     {
-                        newData[attribute.Key.Replace('-', ':')] = attribute.Value;
+                        newData[attribute.Key.Replace('-', ':')] = 
+                            attribute.Value;
                     }
                     Data = newData;
                 }
@@ -94,8 +120,9 @@ namespace SocialAuth
                 {
                     if (e is HttpRequestException)
                     {
-                        Debug.WriteLine("Failed to load attributes from Google metadata. "
-                        + "I assume I'm not running in Google Cloud.");
+                        Debug.WriteLine(
+                            "Failed to load attributes from Google metadata. "
+                            + "I assume I'm not running in Google Cloud.");
                         return true;
                     }
                     return false;

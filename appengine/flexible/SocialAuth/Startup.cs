@@ -72,23 +72,13 @@ namespace SocialAuth
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-            services.AddMvc(options =>
-            {
-                if (Configuration["IAmRunningInGoogleCloud"] == "true")
-                {
-                    // options.Filters.Add(new RequireHttpsOnAppEngineAttribute());
-                }
-                else
-                {
-                    options.SslPort = 44393;
-                    // options.Filters.Add(new RequireHttpsAttribute());
-                }
-            });
+            services.AddMvc();
             services.AddSingleton<IDataProtectionProvider, KmsDataProtectionProvider>();
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
 
+            // Add exception logging so I can debug issues in production.
             string projectId = GetProjectId();
             services.AddGoogleTrace(projectId);
             services.AddGoogleExceptionLogging(projectId,
@@ -105,27 +95,11 @@ namespace SocialAuth
             loggerFactory.AddGoogle(GetProjectId());
             loggerFactory.AddDebug();
 
+            // Configure redirects to HTTPS.
             var rewriteOptions = new RewriteOptions();
             if (Configuration["IAmRunningInGoogleCloud"] == "true")
             {
-                rewriteOptions.Add(context =>
-                {
-                    RedirectResult redirect = RequireHttpsOnAppEngine.Rewrite(
-                        context.HttpContext.Request, context.Logger);
-                    if (redirect == null)
-                    {
-                        context.Result = RuleResult.ContinueRules;
-                    }
-                    else
-                    {
-                        ActionContext actionContext = new ActionContext()
-                        {
-                            HttpContext = context.HttpContext
-                        };
-                        redirect.ExecuteResult(actionContext);
-                        context.Result = RuleResult.EndResponse;
-                    }
-                });
+                rewriteOptions.Add(new RequireHttpsOnAppEngine());
             }
             else
             {
