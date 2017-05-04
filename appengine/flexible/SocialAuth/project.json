@@ -48,8 +48,8 @@
     "Microsoft.Extensions.Caching.SqlServer": "1.1.1",
     "Google.Apis.CloudKMS.v1": "1.25.0.838",
     "Google.Cloud.Diagnostics.AspNetCore": "1.0.0-beta01",
-    "Microsoft.AspNetCore.Authentication.Facebook": "1.0.0",
-    "Microsoft.AspNetCore.Authentication.Google": "1.0.0",
+    "Microsoft.AspNetCore.Authentication.Facebook": "1.1.1",
+    "Microsoft.AspNetCore.Authentication.Google": "1.1.1",
     "Microsoft.AspNetCore.Rewrite": "1.0.1"  },
 
   "tools": {
