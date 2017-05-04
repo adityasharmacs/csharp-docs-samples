@@ -76,12 +76,12 @@ namespace SocialAuth
             {
                 if (Configuration["IAmRunningInGoogleCloud"] == "true")
                 {
-                    options.Filters.Add(new RequireHttpsOnAppEngineAttribute());
+                    // options.Filters.Add(new RequireHttpsOnAppEngineAttribute());
                 }
                 else
                 {
                     options.SslPort = 44393;
-                    options.Filters.Add(new RequireHttpsAttribute());
+                    // options.Filters.Add(new RequireHttpsAttribute());
                 }
             });
             services.AddSingleton<IDataProtectionProvider, KmsDataProtectionProvider>();
@@ -108,10 +108,6 @@ namespace SocialAuth
             var rewriteOptions = new RewriteOptions();
             if (Configuration["IAmRunningInGoogleCloud"] == "true")
             {
-                rewriteOptions.AddRedirectToHttps(302, 44393);
-            }
-            else
-            {
                 rewriteOptions.Add(context =>
                 {
                     RedirectResult redirect = RequireHttpsOnAppEngine.Rewrite(
@@ -130,6 +126,10 @@ namespace SocialAuth
                         context.Result = RuleResult.EndResponse;
                     }
                 });
+            }
+            else
+            {
+                rewriteOptions.AddRedirectToHttps(302, 44393);
             }
             app.UseRewriter(rewriteOptions);
 
