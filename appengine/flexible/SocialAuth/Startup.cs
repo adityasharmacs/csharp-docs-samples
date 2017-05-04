@@ -28,6 +28,8 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using Microsoft.AspNetCore.DataProtection;
 using Google.Cloud.Diagnostics.AspNetCore;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace SocialAuth
 {
@@ -124,26 +126,65 @@ namespace SocialAuth
 
             app.UseIdentity();
 
+            int authenticationProviderCount = 0;
             // Add external authentication middleware below. To configure them 
             // please see http://go.microsoft.com/fwlink/?LinkID=532715
-            app.UseGoogleAuthentication(new GoogleOptions()
+            string googleClientId = 
+                Configuration["Authentication:Google:ClientId"];
+            if (!string.IsNullOrWhiteSpace(googleClientId))
             {
-                ClientId = Configuration["Authentication:Google:ClientId"],
-                ClientSecret = Configuration[
-                    "Authentication:Google:ClientSecret"],
-            });
+                app.UseGoogleAuthentication(new GoogleOptions()
+                {
+                    ClientId = googleClientId,
+                    ClientSecret = Configuration[
+                        "Authentication:Google:ClientSecret"],
+                });
+                authenticationProviderCount += 1;
+            }
 
-            app.UseFacebookAuthentication(new FacebookOptions()
+            string facebookAppId = 
+                Configuration["Authentication:Facebook:AppId"];
+            if (!string.IsNullOrWhiteSpace(facebookAppId))
             {
-                AppId = Configuration["Authentication:Facebook:AppId"],
-                AppSecret = Configuration["Authentication:Facebook:AppSecret"],
-            });
+                app.UseFacebookAuthentication(new FacebookOptions()
+                {
+                    AppId = facebookAppId,
+                    AppSecret = Configuration[
+                        "Authentication:Facebook:AppSecret"],
+                });
+                authenticationProviderCount += 1;
+            }
+
+            if (0 == authenticationProviderCount)
+            {
+                app.Run(RequireAuthenticationProviderHandler);
+            }
 
             app.UseMvc(routes =>
             {
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
+            });
+        }
+
+        /// <summary>
+        /// When the programmer hasn't configured an authentication provider,
+        /// provide a clear error message.
+        /// </summary>
+        Task RequireAuthenticationProviderHandler(HttpContext context)
+        {
+            var result = new ContentResult()
+            {
+                Content = "You must configure an authentication "
+                + "provider."
+                + "\nSee README.md in the project source directory.",
+                ContentType = "text/plain",
+                StatusCode = 500
+            };
+            return result.ExecuteResultAsync(new ActionContext()
+            {
+                HttpContext = context
             });
         }
     }
