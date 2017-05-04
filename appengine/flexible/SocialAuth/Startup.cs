@@ -106,21 +106,41 @@ namespace SocialAuth
             loggerFactory.AddDebug();
 
             var rewriteOptions = new RewriteOptions();
+            if (Configuration["IAmRunningInGoogleCloud"] == "true")
+            {
+                rewriteOptions.AddRedirectToHttps(302, 44393);
+            }
+            else
+            {
+                rewriteOptions.Add(context =>
+                {
+                    RedirectResult redirect = RequireHttpsOnAppEngine.Rewrite(
+                        context.HttpContext.Request, context.Logger);
+                    if (redirect == null)
+                    {
+                        context.Result = RuleResult.ContinueRules;
+                    }
+                    else
+                    {
+                        ActionContext actionContext = new ActionContext()
+                        {
+                            HttpContext = context.HttpContext
+                        };
+                        redirect.ExecuteResult(actionContext);
+                        context.Result = RuleResult.EndResponse;
+                    }
+                });
+            }
+            app.UseRewriter(rewriteOptions);
+
             if (env.IsDevelopment())
             {
-                rewriteOptions.AddRedirectToHttps();
-                app.UseRewriter(rewriteOptions);
                 app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
                 app.UseBrowserLink();
             }
             else
             {
-                rewriteOptions.Add(context =>
-                {
-                    var request = context.HttpContext.Request;
-                    
-                });
                 app.UseExceptionHandler("/Home/Error");
                 app.UseGoogleExceptionLogging();
                 app.UseGoogleTrace();
@@ -135,14 +155,12 @@ namespace SocialAuth
             {
                 ClientId = Configuration["Authentication:Google:ClientId"],
                 ClientSecret = Configuration["Authentication:Google:ClientSecret"],
-                LoggerFactory = loggerFactory
             });
 
             app.UseFacebookAuthentication(new FacebookOptions()
             {
                 AppId = Configuration["Authentication:Facebook:AppId"],
                 AppSecret = Configuration["Authentication:Facebook:AppSecret"],
-                LoggerFactory = loggerFactory
             });
 
             app.UseMvc(routes =>

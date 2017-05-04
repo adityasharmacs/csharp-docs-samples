@@ -41,6 +41,14 @@ namespace SocialAuth
         void IActionFilter.OnActionExecuting(ActionExecutingContext context)
         {
             var request = context.HttpContext.Request;
+            RedirectResult redirect = Rewrite(context.HttpContext.Request, _logger);
+            if (redirect != null)
+            {
+                context.Result = redirect;
+            }
+        }
+        public static RedirectResult Rewrite(HttpRequest request, ILogger logger)
+        {
             string myUrl = string.Concat(
                                     request.Scheme, "://",
                                     request.Host.ToUriComponent(),
@@ -51,26 +59,26 @@ namespace SocialAuth
                 .FirstOrDefault();
             if (proto == "https")
             {
-                _logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
+                logger.LogInformation("Rewrite({0}); X-Forwarded-Proto: {1}", myUrl, proto);
                 request.IsHttps = true;
                 request.Scheme = "https";
-                return;  // Using https like they should.
+                return null;  // Using https like they should.
             }
             if (request.Path.StartsWithSegments(s_healthCheckPathString))
             {
                 // Accept health checks from non-ssl connections.
-                return;
+                return null;
             }
 
             // Redirect to https
-            _logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
+            logger.LogInformation("OnAuthorization({0}); X-Forwarded-Proto: {1}", myUrl, proto);
             var newUrl = string.Concat(
                                 "https://",
                                 request.Host.ToUriComponent(),
                                 request.PathBase.ToUriComponent(),
                                 request.Path.ToUriComponent(),
                                 request.QueryString.ToUriComponent());
-            context.Result = new RedirectResult(newUrl);
+            return new RedirectResult(newUrl);
         }
     }
 
