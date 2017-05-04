@@ -16,6 +16,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -104,14 +105,22 @@ namespace SocialAuth
             loggerFactory.AddGoogle(GetProjectId());
             loggerFactory.AddDebug();
 
+            var rewriteOptions = new RewriteOptions();
             if (env.IsDevelopment())
             {
+                rewriteOptions.AddRedirectToHttps();
+                app.UseRewriter(rewriteOptions);
                 app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
                 app.UseBrowserLink();
             }
             else
             {
+                rewriteOptions.Add(context =>
+                {
+                    var request = context.HttpContext.Request;
+                    
+                });
                 app.UseExceptionHandler("/Home/Error");
                 app.UseGoogleExceptionLogging();
                 app.UseGoogleTrace();
