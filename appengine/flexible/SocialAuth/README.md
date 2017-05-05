@@ -29,28 +29,28 @@ Hang in there.
 	to enable [Google Cloud Key Management Service](https://cloud.google.com/kms/)
 	for your project.
 
-7.  Make the `App Engine default service account` a 
-	`Cloud KMS CryptoKey Encrypter/Decrypter`.
+7.  Make the App Engine default service account a 
+	Cloud KMS CryptoKey Encrypter/Decrypter.
 	
 	1.  Visit [Google Cloud Console](https://console.cloud.google.com/iam-admin/iam/project).
 
 	2.  Click the `Roles` dropdown next to `App Engine default service account`.  
 
-	3.  Under `Cloud KMS`, click *Cloud KMS CryptoKey Encrypter/Decrypter*.
+	3.  Under `Cloud KMS`, click **Cloud KMS CryptoKey Encrypter/Decrypter**.
 
-	4.  Click *Save*.
+	4.  Click **Save**.
 
 8.  Deploy an SQL Server instance on Google Cloud Platform.
 	Follow the instructions 
 	[here](https://cloud.google.com/dotnet/docs/getting-started/using-sql-server),
-	but *stop* when you reach the *Configuration Settings* section that talks about
-	`Web.config`.  .NET core applications do not use `Web.config` for
+	but **stop** when you reach the **Configuration Settings** section that talks about
+	`Web.config.`  .NET core applications do not use `Web.config` for
 	 configuration.
 
 9.  Initialize your database by running:
 
 	```
-	dotnet ef database update
+	PS > dotnet ef database update
 	```
 
 10. Edit [appsettings.json](appsettings.json).
