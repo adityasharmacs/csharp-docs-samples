@@ -1,4 +1,4 @@
-# Redis Cache and Google App Engine Flexible Environment
+# Social Authentication and Google App Engine Flexible Environment
 
 This sample application demonstrates how to let users login into your application
 running in Google App Engine Flexible Environment with their Facebook or Google
@@ -32,7 +32,7 @@ Hang in there.
 7.  Make the App Engine default service account a 
 	Cloud KMS CryptoKey Encrypter/Decrypter.
 	
-	1.  Visit [Google Cloud Console](https://console.cloud.google.com/iam-admin/iam/project).
+	1.  Visit [the IAM section of Google Cloud Console](https://console.cloud.google.com/iam-admin/iam/project).
 
 	2.  Click the `Roles` dropdown next to `App Engine default service account`.  
 
@@ -46,6 +46,12 @@ Hang in there.
 	but **stop** when you reach the **Configuration Settings** section that talks 
 	about `Web.config.`  .NET core applications do not use `Web.config` for
 	configuration.
+
+9.  Save your connection string to a local user secret:
+    
+	```
+	PS> dotnet user-secrets set ConnectionStrings:DefaultConnection  Server=1.2.3.4;Uid=dotnetapp;Pwd=XXXXXXXX
+	```
 
 9.  Initialize your database by running:
 
@@ -82,6 +88,8 @@ Before deploying to app engine, you must copy your user secrets to your Google
 project metadata with commands like this:
 
 ```
+PS > dotnet user-secrets list
+...
 PS > gcloud compute project-info add-metadata --metadata=Authentication-Facebook-AppId=123456789
 ```
 
