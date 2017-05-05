@@ -43,9 +43,9 @@ Hang in there.
 8.  Deploy an SQL Server instance on Google Cloud Platform.
 	Follow the instructions 
 	[here](https://cloud.google.com/dotnet/docs/getting-started/using-sql-server),
-	but **stop** when you reach the **Configuration Settings** section that talks about
-	`Web.config.`  .NET core applications do not use `Web.config` for
-	 configuration.
+	but **stop** when you reach the **Configuration Settings** section that talks 
+	about `Web.config.`  .NET core applications do not use `Web.config` for
+	configuration.
 
 9.  Initialize your database by running:
 
@@ -78,8 +78,12 @@ PS > dotnet run
 
 ## Deploy to App Engine
 
-Before deploying to app engine, you must TODO
+Before deploying to app engine, you must copy your user secrets to your Google
+project metadata with commands like this:
 
+```
+PS > gcloud compute project-info add-metadata --metadata=Authentication-Facebook-AppId=123456789
+```
 
 ### ![PowerShell](../.resources/powershell.png)Using PowerShell
 
