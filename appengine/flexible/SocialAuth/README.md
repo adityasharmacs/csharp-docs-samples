@@ -47,7 +47,22 @@ Hang in there.
 	`Web.config`.  .NET core applications do not use `Web.config` for
 	 configuration.
 
-9.  Edit [appsettings.json](appsettings.json).
+9.  Initialize your database by running:
+
+	```
+	dotnet ef database update
+	```
+
+10. Edit [appsettings.json](appsettings.json).
+
+	Replace `YOUR-PROJECT-ID` with your Google project id.
+
+11. Configure your social auth provider.
+
+	* [Facebook](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/facebook-logins)
+	  instructions. 
+	* [Google](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins)
+	  instructions.
 
 ## Run Locally
 
@@ -58,10 +73,13 @@ PS > dotnet run
 ```
 
 ### ![Visual Studio](../.resources/visual-studio.png)Using Visual Studio
-1.  In Solution Explorer, right-click the **RedisCache** project and choose **Set as StartUp Project**
+1.  In Solution Explorer, right-click the **SocialAuth** project and choose **Set as StartUp Project**
 2.  Press F5.
 
 ## Deploy to App Engine
+
+Before deploying to app engine, you must TODO
+
 
 ### ![PowerShell](../.resources/powershell.png)Using PowerShell
 
@@ -75,8 +93,8 @@ PS > gcloud beta app deploy .\bin\Debug\netcoreapp1.0\publish\app.yaml
 ### ![Visual Studio](../.resources/visual-studio.png)Using Visual Studio
 
 
-1.  In Solution Explorer, right-click the **RedisCache** project and choose 
-    **Publish RedisCache to Google Cloud**.
+1.  In Solution Explorer, right-click the **SocialAuth** project and choose 
+    **Publish SocialAuth to Google Cloud**.
 
 2.  Click **App Engine Flex**.
 
