@@ -49,14 +49,14 @@ Hang in there.
 
 9.  Save your connection string to a local user secret:
     
-	```
-	PS> dotnet user-secrets set ConnectionStrings:DefaultConnection  Server=1.2.3.4;Uid=dotnetapp;Pwd=XXXXXXXX
+	```ps1
+	PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets set ConnectionStrings:DefaultConnection  Server=1.2.3.4;Uid=dotnetapp;Pwd=XXXXXXXX
 	```
 
 9.  Initialize your database by running:
 
 	```
-	PS > dotnet ef database update
+	PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet ef database update
 	```
 
 10. Edit [appsettings.json](appsettings.json).
@@ -74,8 +74,8 @@ Hang in there.
 
 ### ![PowerShell](../.resources/powershell.png)Using PowerShell
 ```ps1
-PS > dotnet restore
-PS > dotnet run
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet restore
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet run
 ```
 
 ### ![Visual Studio](../.resources/visual-studio.png)Using Visual Studio
@@ -88,18 +88,18 @@ Before deploying to app engine, you must copy your user secrets to your Google
 project metadata with commands like this:
 
 ```
-PS > dotnet user-secrets list
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets list
 ...
-PS > gcloud compute project-info add-metadata --metadata=Authentication-Facebook-AppId=123456789
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> gcloud compute project-info add-metadata --metadata=Authentication-Facebook-AppId=123456789
 ```
 
 ### ![PowerShell](../.resources/powershell.png)Using PowerShell
 
 
 ```psm1
-PS > dotnet restore
-PS > dotnet publish
-PS > gcloud beta app deploy .\bin\Debug\netcoreapp1.0\publish\app.yaml
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet restore
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet publish
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> gcloud beta app deploy .\bin\Debug\netcoreapp1.0\publish\app.yaml
 ```
 
 ### ![Visual Studio](../.resources/visual-studio.png)Using Visual Studio
