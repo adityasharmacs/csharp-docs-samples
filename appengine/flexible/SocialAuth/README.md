@@ -78,12 +78,9 @@ Hang in there.
 	  https://localhost:44393/signin-google,https://YOUR-PROJECT-ID.appspot.com/signin-google
 	  ```
 
-	  Finish the instructions with these two commands:
-
-	  ```ps1
-	  PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets set Authentication:Google:ClientID <client_id>
-	  PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets set Authentication:Google:ClientSecret <client-secret>
-	  ```
+	  Stop when you reach **Enable Google Middleware**.  The instructions after 
+	  **Enable Google Middleware** have already been applied to the SocialAuth
+	  project.
 
 ## Run Locally
 
