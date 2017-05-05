@@ -72,6 +72,12 @@ Hang in there.
 	* [Google](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins)
 	  instructions.
 
+	  For **Authorized redirect URIs** enter:
+	  
+	  ```
+	  https://localhost:44393/signin-google,https://YOUR-PROJECT-ID.appspot.com/signin-google
+	  ```
+
 ## Run Locally
 
 ### ![PowerShell](../.resources/powershell.png)Using PowerShell
