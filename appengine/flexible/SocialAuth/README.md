@@ -50,7 +50,7 @@ Hang in there.
 9.  Save your connection string to a local user secret:
     
 	```ps1
-	PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets set ConnectionStrings:DefaultConnection  Server=1.2.3.4;Uid=dotnetapp;Pwd=XXXXXXXX
+	PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets set ConnectionStrings:DefaultConnection  'Server=1.2.3.4;Uid=dotnetapp;Pwd=XXXXXXXX'
 	```
 
 9.  Initialize your database by running:
