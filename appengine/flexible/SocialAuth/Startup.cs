@@ -112,7 +112,7 @@ namespace SocialAuth
                 {
                     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
                 });
-                rewriteOptions.Add(new RedirectToHttpsOnAppEngine());
+                rewriteOptions.AddRedirectToHttps();
             }
             else
             {
