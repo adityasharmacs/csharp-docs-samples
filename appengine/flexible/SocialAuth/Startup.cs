@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Google.Cloud.Diagnostics.AspNetCore;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace SocialAuth
 {
@@ -107,7 +108,11 @@ namespace SocialAuth
             var rewriteOptions = new RewriteOptions();
             if (Configuration["IAmRunningInGoogleCloud"] == "true")
             {
-                rewriteOptions.Add(new RequireHttpsOnAppEngine());
+                app.UseForwardedHeaders(new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                });
+                rewriteOptions.AddRedirectToHttps();
             }
             else
             {
