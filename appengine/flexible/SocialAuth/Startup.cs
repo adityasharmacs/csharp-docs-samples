@@ -107,7 +107,8 @@ namespace SocialAuth
             var rewriteOptions = new RewriteOptions();
             if (Configuration["IAmRunningInGoogleCloud"] == "true")
             {
-                rewriteOptions.Add(new RequireHttpsOnAppEngine());
+                rewriteOptions.Add(new RewriteHttpsOnAppEngine(
+                    HttpsPolicy.Required));
             }
             else
             {

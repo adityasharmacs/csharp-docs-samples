@@ -15,16 +15,23 @@
  */
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
 using System.Linq;
-using System;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Rewrite;
 
 namespace SocialAuth
 {
-    public class RequireHttpsOnAppEngine : IRule
+    public enum HttpsPolicy { Required, Optional };
+
+    public class RewriteHttpsOnAppEngine : IRule
     {
+
+        readonly HttpsPolicy _httpsPolicy;
+
+        public RewriteHttpsOnAppEngine(HttpsPolicy httpsPolicy)
+        {
+            _httpsPolicy = httpsPolicy;
+        }
+
         /// <summary>
         /// A path that we should ignore because App Engine hits it multiple
         /// times per second, and it doesn't need to be https.
@@ -37,14 +44,13 @@ namespace SocialAuth
         /// (no ssl) requests.  Rewrite them so they look like https requests.
         /// </summary>
         /// <returns>
-        /// A RedirectResult if the request needs to be redirected to https.
-        /// Otherwise null.
+        /// True if the request was secure.
         /// </returns>
-        public static RedirectResult Rewrite(HttpRequest request)
+        public static bool Rewrite(HttpRequest request)
         {
             if (request.Scheme == "https")
             {
-                return null;  // Already https.
+                return true;  // Already https.
             }
             string proto = request.Headers["X-Forwarded-Proto"]
                 .FirstOrDefault();
@@ -56,39 +62,37 @@ namespace SocialAuth
                 // was sent via https.
                 request.IsHttps = true;
                 request.Scheme = "https";
-                return null;
+                return true;
             }
             if (request.Path.StartsWithSegments(s_healthCheckPathString))
             {
                 // Accept health checks from non-ssl connections.
-                return null;
+                return true;
             }
 
-            // Redirect to https.
-            var newUrl = string.Concat(
-                                "https://",
-                                request.Host.ToUriComponent(),
-                                request.PathBase.ToUriComponent(),
-                                request.Path.ToUriComponent(),
-                                request.QueryString.ToUriComponent());
-            return new RedirectResult(newUrl);
+            return false;
         }
 
         void IRule.ApplyRule(RewriteContext context)
         {
-            RedirectResult redirect = Rewrite(context.HttpContext.Request);
-            if (redirect == null)
+            var request = context.HttpContext.Request;
+            bool wasSecure = Rewrite(request);
+            if (!wasSecure && _httpsPolicy == HttpsPolicy.Required)
             {
-                context.Result = RuleResult.ContinueRules;
-            }
-            else
-            {
+                // Redirect to https.
+                var newUrl = string.Concat(
+                                    "https://",
+                                    request.Host.ToUriComponent(),
+                                    request.PathBase.ToUriComponent(),
+                                    request.Path.ToUriComponent(),
+                                    request.QueryString.ToUriComponent());
+                var action = new RedirectResult(newUrl);
                 // Execute the redirect.
                 ActionContext actionContext = new ActionContext()
                 {
                     HttpContext = context.HttpContext
                 };
-                redirect.ExecuteResult(actionContext);
+                action.ExecuteResult(actionContext);
                 context.Result = RuleResult.EndResponse;
             }
         }
