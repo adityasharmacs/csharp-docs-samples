@@ -100,9 +100,7 @@ Before deploying to app engine, you must copy your user secrets to your Google
 project metadata with commands like this:
 
 ```
-PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> dotnet user-secrets list
-...
-PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> gcloud compute project-info add-metadata --metadata=Authentication-Facebook-AppId=123456789
+PS C:\dotnet-docs-samples\appengine\flexible\SocialAuth> .\Upload-UserSecrets
 ```
 
 ### ![PowerShell](../.resources/powershell.png)Using PowerShell
