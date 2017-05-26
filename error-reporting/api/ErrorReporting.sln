@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErrorReportingCmd", "ErrorR
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErrorReportingWebApi", "ErrorReportingWebApi\ErrorReportingWebApi.csproj", "{6807FF46-1DD0-4240-B086-E8ECFDAA924B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErrorReportingCmdTest", "ErrorReportingCmd\test\ErrorReportingCmdTest.csproj", "{D49E2236-F192-403E-93C0-04E1542BDF01}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{6807FF46-1DD0-4240-B086-E8ECFDAA924B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6807FF46-1DD0-4240-B086-E8ECFDAA924B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6807FF46-1DD0-4240-B086-E8ECFDAA924B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D49E2236-F192-403E-93C0-04E1542BDF01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D49E2236-F192-403E-93C0-04E1542BDF01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D49E2236-F192-403E-93C0-04E1542BDF01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D49E2236-F192-403E-93C0-04E1542BDF01}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

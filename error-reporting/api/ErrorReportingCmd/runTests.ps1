@@ -13,5 +13,5 @@
 # the License.
 Import-Module ..\..\..\BuildTools.psm1 -DisableNameChecking
 
-Build-Solution
-packages\xunit.runner.console.2.1.0\tools\xunit.console.exe .\test\bin\Debug\test.dll
+Build-Solution ..\ErrorReporting.sln
+..\packages\xunit.runner.console.2.1.0\tools\xunit.console.exe .\test\bin\Debug\test.dll
