@@ -16,6 +16,6 @@ Import-Module ..\..\..\BuildTools.psm1 -DisableNameChecking
 BackupAndEdit-TextFile "App_Start\WebApiConfig.cs" `
     @{"YOUR-PROJECT-ID" = $env:GOOGLE_PROJECT_ID} `
 { 
-	Build-Solution
+	Build-Solution ..\ErrorReporting.sln
 	Run-IISExpressTest
 }
