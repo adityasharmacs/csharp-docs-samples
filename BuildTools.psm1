@@ -454,6 +454,55 @@ filter Lint-Code {
 
 ##############################################################################
 #.SYNOPSIS
+# Runs code formatter on a project or solution.
+#
+#.INPUTS
+# .sln and .csproj files. If empty, recursively searches directories for
+# project files.
+#
+#.EXAMPLE
+# Format-Code
+##############################################################################
+filter Add-Copyright {
+    $sourceFiles = When-Empty $_ $args { Find-Files -Masks *.cs }
+    foreach ($sourceFile in $sourceFiles) {
+        $content = Get-Content $sourceFile
+        codeformatter.exe /rule:BraceNewLine /rule:ExplicitThis /rule-:ExplicitVisibility /rule:FieldNames /rule:FormatDocument /rule:ReadonlyFields /rule:UsingLocation /nocopyright $project
+        if ($LASTEXITCODE) {
+            $project.FullName
+            throw "codeformatter failed with exit code $LASTEXITCODE."
+        }
+    }
+}
+
+
+$Copyright = @"
+*Copyright*(c) 20* Google Inc.
+*
+*Licensed under the Apache License, Version 2.0 (the "License"); you may not
+*use this file except in compliance with the License. You may obtain a copy of
+*the License at
+*
+*http://www.apache.org/licenses/LICENSE-2.0
+*
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+*WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+*License for the specific language governing permissions and limitations under
+*the License.
+*
+"@
+
+function Find-Copyright([string[]]$lines) {
+    $copyright 
+
+    $topTwentyLines = $content | Select-Object -First 20
+    $hasCopyright = ($topTenLines | Where-Object {$_ -like "Copyright*Google*"}) `
+        -and ($topTenLines | Where-Object {$_ -like 
+}
+
+##############################################################################
+#.SYNOPSIS
 # Builds the .sln in the current working directory.
 #
 #.DESCRIPTION
@@ -849,3 +898,4 @@ filter ConvertTo-Utf8 {
     $lines = [System.IO.File]::ReadAllLines($_)
     [System.IO.File]::WriteAllLines($_, $lines)
 }
+
