@@ -16,7 +16,7 @@ Import-Module -DisableNameChecking ..\..\..\..\BuildTools.psm1
 
 dotnet restore
 $url = "http://localhost:7412"
-$job = Run-Kestrel($url)
+$job = Run-Kestrel $url
 Start-Sleep -Seconds 5
 try {
 	.\Test.ps1 "$url/echo"
