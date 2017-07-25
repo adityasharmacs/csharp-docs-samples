@@ -12,6 +12,7 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
+using System.IO;
 using Xunit;
 
 namespace GoogleCloudSamples.VideoIntelligence
@@ -46,8 +47,48 @@ namespace GoogleCloudSamples.VideoIntelligence
             Assert.Equal(0, output.ExitCode);
         }
 
+        static string SplitGcsUri(string uri, out string bucket)
+        {
+            string[] chunks = uri.Split(new char[] {'/'} , 4);
+            bucket = chunks[2];
+            return chunks[3];
+        }
+
+        [Fact]
+        void TestSplitGcsUri()
+        {
+            string bucket;
+            string objectName = SplitGcsUri("gs://cloudmleap/video/next/fox-snatched.mp4", 
+                out bucket);
+            Assert.Equal("cloudmleap", bucket);
+            Assert.Equal("video/next/fox-snatched.mp4", objectName);
+        }
+
+        static string DownloadGcsObject(string uri)
+        {
+            var storage = Google.Cloud.Storage.V1.StorageClient.Create();
+            string tempFilePath = Path.GetTempFileName();
+            using (Stream m = File.OpenWrite(tempFilePath))
+            {
+                string bucket;
+                string objectName = SplitGcsUri(uri, out bucket);
+                storage.DownloadObject(bucket, objectName, m);
+            }
+            return tempFilePath;
+        }
+
         [Fact]
         void TestShots()
+        {
+            var storage = Google.Cloud.Storage.V1.StorageClient.Create();
+            ConsoleOutput output = _analyze.Run("shots", DownloadGcsObject("gs://demomaker/gbikes_dinosaur.mp4"));
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Start Time Offset", output.Stdout);
+            Assert.Contains("End Time Offset", output.Stdout);
+        }
+
+        [Fact]
+        void TestShotsGcs()
         {
             ConsoleOutput output = _analyze.Run("shots",
                 "gs://cloudmleap/video/next/fox-snatched.mp4");
