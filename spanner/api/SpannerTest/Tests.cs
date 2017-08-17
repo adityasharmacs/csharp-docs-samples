@@ -12,6 +12,7 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
+using Google.Cloud.Spanner.Data;
 using System;
 using Xunit;
 
@@ -31,12 +32,15 @@ namespace GoogleCloudSamples.Spanner
             Assert.Equal(0, result.ExitCode);
         }
     }
+
     public class SpannerTests
     {
         private static readonly string s_projectId =
             Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
-        readonly string _instanceId = "my-instance";
-        readonly string _databseId = "my-database";
+        private static readonly string _instanceName = 
+            Environment.GetEnvironmentVariable("TEST_SPANNER_INSTANCE") ?? "my-instance";
+        private static readonly string _databaseId =
+            Environment.GetEnvironmentVariable("TEST_SPANNER_DATABASE") ?? "my-database";
 
         readonly CommandLineRunner _spanner = new CommandLineRunner()
         {
@@ -44,14 +48,45 @@ namespace GoogleCloudSamples.Spanner
             Command = "Spanner"
         };
 
-        [Fact]
-        void TestQuery()
+        void QuerySampleData()
         {
             ConsoleOutput output = _spanner.Run("querySampleData",
-                s_projectId, _instanceId, _databseId);
+                s_projectId, _instanceName, _databaseId);
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("SingerId : 1 AlbumId : 1", output.Stdout);
             Assert.Contains("SingerId : 2 AlbumId : 1", output.Stdout);
+        }
+
+        static bool ContainsError(AggregateException e, ErrorCode errorCode)
+        {
+            foreach (var innerException in e.InnerExceptions)
+            {
+                SpannerException spannerException = innerException as SpannerException;
+                if (spannerException != null && spannerException.ErrorCode == errorCode)
+                    return true;
+            }
+            return false;
+        }
+        
+
+        [Fact]
+        void TestQuery()
+        {
+            try
+            {
+                QuerySampleData();
+                return;
+            }
+            catch (AggregateException e) when (ContainsError(e, ErrorCode.NotFound)) { }
+            // Try creating the database.
+            try
+            {
+                ConsoleOutput output = _spanner.Run("CreateSampleDatabase",
+                    s_projectId, _instanceName, _databaseId);
+            }
+            catch (AggregateException e) when (ContainsError(e, ErrorCode.AlreadyExists)) { }
+            QuerySampleData();
+
         }
 
         //[Fact]
