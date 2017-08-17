@@ -15,6 +15,7 @@
 using Google.Cloud.Spanner.Data;
 using System;
 using Xunit;
+using Xunit.Sdk;
 
 namespace GoogleCloudSamples.Spanner
 {
@@ -77,16 +78,22 @@ namespace GoogleCloudSamples.Spanner
                 QuerySampleData();
                 return;
             }
-            catch (AggregateException e) when (ContainsError(e, ErrorCode.NotFound)) { }
-            // Try creating the database.
-            try
+            catch (AggregateException e) when (ContainsError(e, ErrorCode.NotFound))
             {
-                ConsoleOutput output = _spanner.Run("CreateSampleDatabase",
+                // Create database and retry.
+                _spanner.Run("createSampleDatabase",
                     s_projectId, _instanceName, _databaseId);
+                _spanner.Run("insertSampleData",
+                    s_projectId, _instanceName, _databaseId);
+                QuerySampleData();
             }
-            catch (AggregateException e) when (ContainsError(e, ErrorCode.AlreadyExists)) { }
-            QuerySampleData();
-
+            catch (XunitException)
+            {
+                // Insert sample data and retry.
+                _spanner.Run("insertSampleData",
+                    s_projectId, _instanceName, _databaseId);
+                QuerySampleData();
+            }
         }
 
         //[Fact]
