@@ -26,6 +26,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using Google.Apis.Auth.OAuth2;
+using System.IO;
+using Grpc.Auth;
 
 namespace GoogleCloudSamples
 {
@@ -193,8 +196,18 @@ namespace GoogleCloudSamples
     {
         public static object CreateTopic(string projectId, string topicId)
         {
+            string jsonPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
             // [START create_publisher_client]
-            PublisherClient publisher = PublisherClient.Create();
+            GoogleCredential googleCredential = null;
+            using (var jsonStream = new FileStream(jsonPath, FileMode.Open,
+                FileAccess.Read, FileShare.Read))
+            {
+                googleCredential = GoogleCredential.FromStream(jsonStream);
+            }
+            Channel channel = new Channel(PublisherClient.DefaultEndpoint.Host, 
+                PublisherClient.DefaultEndpoint.Port, 
+                googleCredential.ToChannelCredentials());
+            PublisherClient publisher = PublisherClient.Create(channel);
             // [END create_publisher_client]
 
             // [START create_topic]
