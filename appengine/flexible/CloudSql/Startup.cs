@@ -63,6 +63,7 @@ namespace CloudSql
                 // [START connection]
                 connection = new MySqlConnection(connectionString);
                 connection.Open();
+                var cmd = connection.CreateCommand();
                 var createTableCommand = new MySqlCommand(@"CREATE TABLE IF NOT EXISTS visits
                 (time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, user_ip CHAR(64))", connection);
                 createTableCommand.ExecuteNonQuery();

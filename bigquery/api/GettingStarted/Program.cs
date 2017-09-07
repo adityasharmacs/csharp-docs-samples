@@ -17,6 +17,7 @@
 
 using System;
 using Google.Cloud.BigQuery.V2;
+using System.Threading.Tasks;
 
 namespace GoogleCloudSamples
 {
@@ -61,6 +62,33 @@ BigquerySample <project_id>";
             }
             Console.WriteLine("\nPress any key...");
             Console.ReadKey();
+        }
+
+        async Task MainAsync()
+        {
+            var connectionString = new BigQueryConnectionStringBuilder();
+#if false   // Fails to compile.  :-(
+            connectionString.BigQueryDataset = "bigquery-public-data";
+#endif
+            using (var connection = new BigQueryConnection(
+                $"Data Source=projects/bigquery-public-data/datasets/samples"))
+            {
+                await connection.OpenAsync();
+                string query = @"SELECT corpus AS title, COUNT(*) AS unique_words FROM `shakespeare` 
+                    GROUP BY title ORDER BY unique_words DESC LIMIT 42";
+                using (var cmd = connection.CreateSqlCommand(query))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    Console.Write("\nQuery Results:\n------------\n");
+                    while (await reader.ReadAsync())
+                    {
+                        Console.WriteLine("{0}: {1}", 
+                            reader.GetFieldValue<string>("title"),
+                            reader.GetFieldValue<long>("unique_words"));
+                    }
+                }
+            }
+
         }
     }
 }

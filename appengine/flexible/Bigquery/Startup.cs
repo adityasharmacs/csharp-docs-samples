@@ -14,6 +14,7 @@
  * the License.
  */
 
+using Google.Cloud.BigQuery.V2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -55,16 +56,18 @@ namespace CloudSql
             {
                 app.UseDeveloperExceptionPage();
             }
-            MySqlConnection connection;
+            BigQueryConnection connection;
             try
             {
-                string connectionString = Configuration["CloudSqlConnectionString"];
+                string connectionString = Configuration["BigqueryConnectionString"];
                 // [START connection]
-                connection = new MySqlConnection(connectionString);
+                connection = new BigQueryConnection(connectionString);
                 connection.Open();
-                var createTableCommand = new MySqlCommand(@"CREATE TABLE IF NOT EXISTS visits
-                (time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, user_ip CHAR(64))", connection);
-                createTableCommand.ExecuteNonQuery();
+                using (var createTableCommand = new BigQueryCommand(@"CREATE TABLE IF NOT EXISTS visits
+                (time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, user_ip CHAR(64))"))
+                {
+                    createTableCommand.ExecuteNonQuery();
+                }                
                 // [END connection]
             }
             catch (Exception e)
@@ -86,17 +89,18 @@ namespace CloudSql
             {
                 // [START example]
                 // Insert a visit into the database:
-                using (var insertVisitCommand = new MySqlCommand(
+                using (var insertVisitCommand = new BigQueryCommand(
                         @"INSERT INTO visits (user_ip) values (@user_ip)",
                         connection))
                 {
-                    insertVisitCommand.Parameters.AddWithValue("@user_ip",
+                    insertVisitCommand.Parameters.Add("@user_ip",
+                        BigQueryDbType.String,
                         FormatAddress(context.Connection.RemoteIpAddress));
                     await insertVisitCommand.ExecuteNonQueryAsync();
                 }
 
-                // Look up the last 10 visits.
-                using (var lookupCommand = new MySqlCommand(
+            // Look up the last 10 visits.
+                using (var lookupCommand = new BigQueryCommand(
                     @"SELECT * FROM visits ORDER BY time_stamp DESC LIMIT 10",
                     connection))
                 {
