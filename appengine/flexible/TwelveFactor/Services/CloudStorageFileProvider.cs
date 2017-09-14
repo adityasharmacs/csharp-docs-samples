@@ -84,14 +84,14 @@ namespace TwelveFactor.Services {
             return new NotFoundFileInfo(subpath);
         }
 
-        struct ObjectPath {
+        public struct ObjectPath {
             public string BucketName;
             public string ObjectName;
         }
 
         /// <summary> Split a Google Cloud Storage object path into its 
         /// bucket name and object name.  </summary>
-        ObjectPath SplitObjectPath(string path)
+        public static ObjectPath SplitObjectPath(string path)
         {
             // Accept paths in a variety of forms:
             //   bucket/a/b/c
@@ -135,29 +135,9 @@ namespace TwelveFactor.Services {
             if (_pollingInterval == null) {
                 return null;
             }
-            _logger.LogDebug("Watching {0}", filter);
-            var path = SplitObjectPath(filter);
             var token = new CloudStorageChangeToken();
-            var obj = GetObject(path);
-            long? generation = obj?.Generation;
-            Task.Run(async () => {
-                while (true) {
-                    await Task.Delay(_pollingInterval.Value);
-                    try
-                    {
-                        obj = GetObject(path);
-                        if (generation != obj?.Generation) {
-                            token.HasChanged = true;
-                            return;
-                        }
-                    } 
-                    catch (Exception e) 
-                    {
-                        _logger.LogError(0, e, "Exception while watching {0}",
-                            filter);
-                    }
-                }
-            });
+            var path = SplitObjectPath(filter);
+            Task.Run(() => token.Poll(path, _logger, _pollingInterval.Value));
             return token;            
         }            
     }
@@ -212,6 +192,35 @@ namespace TwelveFactor.Services {
                         Callback(State);
                     }
                 }                
+            }
+
+            public void Poll(ObjectPath path, ILogger _logger, ) {
+                _logger.LogDebug("Watching {0}", filter);
+                var path = SplitObjectPath(filter);
+                var token = new CloudStorageChangeToken(filter, _logger, 
+                    _pollingInterval.Value);
+                token.StartPolling();
+                
+                var obj = GetObject(path);
+                long? generation = obj?.Generation;
+                Task.Run(async () => {
+                    while (true) {
+                        await Task.Delay(_pollingInterval.Value);
+                        try
+                        {
+                            obj = GetObject(path);
+                            if (generation != obj?.Generation) {
+                                token.HasChanged = true;
+                                return;
+                            }
+                        } 
+                        catch (Exception e) 
+                        {
+                            _logger.LogError(0, e, "Exception while watching {0}",
+                                filter);
+                        }
+                    }
+                });
             }
         };
     }
