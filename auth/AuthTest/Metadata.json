@@ -1,0 +1,62 @@
+{
+    "instance": {
+        "attributes": {},
+        "cpuPlatform": "Intel Sandy Bridge",
+        "description": "",
+        "disks": [
+            {
+                "deviceName": "persistent-disk-0",
+                "index": 0,
+                "mode": "READ_WRITE",
+                "type": "PERSISTENT-SSD"
+            },
+            {
+                "deviceName": "persistent-disk-1",
+                "index": 1,
+                "mode": "READ_WRITE",
+                "type": "PERSISTENT-SSD"
+            }
+        ],
+        "hostname": "kokoro-gcp-ubuntu-prod-378275382.c.kokoro.google.com.internal",
+        "id": 6078281206112753354,
+        "image": "projects/google.com:kokoro/global/images/kokoro-ubuntubuild-v28b-prod",
+        "machineType": "projects/369447988234/machineTypes/n1-standard-4",
+        "maintenanceEvent": "NONE",
+        "name": "kokoro-gcp-ubuntu-prod-378275382",
+        "networkInterfaces": [
+            {
+                "accessConfigs": [
+                    {
+                        "externalIp": "35.202.88.173",
+                        "type": "ONE_TO_ONE_NAT"
+                    }
+                ],
+                "forwardedIps": [],
+                "ip": "10.128.0.15",
+                "ipAliases": [],
+                "mac": "42:01:0a:80:00:0f",
+                "network": "projects/369447988234/networks/default",
+                "targetInstanceIps": []
+            }
+        ],
+        "preempted": "FALSE",
+        "scheduling": {
+            "automaticRestart": "TRUE",
+            "onHostMaintenance": "MIGRATE",
+            "preemptible": "FALSE"
+        },
+        "serviceAccounts": {},
+        "tags": [],
+        "virtualClock": {
+            "driftToken": "0"
+        },
+        "zone": "projects/369447988234/zones/us-central1-a"
+    },
+    "project": {
+        "attributes": {
+            "sshKeys": "nileshj:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAGqk2y6m3g6bZFallvv62o7plBwFIANTBCnod1aTJcICd2k9G0Q+vhBCUraE9IX45rGGnjYhQaquGpLsZRphIj6FWkEz7fFq5NxiJGahJV7w9YUfVYkD7IiDvvxxeQ5F3izR63lSuhzlQLNMGqj65QMlhN1urbOiojsD16e2szq03MVfFMh1B9ZRcdrHK1Qk3pV9wP+DPUvOHmEqCoiKCnTJsQXgh7FQc202rjgHYB+NsUa+oYFmE5r09KorOrVdXc99R2aFSDoIjQgV4zBMuId53ckqO5nX81p3fMueS8mEzf3n7qMohWjsX98WDgPmqYDbZff74v2rmd9W1g9l4Wc= google-ssh {\"userName\":\"nileshj@google.com\",\"expireOn\":\"2017-08-01T00:12:05+0000\"}\nnileshj:ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJP16Xmk5yt+raOBraScxXRzM8m71JB02NKhWwjxWX3fIFW2EUDmVLTYTthJSRlSTYdWPkQ8GFSInAXsTsrEB9A= google-ssh {\"userName\":\"nileshj@google.com\",\"expireOn\":\"2017-08-01T00:12:02+0000\"}\nnileshj:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAGQeHmqQ/RowDC3sp8OXwgtrFW099wMTtGvTtYpg4RzqPRnEWBwtWEiEwZyj7UzEKFgLhEJhjdqq4tdojkKR3DyZ5byoBf1n0XHl+dg6aNTx8jWZXfx6mHt0mfrq22MWds1xmqy5HyoQE+/wmr8GUqeDQlNIYfMRqyL8j8KQT12X7GsX+H3JtMikwZ0gHSHVtjcFGdkxmToID+sCj1RjCC9bSRN5hamabkZ9t10D7a+CUz9JOkaIcoDsn56DR7ILP0OBdMATaMYB6IFsEFhRKYO09JbgKjmYvelnhsVZFHSeTNbZlr9GjX5bDTm5THDiwvV3F8V7c55xTBhYD9kWNZc= google-ssh {\"userName\":\"nileshj@google.com\",\"expireOn\":\"2017-08-01T00:09:09+0000\"}\nnileshj:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDfaJYFzgq/EkGpNX8nrUhWSbHRdQ70rQkEAfCLIpX7ltaFWRpvD4lUC1jCmeA8qFGX5NhepVh9EheM/0TdA5qETcEL8P60eK19O/sO8SHEJ9s07msnFI5c/39r6yAo5fxvFcyx4eNWi32diQca5nBytungTFFISfjJ4dkThT2G19bFGKXsFVMVSgddBZe8nWWMr5oaXJ4N+yb5iP+YZxO9ciBBSMryMX3XPevN9JAbKgnqA9WtpLkhAteL0E4QZlOWMgyZdLXudHwg8yS2F5cVQwtSMph9sE4QuWHGk7905wyfhhQw2rAIan6IY/GHmXm1LWYhrLOCtXvk2Eu0DJf9 nileshj@nileshj0.mtv.corp.google.com\nkokoro-dedicated:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5v83nW3+kTEL8hESUEzpEKnntGCxUsFbsKXCM2lkuSiWTzxmzsqBa0xCd/eUTgNSTUaT4+B+sZFcTY4oq+Owj8IZOVZlt7Sflal+PBIl9aq4RHnewqCiHCweet2Py38j71AAgdr+ynigeT8RTFo+llqTcW6QOFt1OXpf/bVlSQg3YHVonGEpKfAVX2yp5RGFgk9hZZP33Od/agNsFDDmI1r1fTbxMwA9d7vkWyp85wz08G46tQ1bHOPCiaPubpleHarwUGM4L3alPfAtCThM9WP34yZ68iziYaRFLzowgqooADCTmArAh/yy5KwuYvAY3MNiILVca5NqbjASSg/Vn kokoro-dedicated@ivff1\nnileshj:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDYxcorP4IhUWGAlNGQfJPNaqtIvmtsfJ6E5ud98pu8Bf50tc7PnbkefrbPaYyiscv9ttfB5ael2jI6lc0JVx5C186NXcYjWnYaOq1IAG8NUuLsdCcCz62f3x9qNAx8XCG0ZHs8f04IIK9JSqPTOprZ5dv03ENDVrE+oDYwMzOHdsOX3xjXFavswvA0e/6MdCR1tyzVckTEHANSKoLmoe5JMJNDr2D/0ziEWgfEjXx7RkO2Ez1lbMPVeE24Aj88P3vgft0L+0UuNfVGdAjcmdYoOMSPpl738+4WYhs+nj3NLrwgRjYa31d1E0RfzKyP8dhINrGmNVRD+BGaqzFLRQcR nileshj@nileshj0.mtv.corp.google.com\nnileshj:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5a1mKy+gQk7Gp9vEywkIoLbK8yddrt1MYKiBwVHPJ3bEC4wUlLOypHnD1GvW1IzhwRQzoQZWx4jxYS6B7NHVYZj5tHV6eskyjdxnn8P0le7upNUFXNk/ao186mShq8TuSGlsO51hzwa17F5r2z5UlUYx3Cw1QUQI9EGUGPKy/2ZanukXOBm1vt6zpAJjrdOWLVH1uisq5KvUYDqFfshddakJdW9/UiDJv7St9cwm3F+gakLkQLGtgGJSls0B0cCvM29fZrIbOHQNG65NL/sBKEDwHCHDoV4+omGnzHPGKhrh3t5qy4iqOdTEgjYxx3tYWsOy+jfOVEx7O9S936eor nileshj@nileshj0.mtv.corp.google.com\nkokoro-dedicated:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDg7L/ZaEauETWrPklUTky3kvxqQfe2Ax/2CsSqhNIGNMnK/8d79CHlmY9+dE1FFQ/RzKNCaltgy7XcN/fCYiCZr5jm2ZtnLuGNOTzupMNhaYiPL419qmL+5rZXt4/dWTrsHbFRACxT8j51PcRMO5wgbL0Bg2XXimbx8kDFaurL2gqduQYqlu4lxWCaJqOL71WogcimeL63Nq/yeH5PJPWpqE4P9VUQSwAzBWFK/hLeds/AiP3MgVS65qHBnhq0JsHy8JQsqjZbG7Iidt/Ll0+gqzEbi62gDIcczG4KC0iOVzDDP/1BxDtt1lKeA23ll769Fcm3rJyoBMYxjvdw1TDx kokoro-dedicated\nxyan:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC+WCzLKZz/yrM0arPLJZGFUA8pjgE09ggm37zre1LqFs6MuhTLxNcn7g0p+nquWS9YGRS9izonpwsE5muCMmHK6zSEGJApVOt4OL/NykXeaSUePtXqWBkQf5lQYyFftPnnQGQWw8FACWwZ+0i31xF1+rE59+Q4VOypYfK8uJgMc6AIVNga4DKsirflV6lVOmZV6h7MaugFCmRDsxNjXRZv4y5UIibnx8JTn2M6NqlqLsw2+f5Vj18dlDlYlx4XGbhrtQKMFGo6cBEJJ3RIumhXKQtPBNqzcOYU8GTKxr5BtvlWuMmAHOnTtjotCjPLcRqkn/p1shk5SY/QUcK8G8Tt xyan@xyan-macbookpro.roam.corp.google.com\nkokoro-dedicated:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC73jVd/TzmPOvNf2XPrW9GL1OTgp6X2P0IBbHmLqFlxJrqkwEzGnPwor2SoCDeJ7ChRHLA6uotEvwOMzfZ1ds9Ubk1VLZYGJqNh3AU9btOZ8po8bRwzxdgc1t12CQwzdVpiqnURBGBTfH+1I3DaFsjhJfGWhSKHhmZopJqJTjsL6SLJY3ZoGlXdp+ZugN0Qo+OAIleO7YceikSPYJ8j7lGeOREAMHz00kmcghn0nHhV9qHPhiOVcqoxAvw91rk3Is5D9TIQfTxWOkkGfBq+osmJ0emwTRp+WPY9eSIhzcGam9KTPxp2umBxo28S3bXUemUDcizB9+MAliodPH2dJfr kokoro-dedicated\n"
+        },
+        "numericProjectId": 369447988234,
+        "projectId": "google.com:kokoro"
+    }
+}

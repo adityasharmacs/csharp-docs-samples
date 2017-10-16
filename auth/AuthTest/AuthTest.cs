@@ -16,6 +16,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using Xunit;
 
 namespace GoogleCloudSamples
@@ -63,6 +64,8 @@ namespace GoogleCloudSamples
         [InlineData("api")]
         void TestExplicitComputeEngine(string cmd)
         {
+            string metadataJson = File.ReadAllText(
+                @"C:\Users\rennie\gitrepos\dotnet-docs-samples\auth\AuthTest\Metadata.json");
             try
             {
                 Console.WriteLine(Google.Api.Gax.Platform.Instance()?.GceDetails?.MetadataJson);
