@@ -42,7 +42,7 @@ class DatastoreDistributedCache : IDistributedCache
     public async Task<byte[]> GetAsync(string key, CancellationToken token = default(CancellationToken))
     {
         var entity = await _datastore.LookupAsync(_sessionKeyFactory.CreateKey(key), 
-        callSettings:Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+            callSettings:Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
         if (entity == null)
         {
             return null;
@@ -55,6 +55,8 @@ class DatastoreDistributedCache : IDistributedCache
 
     public void Refresh(string key)
     {
+        var entity = await _datastore.LookupAsync(_sessionKeyFactory.CreateKey(key), 
+            callSettings:Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
         throw new System.NotImplementedException();
     }
 
