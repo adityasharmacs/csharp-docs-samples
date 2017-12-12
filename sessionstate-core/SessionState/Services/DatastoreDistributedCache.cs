@@ -40,7 +40,7 @@ namespace SessionState
         public DatastoreDistributedCache(IOptions<DatastoreDistributedCacheOptions> options)
         {
             var opts = options.Value;
-            _datastore = DatastoreDb.Create(opts.ProjectId, opts.Namespace);
+            _datastore = DatastoreDb.Create(opts.ProjectId, opts.Namespace ?? "");
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
         }
 
@@ -104,11 +104,11 @@ namespace SessionState
         byte[] BytesFromEntity(Entity entity) {
             if (entity == null || HasExpired(entity))
             {
-                return null;
+                return new byte[0];
             }
             else
             {
-                return entity[BYTES]?.BlobValue?.ToByteArray();
+                return entity[BYTES]?.BlobValue?.ToByteArray() ?? new byte[0];
             }        
         }
 
