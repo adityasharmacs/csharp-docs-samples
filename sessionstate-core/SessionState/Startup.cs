@@ -29,6 +29,9 @@ namespace SessionState
             // Adds Datastore implementation of IDistributedCache.
             services.AddSingleton<IDistributedCache, DatastoreDistributedCache>();
 
+            // Adds a default in-memory implementation of IDistributedCache.
+            // services.AddDistributedMemoryCache();
+            
             services.AddSession(options =>
             {
                 // Set a short timeout for easy testing.
