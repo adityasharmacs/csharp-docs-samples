@@ -108,7 +108,7 @@ namespace WebClient
         private static int Main(string[] args)
         {
             var options = new Options();
-            var parsed = Parser.Default.ParseArguments(args, options);
+            var parsed = Parser.Default.ParseArguments(args, (object) options);
             if (!parsed)
             {
                 Console.WriteLine(
