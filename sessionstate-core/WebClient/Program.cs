@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using CommandLine;
-using CommandLine.Text;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -26,16 +24,12 @@ namespace WebClient
 {
     internal class Options
     {
-        [Option('d', "delay", HelpText = "Milliseconds to delay between page fetches.")]
         public int Delay { get; set; } = 1000;
 
-        [Option('c', "clients",  HelpText = "Number of HTTP clients.")]
         public int ClientCount { get; set; } = 100;
 
-        [Option('u', "baseUri", Required = true, HelpText = "The base url running the WebApp.")]
         public string BaseUri { get; set; }
 
-        [Option('s', "sizeMultiplier", HelpText = "Multiplier for session value size.")]
         public int SizeMultiplier { get; set; } = 40;
     }
 
@@ -107,14 +101,9 @@ namespace WebClient
 
         private static int Main(string[] args)
         {
-            var options = new Options();
-            var parsed = Parser.Default.ParseArguments(args, (object) options);
-            if (!parsed)
-            {
-                Console.WriteLine(
-                    HelpText.AutoBuild(options).RenderParsingErrorsText(options, 0));
-                return -1;
-            }
+            var options = new Options() {
+                BaseUri = args[0]
+            };
             Uri baseAddress = new Uri(options.BaseUri);
             var stopwatch = new Stopwatch();
             var tasks = new Task<double>[options.ClientCount];
