@@ -70,7 +70,7 @@ namespace SessionState
             using (var transaction = _datastore.BeginTransaction())
             {
                 var entity = transaction.Lookup(_sessionKeyFactory.CreateKey(key));
-                if (UpdateExpiration(entity))
+                if (UpdateExpiration(entity, transaction))
                 {
                     transaction.Commit();
                 }
@@ -84,7 +84,7 @@ namespace SessionState
                 Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token)))
             {
                 var entity = await transaction.LookupAsync(_sessionKeyFactory.CreateKey(key));
-                if (UpdateExpiration(entity)) 
+                if (UpdateExpiration(entity, transaction)) 
                 {
                     await transaction.CommitAsync();
                 }
@@ -168,7 +168,7 @@ namespace SessionState
             return entity;
         }
 
-        bool UpdateExpiration(Entity entity)
+        bool UpdateExpiration(Entity entity, DatastoreTransaction transaction)
         {
             if (entity == null || HasExpired(entity))
             {
@@ -178,6 +178,7 @@ namespace SessionState
             if (slidingExpiration.HasValue) 
             {
                 entity[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
+                transaction.Update(entity);
                 return true;
             }
             return false;        
