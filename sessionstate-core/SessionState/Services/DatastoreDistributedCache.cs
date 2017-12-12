@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Google.Cloud.Datastore.V1;
 using System;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace SessionState
 {
@@ -28,6 +29,8 @@ namespace SessionState
         private DatastoreDb _datastore;
         private KeyFactory _sessionKeyFactory;
 
+        private ILogger _logger;
+
         /// <summary>
         /// Property names and kind names for the datastore entities.
         /// </summary>
@@ -37,19 +40,25 @@ namespace SessionState
             BYTES = "bytes",
             SESSION_KIND = "Session";
 
-        public DatastoreDistributedCache(IOptions<DatastoreDistributedCacheOptions> options)
+        public DatastoreDistributedCache(IOptions<DatastoreDistributedCacheOptions> options,
+            ILogger<DatastoreDistributedCache> logger)
         {
+            _logger = logger;
             var opts = options.Value;
             _datastore = DatastoreDb.Create(opts.ProjectId, opts.Namespace ?? "");
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
         }
 
-        public byte[] Get(string key) => BytesFromEntity(
-            _datastore.Lookup(_sessionKeyFactory.CreateKey(key)));
+        public byte[] Get(string key) 
+        {
+            _logger.LogDebug($"Get({key})");
+            return BytesFromEntity(_datastore.Lookup(_sessionKeyFactory.CreateKey(key)));
+        }
 
         public async Task<byte[]> GetAsync(string key, 
             CancellationToken token = default(CancellationToken))
         {
+            _logger.LogDebug($"GetAsync({key})");
             var entity = await _datastore.LookupAsync(_sessionKeyFactory.CreateKey(key), 
                 callSettings:Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
             return BytesFromEntity(entity);
@@ -57,6 +66,7 @@ namespace SessionState
 
         public void Refresh(string key)
         {
+            _logger.LogDebug($"Refresh({key})");
             using (var transaction = _datastore.BeginTransaction())
             {
                 var entity = transaction.Lookup(_sessionKeyFactory.CreateKey(key));
@@ -69,6 +79,7 @@ namespace SessionState
 
         public async Task RefreshAsync(string key, CancellationToken token = default(CancellationToken))
         {
+            _logger.LogDebug($"RefreshAsync({key})");            
             using (var transaction = await _datastore.BeginTransactionAsync(
                 Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token)))
             {
@@ -80,20 +91,32 @@ namespace SessionState
             }                
         }
 
-        public void Remove(string key) =>
+        public void Remove(string key) 
+        {
+            _logger.LogDebug($"Remove({key})");
             _datastore.Delete(_sessionKeyFactory.CreateKey(key));
+        }
 
-        public Task RemoveAsync(string key, CancellationToken token = default(CancellationToken)) =>
-            _datastore.DeleteAsync(_sessionKeyFactory.CreateKey(key),
+        public Task RemoveAsync(string key, CancellationToken token = default(CancellationToken))
+        {
+            _logger.LogDebug($"RemoveAsync({key})");
+            return _datastore.DeleteAsync(_sessionKeyFactory.CreateKey(key),
                 Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+        }
 
-        public void Set(string key, byte[] value, DistributedCacheEntryOptions options) =>
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+        {
+            _logger.LogDebug($"Set({key})");
             _datastore.Upsert(NewEntity(key, value, options));
+        }
 
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options,
-            CancellationToken token = default(CancellationToken)) =>
-            _datastore.UpsertAsync(NewEntity(key, value, options),
+            CancellationToken token = default(CancellationToken))        
+        {
+            _logger.LogDebug($"SetAsync({key})");
+            return _datastore.UpsertAsync(NewEntity(key, value, options),
                 Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+        }
 
         bool HasExpired(Entity entity) {
             var expiration = entity[EXPIRATION]?.TimestampValue?.ToDateTime();
@@ -104,11 +127,11 @@ namespace SessionState
         byte[] BytesFromEntity(Entity entity) {
             if (entity == null || HasExpired(entity))
             {
-                return new byte[0];
+                return null;
             }
             else
             {
-                return entity[BYTES]?.BlobValue?.ToByteArray() ?? new byte[0];
+                return entity[BYTES]?.BlobValue?.ToByteArray() ?? null;
             }        
         }
 
