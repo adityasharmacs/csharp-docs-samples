@@ -3,6 +3,20 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 using Google.Cloud.Datastore.V1;
 using System;
+using Microsoft.Extensions.Options;
+
+class DatastoreDistributedCacheOptions
+{
+    /// <summary>
+    /// Your Google project id.
+    /// </summary>
+    public string ProjectId { get; set; }
+
+    /// <summary>
+    /// Optional.  The Datastore namespace to store the sessions in.
+    /// </summary>
+    public string Namespace { get; set; }
+}
 
 class DatastoreDistributedCache : IDistributedCache
 {
@@ -21,9 +35,10 @@ class DatastoreDistributedCache : IDistributedCache
         BYTES = "bytes",
         SESSION_KIND = "Session";
 
-    public DatastoreDistributedCache()
+    public DatastoreDistributedCache(IOptions<DatastoreDistributedCacheOptions> options)
     {
-        _datastore = DatastoreDb.Create("arc-nl", "sessionStateApplication");
+        var opts = options.Value;
+        _datastore = DatastoreDb.Create(opts.ProjectId, opts.Namespace);
         _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
     }
 
