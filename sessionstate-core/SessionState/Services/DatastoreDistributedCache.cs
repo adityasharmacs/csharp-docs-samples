@@ -47,7 +47,7 @@ class DatastoreDistributedCache : IDistributedCache
             {
                 transaction.Commit();
             }
-        }                
+        }
     }
 
     public async Task RefreshAsync(string key, CancellationToken token = default(CancellationToken))
