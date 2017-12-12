@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Redis;
+using Microsoft.Extensions.Caching.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,15 +25,35 @@ namespace SessionState
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
-            services.Configure<DatastoreDistributedCacheOptions>(
-                Configuration.GetSection("DatastoreCache"));
+            services.AddOptions();
+            string cache = Configuration.GetValue<string>("Cache");
 
-            // Adds Datastore implementation of IDistributedCache.
-            services.AddSingleton<IDistributedCache, DatastoreDistributedCache>();
+            // Add an implementation of IDistributedCache.
+            switch (cache.ToLower()) 
+            {
+                case "datastore":
+                    services.Configure<DatastoreDistributedCacheOptions>(
+                        Configuration.GetSection("DatastoreCache"));
+                    services.AddSingleton<IDistributedCache, DatastoreDistributedCache>();
+                    break;
+                case "redis":
+                    services.Configure<RedisCacheOptions>(
+                        Configuration.GetSection("RedisCache"));
+                    services.AddDistributedRedisCache(options => {});
+                    break;
+                case "sqlserver":
+                    services.Configure<SqlServerCacheOptions>(
+                        Configuration.GetSection("SqlServerCache"));
+                    services.AddDistributedSqlServerCache(options => {});
+                    break;
+                case "memory":
+                    services.AddDistributedMemoryCache();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException("Cache", cache, 
+                        "Edit appsettings.json and set Cache to one of datastore, redis, sqlserver, or memory.");
+            }
 
-            // Adds a default in-memory implementation of IDistributedCache.
-            // services.AddDistributedMemoryCache();
-            
             services.AddSession(options =>
             {
                 // Set a short timeout for easy testing.
