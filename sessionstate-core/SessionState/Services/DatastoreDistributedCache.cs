@@ -27,36 +27,15 @@ class DatastoreDistributedCache : IDistributedCache
         _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
     }
 
-    public byte[] Get(string key)
-    {
-        var entity = _datastore.Lookup(_sessionKeyFactory.CreateKey(key));
-        if (entity == null || HasExpired(entity))
-        {
-            return null;
-        }
-        else
-        {
-            return entity[BYTES]?.BlobValue?.ToByteArray();
-        }
-    }
+    public byte[] Get(string key) => BytesFromEntity(
+        _datastore.Lookup(_sessionKeyFactory.CreateKey(key)));
 
-    bool HasExpired(Entity entity) {
-        var expiration = entity[EXPIRATION]?.TimestampValue?.ToDateTime();
-        return expiration.HasValue ? DateTime.UtcNow > expiration.Value : false;
-    }
-
-    public async Task<byte[]> GetAsync(string key, CancellationToken token = default(CancellationToken))
+    public async Task<byte[]> GetAsync(string key, 
+        CancellationToken token = default(CancellationToken))
     {
         var entity = await _datastore.LookupAsync(_sessionKeyFactory.CreateKey(key), 
             callSettings:Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
-        if (entity == null || HasExpired(entity))
-        {
-            return null;
-        }
-        else
-        {
-            return entity[BYTES]?.BlobValue?.ToByteArray();
-        }
+        return BytesFromEntity(entity);
     }
 
     public void Refresh(string key)
@@ -64,14 +43,8 @@ class DatastoreDistributedCache : IDistributedCache
         using (var transaction = _datastore.BeginTransaction())
         {
             var entity = transaction.Lookup(_sessionKeyFactory.CreateKey(key));
-            if (entity == null || HasExpired(entity))
+            if (UpdateExpiration(entity))
             {
-                return;            
-            }
-            var slidingExpiration = entity[SLIDING_EXPIRATION]?.DoubleValue;
-            if (slidingExpiration.HasValue) 
-            {
-                entity[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
                 transaction.Commit();
             }
         }                
@@ -83,32 +56,43 @@ class DatastoreDistributedCache : IDistributedCache
             Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token)))
         {
             var entity = await transaction.LookupAsync(_sessionKeyFactory.CreateKey(key));
-            if (entity == null || HasExpired(entity))
+            if (UpdateExpiration(entity)) 
             {
-                return;            
-            }
-            var slidingExpiration = entity[SLIDING_EXPIRATION]?.DoubleValue;
-            if (slidingExpiration.HasValue) 
-            {
-                entity[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
                 await transaction.CommitAsync();
             }
         }                
     }
 
-    public void Remove(string key)
-    {
+    public void Remove(string key) =>
         _datastore.Delete(_sessionKeyFactory.CreateKey(key));
+
+    public Task RemoveAsync(string key, CancellationToken token = default(CancellationToken)) =>
+        _datastore.DeleteAsync(_sessionKeyFactory.CreateKey(key),
+            Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+
+    public void Set(string key, byte[] value, DistributedCacheEntryOptions options) =>
+        _datastore.Upsert(NewEntity(key, value, options));
+
+    public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options,
+        CancellationToken token = default(CancellationToken)) =>
+        _datastore.UpsertAsync(NewEntity(key, value, options),
+            Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+
+    bool HasExpired(Entity entity) {
+        var expiration = entity[EXPIRATION]?.TimestampValue?.ToDateTime();
+        return expiration.HasValue ? DateTime.UtcNow > expiration.Value : false;
     }
 
-    public Task RemoveAsync(string key, CancellationToken token = default(CancellationToken))
-    {
-        return _datastore.DeleteAsync(_sessionKeyFactory.CreateKey(key));
-    }
-
-    public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
-    {
-        _datastore.Insert(NewEntity(key, value, options));
+    /// Returns the bytes (cache payload) stored in the entity.
+    byte[] BytesFromEntity(Entity entity) {
+        if (entity == null || HasExpired(entity))
+        {
+            return null;
+        }
+        else
+        {
+            return entity[BYTES]?.BlobValue?.ToByteArray();
+        }        
     }
 
     Entity NewEntity(string key, byte[] value, DistributedCacheEntryOptions options) 
@@ -139,15 +123,23 @@ class DatastoreDistributedCache : IDistributedCache
         }
         else
         {
-            throw new ArgumentException("No expiration option was set", "options");
+            throw new ArgumentException("Required expiration option was not set.", "options");
         }
         return entity;
     }
 
-    public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options,
-        CancellationToken token = default(CancellationToken))
+    bool UpdateExpiration(Entity entity)
     {
-        return _datastore.InsertAsync(NewEntity(key, value, options),
-            Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+        if (entity == null || HasExpired(entity))
+        {
+            return false;            
+        }
+        var slidingExpiration = entity[SLIDING_EXPIRATION]?.DoubleValue;
+        if (slidingExpiration.HasValue) 
+        {
+            entity[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
+            return true;
+        }
+        return false;        
     }
 }
