@@ -49,6 +49,11 @@ namespace SessionState
         private ILogger _logger;
 
         /// <summary>
+        /// Only run one sweep task per process.
+        /// </summary>
+        private static Task s_sweepTask;
+        private static readonly Object s_sweepTaskLock = new object();
+        /// <summary>
         /// Retry Datastore operations when they fail.
         /// </summary>
         private readonly CallSettings _callSettings =
@@ -73,6 +78,13 @@ namespace SessionState
             var opts = options.Value;
             _datastore = DatastoreDb.Create(opts.ProjectId, opts.Namespace ?? "");
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
+            lock (s_sweepTaskLock)
+            {
+                if (s_sweepTask == null)
+                {
+                    s_sweepTask = Task.Run(() => SweepTaskMain());
+                }
+            }
         }
 
         public byte[] Get(string key) 
@@ -246,7 +258,7 @@ namespace SessionState
                         }
                         catch (Exception e)
                         {
-                            _logger.LogError("Error reading sweep begin date.", e);
+                            _logger.LogError(1, e, "Error reading sweep begin date.");
                         }
                         if (!sweep)
                         {
@@ -280,10 +292,12 @@ namespace SessionState
                         {
                             using (var transaction = _datastore.BeginTransaction(_callSettings))
                             {
-                                var sessionLock = SessionLockFromEntity(
-                                    transaction.Lookup(entity.Key, _callSettings));
-                                if (sessionLock == null || sessionLock.ExpirationDate > now)
+                                var session = transaction.Lookup(entity.Key, _callSettings);
+                                if (session == null || session[EXPIRATION] == null
+                                    || session[EXPIRATION].TimestampValue.ToDateTime()> now) 
+                                {
                                     continue;
+                                }
                                 transaction.Delete(entity.Key,
                                     _sessionKeyFactory.CreateKey(entity.Key.Path.First().Name));
                                 transaction.Commit(_callSettings);
@@ -291,14 +305,14 @@ namespace SessionState
                         }
                         catch (Exception e)
                         {
-                            _logger.LogError("Failed to delete session.", e);
+                            _logger.LogError(2, e, "Failed to delete session.");
                         }
                     }
                     _logger.LogInformation("Done sweep.");
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError("Failed to query expired sessions.", e);
+                    _logger.LogError(3, e, "Failed to query expired sessions.");
                 }
             }
         }        
