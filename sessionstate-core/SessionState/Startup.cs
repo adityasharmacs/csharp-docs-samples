@@ -43,7 +43,7 @@ namespace SessionState
             string cache = Configuration.GetValue<string>("Cache");
 
             // Add an implementation of IDistributedCache.
-            switch (cache.ToLower()) 
+            switch (cache.ToLower())
             {
                 case "datastore":
                     services.Configure<DatastoreDistributedCacheOptions>(
@@ -53,18 +53,18 @@ namespace SessionState
                 case "redis":
                     services.Configure<RedisCacheOptions>(
                         Configuration.GetSection("RedisCache"));
-                    services.AddDistributedRedisCache(options => {});
+                    services.AddDistributedRedisCache(options => { });
                     break;
                 case "sqlserver":
                     services.Configure<SqlServerCacheOptions>(
                         Configuration.GetSection("SqlServerCache"));
-                    services.AddDistributedSqlServerCache(options => {});
+                    services.AddDistributedSqlServerCache(options => { });
                     break;
                 case "memory":
                     services.AddDistributedMemoryCache();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("Cache", cache, 
+                    throw new ArgumentOutOfRangeException("Cache", cache,
                         "Edit appsettings.json and set Cache to one of datastore, redis, sqlserver, or memory.");
             }
 

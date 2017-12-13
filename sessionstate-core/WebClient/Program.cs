@@ -101,7 +101,8 @@ namespace WebClient
 
         private static int Main(string[] args)
         {
-            var options = new Options() {
+            var options = new Options()
+            {
                 BaseUri = args[0]
             };
             Uri baseAddress = new Uri(options.BaseUri);
