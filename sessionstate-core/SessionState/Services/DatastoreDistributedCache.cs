@@ -19,6 +19,9 @@ using Google.Cloud.Datastore.V1;
 using System;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using Google.Api.Gax.Grpc;
+using Google.Api.Gax;
+using System.Linq;
 
 namespace SessionState
 {
@@ -46,13 +49,22 @@ namespace SessionState
         private ILogger _logger;
 
         /// <summary>
+        /// Retry Datastore operations when they fail.
+        /// </summary>
+        private readonly CallSettings _callSettings =
+            CallSettings.FromCallTiming(CallTiming.FromRetry(new RetrySettings(
+                new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
+                new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
+                Expiration.FromTimeout(TimeSpan.FromSeconds(30)))));
+
+        /// <summary>
         /// Property names and kind names for the datastore entities.
         /// </summary>
         private const string
             EXPIRATION = "expires",
             SLIDING_EXPIRATION = "sliding",
             BYTES = "bytes",
-            SESSION_KIND = "Session";
+            SESSION_KIND = "Session";            
 
         public DatastoreDistributedCache(IOptions<DatastoreDistributedCacheOptions> options,
             ILogger<DatastoreDistributedCache> logger)
@@ -197,5 +209,98 @@ namespace SessionState
             }
             return false;        
         }
+ 
+         /// <summary>
+        /// The main loop of a Task that periodically cleans up expired sessions.
+        /// Never returns.
+        /// </summary>
+        private async Task SweepTaskMain()
+        {
+            var random = System.Security.Cryptography.RandomNumberGenerator.Create();
+            var randomByte = new byte[1];
+            while (true)
+            {
+                random.GetBytes(randomByte);
+                // Not a perfect distrubution, but fine for our limited purposes.
+                int randomMinute = randomByte[0] % 60;
+                _logger.LogDebug("Delaying {0} minutes before checking sweep lock.", randomMinute);
+                await Task.Delay(TimeSpan.FromMinutes(randomMinute));
+
+                // Use a lock to make sure no clients are sweeping at the same time, or
+                // sweeping more often than once per hour.
+                try
+                {
+                    using (var transaction = await _datastore.BeginTransactionAsync(_callSettings))
+                    {
+                        const string SWEEP_BEGIN_DATE = "beginDate",
+                            SWEEPER = "sweeper",
+                            SWEEP_LOCK_KIND = "SweepLock";
+                        var key = _datastore.CreateKeyFactory(SWEEP_LOCK_KIND).CreateKey(1);
+                        Entity sweepLock = await transaction.LookupAsync(key, _callSettings) ??
+                            new Entity() { Key = key };
+                        bool sweep = true;
+                        try
+                        {
+                            sweep = DateTime.UtcNow - ((DateTime)sweepLock[SWEEP_BEGIN_DATE]) >
+                                TimeSpan.FromHours(1);
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError("Error reading sweep begin date.", e);
+                        }
+                        if (!sweep)
+                        {
+                            _logger.LogDebug("Not yet time to sweep.");
+                            continue;
+                        }
+                        sweepLock[SWEEP_BEGIN_DATE] = DateTime.UtcNow;
+                        sweepLock[SWEEPER] = Environment.MachineName;
+                        transaction.Upsert(sweepLock);
+                        await transaction.CommitAsync(_callSettings);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError("Error acquiring sweep lock.", e);
+                    continue;
+                }
+                try
+                {
+                    _logger.LogInformation("Beginning sweep.");
+                    // Find old sessions to clean up
+                    var now = DateTime.UtcNow;
+                    var query = new Query(SESSION_KIND)
+                    {
+                        Filter = Filter.LessThan(EXPIRATION, now),
+                        Projection = { "__key__" }
+                    };
+                    foreach (Entity entity in _datastore.RunQueryLazily(query))
+                    {
+                        try
+                        {
+                            using (var transaction = _datastore.BeginTransaction(_callSettings))
+                            {
+                                var sessionLock = SessionLockFromEntity(
+                                    transaction.Lookup(entity.Key, _callSettings));
+                                if (sessionLock == null || sessionLock.ExpirationDate > now)
+                                    continue;
+                                transaction.Delete(entity.Key,
+                                    _sessionKeyFactory.CreateKey(entity.Key.Path.First().Name));
+                                transaction.Commit(_callSettings);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError("Failed to delete session.", e);
+                        }
+                    }
+                    _logger.LogInformation("Done sweep.");
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError("Failed to query expired sessions.", e);
+                }
+            }
+        }        
     }
 }
