@@ -40,7 +40,7 @@ namespace SessionState
         {
             services.AddMvc();
             services.AddOptions();
-            string cache = Configuration.GetValue<string>("Cache");
+            string cache = Configuration["Cache"];
 
             // Add an implementation of IDistributedCache.
             switch (cache.ToLower())
