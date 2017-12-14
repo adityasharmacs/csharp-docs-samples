@@ -22,6 +22,9 @@ using Microsoft.Extensions.Logging;
 using Google.Api.Gax.Grpc;
 using Google.Api.Gax;
 using System.Linq;
+using System.Collections.Generic;
+using System.Diagnostics;
+using static Google.Cloud.Datastore.V1.ReadOptions.Types;
 
 namespace SessionState
 {
@@ -45,6 +48,7 @@ namespace SessionState
         /// </summary>
         private DatastoreDb _datastore;
         private KeyFactory _sessionKeyFactory;
+        private KeyFactory _sessionExpiresKeyFactory;
 
         private ILogger _logger;
 
@@ -66,10 +70,13 @@ namespace SessionState
         /// Property names and kind names for the datastore entities.
         /// </summary>
         private const string
-            EXPIRATION = "expires",
-            SLIDING_EXPIRATION = "sliding",
+            // The Session entity just stores the bytes in the entity.
+            SESSION_KIND = "Session",
             BYTES = "bytes",
-            SESSION_KIND = "Session";            
+            // The SessionExpires entity stores expiration information.
+            SESSION_EXPIRES_KIND = "SessionExpires",
+            EXPIRATION = "expires",
+            SLIDING_EXPIRATION = "sliding";
 
         public DatastoreDistributedCache(IOptions<DatastoreDistributedCacheOptions> options,
             ILogger<DatastoreDistributedCache> logger)
@@ -78,6 +85,7 @@ namespace SessionState
             var opts = options.Value;
             _datastore = DatastoreDb.Create(opts.ProjectId, opts.Namespace ?? "");
             _sessionKeyFactory = _datastore.CreateKeyFactory(SESSION_KIND);
+            _sessionExpiresKeyFactory = _datastore.CreateKeyFactory(SESSION_EXPIRES_KIND);
             lock (s_sweepTaskLock)
             {
                 if (s_sweepTask == null)
@@ -87,73 +95,74 @@ namespace SessionState
             }
         }
 
+        Key[] ToEntityKeys(string name) => new Key[] {
+            _sessionKeyFactory.CreateKey(name), 
+            _sessionExpiresKeyFactory.CreateKey(name)
+        };
+
         public byte[] Get(string key) 
         {
-            _logger.LogDebug($"Get({key})");
-            return BytesFromEntity(_datastore.Lookup(_sessionKeyFactory.CreateKey(key)));
+            _logger.LogDebug("Get({0})", key);
+            return BytesFromEntities(_datastore.Lookup(ToEntityKeys(key), 
+                ReadConsistency.Strong, _callSettings));
         }
 
         public async Task<byte[]> GetAsync(string key, 
             CancellationToken token = default(CancellationToken))
         {
-            _logger.LogDebug($"GetAsync({key})");
-            var entity = await _datastore.LookupAsync(_sessionKeyFactory.CreateKey(key), 
-                callSettings:Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
-            return BytesFromEntity(entity);
+            _logger.LogDebug("GetAsync({0})", key);
+            var entities = await _datastore.LookupAsync(ToEntityKeys(key), 
+                ReadConsistency.Strong, _callSettings.WithCancellationToken(token));
+            return BytesFromEntities(entities);
         }
 
         public void Refresh(string key)
         {
-            _logger.LogDebug($"Refresh({key})");
-            using (var transaction = _datastore.BeginTransaction())
+            _logger.LogDebug("Refresh({0})", key);
+            var sessionExpires = _datastore.Lookup(_sessionExpiresKeyFactory.CreateKey(key),
+                ReadConsistency.Strong, _callSettings);
+            if (UpdateExpiration(sessionExpires))
             {
-                var entity = transaction.Lookup(_sessionKeyFactory.CreateKey(key));
-                if (UpdateExpiration(entity, transaction))
-                {
-                    transaction.Commit();
-                }
+                _datastore.Upsert(sessionExpires, _callSettings);
             }
         }
 
         public async Task RefreshAsync(string key, CancellationToken token = default(CancellationToken))
         {
-            _logger.LogDebug($"RefreshAsync({key})");            
-            using (var transaction = await _datastore.BeginTransactionAsync(
-                Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token)))
+            _logger.LogDebug("RefreshAsync({0})", key);  
+            var sessionExpires = await _datastore.LookupAsync(_sessionExpiresKeyFactory.CreateKey(key),
+                ReadConsistency.Strong, _callSettings);
+            if (UpdateExpiration(sessionExpires))
             {
-                var entity = await transaction.LookupAsync(_sessionKeyFactory.CreateKey(key));
-                if (UpdateExpiration(entity, transaction)) 
-                {
-                    await transaction.CommitAsync();
-                }
-            }                
+                await _datastore.UpsertAsync(sessionExpires, _callSettings);
+            }
         }
 
         public void Remove(string key) 
         {
-            _logger.LogDebug($"Remove({key})");
-            _datastore.Delete(_sessionKeyFactory.CreateKey(key));
+            _logger.LogDebug("Remove({0})", key);
+            _datastore.Delete(ToEntityKeys(key), _callSettings);
         }
 
         public Task RemoveAsync(string key, CancellationToken token = default(CancellationToken))
         {
-            _logger.LogDebug($"RemoveAsync({key})");
-            return _datastore.DeleteAsync(_sessionKeyFactory.CreateKey(key),
-                Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+            _logger.LogDebug("RemoveAsync({0})", key);
+            return _datastore.DeleteAsync(ToEntityKeys(key), 
+                _callSettings.WithCancellationToken(token));
         }
 
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
         {
-            _logger.LogDebug($"Set({key})");
-            _datastore.Upsert(NewEntity(key, value, options));
+            _logger.LogDebug("Set({0})", key);
+            _datastore.Upsert(NewEntities(key, value, options), _callSettings);
         }
 
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options,
             CancellationToken token = default(CancellationToken))        
         {
-            _logger.LogDebug($"SetAsync({key})");
-            return _datastore.UpsertAsync(NewEntity(key, value, options),
-                Google.Api.Gax.Grpc.CallSettings.FromCancellationToken(token));
+            _logger.LogDebug("SetAsync({0})", key);
+            return _datastore.UpsertAsync(NewEntities(key, value, options),
+                _callSettings.WithCancellationToken(token));
         }
 
         bool HasExpired(Entity entity) {
@@ -162,40 +171,47 @@ namespace SessionState
         }
 
         /// Returns the bytes (cache payload) stored in the entity.
-        byte[] BytesFromEntity(Entity entity) {
-            if (entity == null || HasExpired(entity))
+        byte[] BytesFromEntities(IEnumerable<Entity> entities) {
+            Debug.Assert(entities.Count() == 2);
+            Entity session = entities.ElementAt(0);
+            Entity sessionExpires = entities.ElementAt(1);
+            if (session == null || sessionExpires == null || HasExpired(sessionExpires))
             {
                 return null;
             }
             else
             {
-                return entity[BYTES]?.BlobValue?.ToByteArray() ?? null;
+                return session[BYTES]?.BlobValue?.ToByteArray() ?? null;
             }        
         }
 
-        Entity NewEntity(string key, byte[] value, DistributedCacheEntryOptions options) 
+        Entity[] NewEntities(string key, byte[] value, DistributedCacheEntryOptions options) 
         {
-            Entity entity = new Entity()
+            Entity session = new Entity()
             {
                 Key = _sessionKeyFactory.CreateKey(key),
                 [BYTES] = value
             };
-            entity[BYTES].ExcludeFromIndexes = true;
+            session[BYTES].ExcludeFromIndexes = true;
+            Entity sessionExpires = new Entity() 
+            {
+                Key = _sessionExpiresKeyFactory.CreateKey(key)
+            };
             if (options.AbsoluteExpiration.HasValue)
             {
-                entity[EXPIRATION] = options.AbsoluteExpiration.Value;
+                sessionExpires[EXPIRATION] = options.AbsoluteExpiration.Value;
             }
             else if (options.AbsoluteExpirationRelativeToNow.HasValue)
             {
-                entity[EXPIRATION] = DateTime.UtcNow.Add(
+                sessionExpires[EXPIRATION] = DateTime.UtcNow.Add(
                     options.AbsoluteExpirationRelativeToNow.Value 
                 );
             }
             else if (options.SlidingExpiration.HasValue)
             {
-                entity[SLIDING_EXPIRATION] = options.SlidingExpiration.Value.TotalSeconds;
-                entity[SLIDING_EXPIRATION].ExcludeFromIndexes = true;
-                entity[EXPIRATION] = DateTime.UtcNow.Add(
+                sessionExpires[SLIDING_EXPIRATION] = options.SlidingExpiration.Value.TotalSeconds;
+                sessionExpires[SLIDING_EXPIRATION].ExcludeFromIndexes = true;
+                sessionExpires[EXPIRATION] = DateTime.UtcNow.Add(
                     options.SlidingExpiration.Value
                 );
             }
@@ -203,20 +219,19 @@ namespace SessionState
             {
                 throw new ArgumentException("Required expiration option was not set.", "options");
             }
-            return entity;
+            return new [] {session, sessionExpires};
         }
 
-        bool UpdateExpiration(Entity entity, DatastoreTransaction transaction)
+        bool UpdateExpiration(Entity sessionExpires)
         {
-            if (entity == null || HasExpired(entity))
+            if (sessionExpires == null)
             {
                 return false;            
             }
-            var slidingExpiration = entity[SLIDING_EXPIRATION]?.DoubleValue;
+            var slidingExpiration = sessionExpires[SLIDING_EXPIRATION]?.DoubleValue;
             if (slidingExpiration.HasValue) 
             {
-                entity[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
-                transaction.Update(entity);
+                sessionExpires[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
                 return true;
             }
             return false;        
@@ -281,25 +296,26 @@ namespace SessionState
                     _logger.LogInformation("Beginning sweep.");
                     // Find old sessions to clean up
                     var now = DateTime.UtcNow;
-                    var query = new Query(SESSION_KIND)
+                    var grace_period = TimeSpan.FromMinutes(20);
+                    var query = new Query(SESSION_EXPIRES_KIND)
                     {
-                        Filter = Filter.LessThan(EXPIRATION, now),
+                        Filter = Filter.LessThan(EXPIRATION, now - grace_period),
                         Projection = { "__key__" }
                     };
-                    foreach (Entity entity in _datastore.RunQueryLazily(query))
+                    foreach (Entity expiredSession in _datastore.RunQueryLazily(query))
                     {
                         try
                         {
                             using (var transaction = _datastore.BeginTransaction(_callSettings))
                             {
-                                var session = transaction.Lookup(entity.Key, _callSettings);
-                                if (session == null || session[EXPIRATION] == null
-                                    || session[EXPIRATION].TimestampValue.ToDateTime()> now) 
+                                var sessionExpires = transaction.Lookup(expiredSession.Key, _callSettings);
+                                if (sessionExpires != null && sessionExpires[EXPIRATION] != null
+                                    || sessionExpires[EXPIRATION].TimestampValue.ToDateTime()> now) 
                                 {
                                     continue;
                                 }
-                                transaction.Delete(entity.Key,
-                                    _sessionKeyFactory.CreateKey(entity.Key.Path.First().Name));
+                                var keys = ToEntityKeys(expiredSession.Key.Path.First().Name);
+                                transaction.Delete(keys);
                                 transaction.Commit(_callSettings);
                             }
                         }
