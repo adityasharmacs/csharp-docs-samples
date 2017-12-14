@@ -17,20 +17,20 @@ BackupAndEdit-TextFile "SessionState\appsettings.json" `
     @{"YOUR-PROJECT-ID" = $env:GOOGLE_PROJECT_ID} `
 {    
     dotnet restore   
-    dotnet build
+    dotnet build -c Release
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed."
     }
     $env:ASPNETCORE_URLS = 'http://localhost:61123'
-    $env:ASPNETCORE_ENVIRONMENT = 'Development'
+    $env:ASPNETCORE_ENVIRONMENT = 'Production'
     $webServer = Start-Job -ArgumentList (resolve-path .\SessionState) {
         Set-Location $args[0]
-        dotnet run --no-build 
+        dotnet run --no-build -c Release
     }
     Start-Sleep -Seconds 10
     $webClient = Start-Job -ArgumentList (resolve-path .\WebClient) {
         Set-Location $args[0]
-        dotnet run --no-build -- $env:ASPNETCORE_URLS
+        dotnet run --no-build -c Release -- $env:ASPNETCORE_URLS
     }
     $webClient | Wait-Job | Out-Null
     $webServer | Stop-Job -PassThru | Remove-Job
