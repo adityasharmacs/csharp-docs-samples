@@ -20,6 +20,16 @@ A sample demonstrating how to use Google Cloud Datastore from ASP.NET sessions.
 
 8.  Build and run the Solution.
 
+## Measured performance.
+On two n1-standard1 instances running in us-central-1f:
+
+### In-Memory
+Total elapsed seconds: 61.193
+Average page fetch time in milliseconds: 7.3105
+
+### Datastore
+
+
 
 ## Contributing changes
 
