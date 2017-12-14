@@ -14,9 +14,9 @@ A sample demonstrating how to use Google Cloud Datastore from ASP.NET sessions.
     [Click here](https://console.cloud.google.com/flows/enableapi?apiid=datastore.googleapis.com&showconfirmation=true)
     to visit Cloud Platform Console and enable the Google Cloud Datastore API.
 
-6.  Open [SessionState.sln](SessionStote.sln) with Microsoft Visual Studio version 2015 or later.
+6.  Open [SessionState.sln](SessionStote.sln) with Microsoft Visual Studio version 2017 or later.
 
-7.  In Web.config, replace `YOUR-PROJECT-ID` with your Google project id.
+7.  In appsettings.json, replace `YOUR-PROJECT-ID` with your Google project id.
 
 8.  Build and run the Solution.
 
