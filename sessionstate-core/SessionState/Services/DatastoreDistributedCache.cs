@@ -63,7 +63,7 @@ namespace SessionState
         private readonly CallSettings _callSettings =
             CallSettings.FromCallTiming(CallTiming.FromRetry(new RetrySettings(
                 new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
-                new BackoffSettings(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), 2),
+                new BackoffSettings(TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), 1),
                 Expiration.FromTimeout(TimeSpan.FromSeconds(30)))));
 
         /// <summary>
