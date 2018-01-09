@@ -46,9 +46,9 @@ namespace SessionState
             switch (cache.ToLower())
             {
                 case "datastore":
-                    services.Configure<DatastoreDistributedCacheOptions>(
+                    services.Configure<FirestoreDistributedCacheOptions>(
                         Configuration.GetSection("DatastoreCache"));
-                    services.AddSingleton<IDistributedCache, DatastoreDistributedCache>();
+                    services.AddSingleton<IDistributedCache, FirestoreDistributedCache>();
                     break;
                 case "redis":
                     services.Configure<RedisCacheOptions>(
