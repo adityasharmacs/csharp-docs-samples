@@ -34,11 +34,6 @@ namespace SessionState
         /// Your Google project id.
         /// </summary>
         public string ProjectId { get; set; }
-
-        /// <summary>
-        /// Optional.  The Firestore name to store the sessions in.
-        /// </summary>
-        public string DatabaseId { get; set; }
     }
 
     // A class like this should be provided by the library.  I shouldn't have
@@ -58,17 +53,18 @@ namespace SessionState
         }
 
         public static FirestoreTransactionScope Begin(
-            FirestoreDistributedCache cache)
+            FirestoreDistributedCache cache, string databaseName = null)
         {
-            var response = cache._firestore.BeginTransaction(cache.DatabaseName);
+            var response = cache._firestore.BeginTransaction(
+                databaseName ?? cache.SessionDatabaseName);
             return new FirestoreTransactionScope(cache, response);                
         }
         
         public static async Task<FirestoreTransactionScope> BeginAsync(
-            FirestoreDistributedCache cache)
+            FirestoreDistributedCache cache, string databaseName = null)
         {
             var response = await cache._firestore.BeginTransactionAsync(
-                cache.DatabaseName);
+                databaseName ?? cache.SessionDatabaseName);
             return new FirestoreTransactionScope(cache, response);                
         }
 
@@ -77,7 +73,7 @@ namespace SessionState
             if (!_committed)
             {
                 _committed = true;
-                _cache._firestore.Commit(_cache.DatabaseName, Writes);
+                _cache._firestore.Commit(_cache.SessionDatabaseName, Writes);
             }
         }
 
@@ -86,7 +82,7 @@ namespace SessionState
             if (!_committed)
             {
                 _committed = true;
-                await _cache._firestore.CommitAsync(_cache.DatabaseName, Writes);
+                await _cache._firestore.CommitAsync(_cache.SessionDatabaseName, Writes);
             }
         }
 
@@ -101,7 +97,7 @@ namespace SessionState
                     // TODO: dispose managed state (managed objects).
                 }
 
-                _cache._firestore.Rollback(_cache.DatabaseName, Transaction);
+                _cache._firestore.Rollback(_cache.SessionDatabaseName, Transaction);
                 _committed = true;
             }
         }
@@ -132,11 +128,15 @@ namespace SessionState
 
         internal string _projectId;
 
-        private string _databaseId;
-
-        public string DatabaseName 
+        public string SessionDatabaseName 
         { 
-            get => $"projects/{_projectId}/databases/{_databaseId}"; 
+            get => $"projects/{_projectId}/databases/sessions"; 
+            private set {} 
+        }
+
+        public string SessionSweepDatabaseName 
+        { 
+            get => $"projects/{_projectId}/databases/sessionsweep"; 
             private set {} 
         }
 
@@ -181,15 +181,18 @@ namespace SessionState
             }
         }
 
-        // I'd like the library to provide a function like this too.
-        string ToDocName(string key) =>
-            $"projects/{_projectId}/databases/{_databaseId}/documents/{key}";
+        string ToSessionDocName(string key) =>
+            $"{SessionDatabaseName}/documents/{key}";
+
+        string SweepLockDocName { 
+            get => $"${SessionSweepDatabaseName}/documents/sweeplock";            
+        }
 
         public byte[] Get(string key) 
         {
             _logger.LogDebug("Get({0})", key);
             var doc = _firestore.GetDocument(new GetDocumentRequest() {
-                Name = ToDocName(key)
+                Name = ToSessionDocName(key)
             });            
             return BytesFromDoc(doc);
         }
@@ -199,7 +202,7 @@ namespace SessionState
         {
             _logger.LogDebug("GetAsync({0})", key);
             var doc = await _firestore.GetDocumentAsync(new GetDocumentRequest() {
-                Name = ToDocName(key)
+                Name = ToSessionDocName(key)
             });            
             return BytesFromDoc(doc);
         }
@@ -210,7 +213,7 @@ namespace SessionState
             using (var transaction = FirestoreTransactionScope.Begin(this))
             {
                 var doc = _firestore.GetDocument(new GetDocumentRequest() {
-                    Name = ToDocName(key),
+                    Name = ToSessionDocName(key),
                     Transaction = transaction.Transaction
                 });
                 if (UpdateExpiration(doc))
@@ -234,7 +237,7 @@ namespace SessionState
             using (var transaction = await FirestoreTransactionScope.BeginAsync(this))
             {
                 var doc = await _firestore.GetDocumentAsync(new GetDocumentRequest() {
-                    Name = ToDocName(key),
+                    Name = ToSessionDocName(key),
                     Transaction = transaction.Transaction
                 });
                 if (UpdateExpiration(doc))
@@ -259,7 +262,7 @@ namespace SessionState
             {
                 await writeStream.WriteAsync(new WriteRequest() {
                     Writes = { write },
-                    Database = DatabaseName
+                    Database = SessionDatabaseName
                 });
                 await writeStream.ResponseStream.MoveNext();
                 return writeStream.ResponseStream.Current;
@@ -321,7 +324,7 @@ namespace SessionState
         Document NewDoc(string key, byte[] value, DistributedCacheEntryOptions options,
             ref DocumentMask docMask) 
         {
-            var doc = new Document() { Name = ToDocName(key) };
+            var doc = new Document() { Name = ToSessionDocName(key) };
             docMask.FieldPaths.Clear();
             var bytes = new Value { 
                 BytesValue = Google.Protobuf.ByteString.CopyFrom(value)};
@@ -381,7 +384,7 @@ namespace SessionState
             return false;        
         }
  
-         /// <summary>
+        /// <summary>
         /// The main loop of a Task that periodically cleans up expired sessions.
         /// Never returns.
         /// </summary>
@@ -401,33 +404,46 @@ namespace SessionState
                 // sweeping more often than once per hour.
                 try
                 {
-                    using (var transaction = await _datastore.BeginTransactionAsync(_callSettings))
+                    using (var transaction = await FirestoreTransactionScope.BeginAsync(this))
                     {
                         const string SWEEP_BEGIN_DATE = "beginDate",
-                            SWEEPER = "sweeper",
-                            SWEEP_LOCK_KIND = "SweepLock";
-                        var key = _datastore.CreateKeyFactory(SWEEP_LOCK_KIND).CreateKey(1);
-                        Entity sweepLock = await transaction.LookupAsync(key, _callSettings) ??
-                            new Entity() { Key = key };
-                        bool sweep = true;
+                            SWEEPER = "sweeper";
+                        var sweepLock = await _firestore.GetDocumentAsync(new GetDocumentRequest() {
+                            Name = SweepLockDocName,
+                            Transaction = transaction.Transaction
+                        });
+                        bool shouldSweep = true;
                         try
                         {
-                            sweep = DateTime.UtcNow - ((DateTime)sweepLock[SWEEP_BEGIN_DATE]) >
+                            var sweepBeginDate =
+                                sweepLock.Fields[SWEEP_BEGIN_DATE]
+                                .TimestampValue.ToDateTime();
+                            shouldSweep = (DateTime.UtcNow - sweepBeginDate) >
                                 TimeSpan.FromHours(1);
                         }
                         catch (Exception e)
                         {
                             _logger.LogError(1, e, "Error reading sweep begin date.");
                         }
-                        if (!sweep)
+                        if (!shouldSweep)
                         {
                             _logger.LogDebug("Not yet time to sweep.");
                             continue;
                         }
-                        sweepLock[SWEEP_BEGIN_DATE] = DateTime.UtcNow;
-                        sweepLock[SWEEPER] = Environment.MachineName;
-                        transaction.Upsert(sweepLock);
-                        await transaction.CommitAsync(_callSettings);
+                        sweepLock.Fields[SWEEP_BEGIN_DATE] = new Value() {
+                            TimestampValue = Google.Protobuf.WellKnownTypes
+                                .Timestamp.FromDateTime(DateTime.UtcNow)
+                        };                            
+                        sweepLock.Fields[SWEEPER] = new Value() {
+                            StringValue = Environment.MachineName
+                        };
+                        transaction.Writes.Add(new Write() {
+                            Update = sweepLock,
+                            UpdateMask = new DocumentMask() {
+                                FieldPaths = {SWEEP_BEGIN_DATE, SWEEPER}
+                            }
+                        });
+                        await transaction.CommitAsync();
                     }
                 }
                 catch (Exception e)
@@ -435,12 +451,34 @@ namespace SessionState
                     _logger.LogError("Error acquiring sweep lock.", e);
                     continue;
                 }
+#if false                
                 try
                 {
                     _logger.LogInformation("Beginning sweep.");
                     // Find old sessions to clean up
                     var now = DateTime.UtcNow;
                     var grace_period = TimeSpan.FromMinutes(20);
+                    // Wow.  Running a query is a huge mess.
+                    _firestore.RunQuery(new RunQueryRequest() {
+                        StructuredQuery = new StructuredQuery() {
+                            Where = new StructuredQuery.Types.Filter() {
+                                FieldFilter = new StructuredQuery.Types.FieldFilter() {
+                                    Field = new StructuredQuery.Types.FieldReference() {
+                                        FieldPath = EXPIRATION
+                                    },
+                                    Op = StructuredQuery.Types.FieldFilter.Types.Operator.GreaterThan,
+                                    Value = new Value() { 
+                                        TimestampValue = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+                                            now + grace_period)
+                                    }
+                                }
+                            },
+                            // From = // How do I specify a databaseId.?
+                        }
+                    });
+
+
+                    });
                     var query = new Query(SESSION_EXPIRES_KIND)
                     {
                         Filter = Filter.LessThan(EXPIRATION, now - grace_period),
@@ -474,6 +512,7 @@ namespace SessionState
                 {
                     _logger.LogError(3, e, "Failed to query expired sessions.");
                 }
+#endif
             }
         }        
     }
