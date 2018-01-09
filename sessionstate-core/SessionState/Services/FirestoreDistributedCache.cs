@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc.
+// Copyright 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ namespace SessionState
         public string DatabaseId { get; set; }
     }
 
+    // A class like this should be provided by the library.  I shouldn't have
+    // to implement it myself.
     class FirestoreTransactionScope : IDisposable 
     {
         FirestoreDistributedCache _cache;
@@ -75,7 +77,7 @@ namespace SessionState
             if (!_committed)
             {
                 _committed = true;
-                _cache._firestore.Commit(_cache.DatabaseName, _writes);
+                _cache._firestore.Commit(_cache.DatabaseName, Writes);
             }
         }
 
@@ -84,7 +86,7 @@ namespace SessionState
             if (!_committed)
             {
                 _committed = true;
-                await _cache._firestore.CommitAsync(_cache.DatabaseName, _writes);
+                await _cache._firestore.CommitAsync(_cache.DatabaseName, Writes);
             }
         }
 
@@ -179,6 +181,7 @@ namespace SessionState
             }
         }
 
+        // I'd like the library to provide a function like this too.
         string ToDocName(string key) =>
             $"projects/{_projectId}/databases/{_databaseId}/documents/{key}";
 
@@ -214,6 +217,8 @@ namespace SessionState
                 {
                     transaction.Writes.Add(new Write() {
                         Update = doc,
+                        // I really dislike update masks.  Is there an easy way
+                        // to say 'update everything'?
                         UpdateMask = new DocumentMask() {
                             FieldPaths = {EXPIRATION}
                         }
@@ -245,31 +250,54 @@ namespace SessionState
             }
         }
 
+        // This is a very complicated way to do a write.
+        // And I suspect it's very inefficient.
+        async Task<WriteResponse> WriteAsync(Write write) 
+        {
+            var writeStream = _firestore.Write();
+            try 
+            {
+                await writeStream.WriteAsync(new WriteRequest() {
+                    Writes = { write },
+                    Database = DatabaseName
+                });
+                await writeStream.ResponseStream.MoveNext();
+                return writeStream.ResponseStream.Current;
+            } 
+            finally
+            {
+                await writeStream.WriteCompleteAsync();
+            }
+        }
+
         public void Remove(string key) 
         {
             _logger.LogDebug("Remove({0})", key);
-            _datastore.Delete(ToEntityKeys(key), _callSettings);
+            WriteAsync(new Write() { Delete = key}).Wait();
         }
 
         public Task RemoveAsync(string key, CancellationToken token = default(CancellationToken))
         {
             _logger.LogDebug("RemoveAsync({0})", key);
-            return _datastore.DeleteAsync(ToEntityKeys(key), 
-                _callSettings.WithCancellationToken(token));
+            return WriteAsync(new Write() { Delete = key});
         }
 
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
         {
             _logger.LogDebug("Set({0})", key);
-            _datastore.Upsert(NewEntities(key, value, options), _callSettings);
+            var docMask = new DocumentMask();
+            _firestore.UpdateDocument(NewDoc(key, value, options, ref docMask), 
+                docMask);
         }
 
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options,
             CancellationToken token = default(CancellationToken))        
         {
             _logger.LogDebug("SetAsync({0})", key);
-            return _datastore.UpsertAsync(NewEntities(key, value, options),
-                _callSettings.WithCancellationToken(token));
+                        var docMask = new DocumentMask();
+            return _firestore.UpdateDocumentAsync(
+                NewDoc(key, value, options, ref docMask), 
+                docMask, _callSettings.WithCancellationToken(token));
         }
 
         bool HasExpired(Document doc) 
@@ -290,53 +318,64 @@ namespace SessionState
             return doc.Fields[BYTES]?.BytesValue?.ToByteArray() ?? null;
         }
 
-        Entity[] NewEntities(string key, byte[] value, DistributedCacheEntryOptions options) 
+        Document NewDoc(string key, byte[] value, DistributedCacheEntryOptions options,
+            ref DocumentMask docMask) 
         {
-            Entity session = new Entity()
-            {
-                Key = _sessionKeyFactory.CreateKey(key),
-                [BYTES] = value
-            };
-            session[BYTES].ExcludeFromIndexes = true;
-            Entity sessionExpires = new Entity() 
-            {
-                Key = _sessionExpiresKeyFactory.CreateKey(key)
-            };
+            var doc = new Document() { Name = ToDocName(key) };
+            docMask.FieldPaths.Clear();
+            var bytes = new Value { 
+                BytesValue = Google.Protobuf.ByteString.CopyFrom(value)};
+            // How do I mark the bytes so they're not indexed?
+            doc.Fields[BYTES] = bytes;
+            // I want a a class that automatically adds field paths as I set
+            // fields.  Maybe that's not possible due to map types.  I dunno.
+            docMask.FieldPaths.Add(BYTES);
+            DateTimeOffset expires;
             if (options.AbsoluteExpiration.HasValue)
             {
-                sessionExpires[EXPIRATION] = options.AbsoluteExpiration.Value;
+                expires = options.AbsoluteExpiration.Value;
             }
             else if (options.AbsoluteExpirationRelativeToNow.HasValue)
             {
-                sessionExpires[EXPIRATION] = DateTime.UtcNow.Add(
-                    options.AbsoluteExpirationRelativeToNow.Value 
-                );
+                expires = DateTime.UtcNow.Add(
+                    options.AbsoluteExpirationRelativeToNow.Value);
             }
             else if (options.SlidingExpiration.HasValue)
             {
-                sessionExpires[SLIDING_EXPIRATION] = options.SlidingExpiration.Value.TotalSeconds;
-                sessionExpires[SLIDING_EXPIRATION].ExcludeFromIndexes = true;
-                sessionExpires[EXPIRATION] = DateTime.UtcNow.Add(
-                    options.SlidingExpiration.Value
-                );
+                doc.Fields[SLIDING_EXPIRATION] = new Value() {
+                    DoubleValue = options.SlidingExpiration.Value.TotalSeconds
+                };
+                docMask.FieldPaths.Add(SLIDING_EXPIRATION);
+                expires = DateTime.UtcNow.Add(options.SlidingExpiration.Value);
             }
             else
             {
                 throw new ArgumentException("Required expiration option was not set.", "options");
             }
-            return new [] {session, sessionExpires};
+            // Converting between C# Timestamp times and Proto timestamp types
+            // is hideous.
+            doc.Fields[EXPIRATION] = new Value() {
+                TimestampValue = Google.Protobuf.WellKnownTypes.Timestamp
+                    .FromDateTimeOffset(expires)
+            };
+            docMask.FieldPaths.Add(EXPIRATION);
+            return doc;
         }
 
-        bool UpdateExpiration(Entity sessionExpires)
+        bool UpdateExpiration(Document doc)
         {
-            if (sessionExpires == null)
+            if (doc == null)
             {
                 return false;            
             }
-            var slidingExpiration = sessionExpires[SLIDING_EXPIRATION]?.DoubleValue;
+            var slidingExpiration = doc.Fields[SLIDING_EXPIRATION]?.DoubleValue;
             if (slidingExpiration.HasValue) 
             {
-                sessionExpires[EXPIRATION] = DateTime.UtcNow.AddSeconds(slidingExpiration.Value);
+                doc.Fields[EXPIRATION] = new Value() {
+                    TimestampValue = 
+                        Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(
+                        DateTime.UtcNow.AddSeconds(slidingExpiration.Value))
+                };
                 return true;
             }
             return false;        
