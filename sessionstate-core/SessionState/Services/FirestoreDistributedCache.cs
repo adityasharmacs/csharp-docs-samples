@@ -15,7 +15,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
-using Google.Cloud.Firestore.V1Beta1;
+using Google.Cloud.Firestore;
 using System;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
@@ -34,88 +34,9 @@ namespace SessionState
         /// Your Google project id.
         /// </summary>
         public string ProjectId { get; set; }
-    }
 
-    // A class like this should be provided by the library.  I shouldn't have
-    // to implement it myself.
-    class FirestoreTransactionScope : IDisposable 
-    {
-        FirestoreDistributedCache _cache;
-        public Google.Protobuf.ByteString Transaction {get; private set; }
-        bool _committed = false;
-        public List<Write> Writes { get; private set; } = new List<Write>();
-        
-        private FirestoreTransactionScope (FirestoreDistributedCache cache,
-            BeginTransactionResponse response)
-        {
-            _cache = cache;
-            Transaction = response.Transaction;
-        }
-
-        public static FirestoreTransactionScope Begin(
-            FirestoreDistributedCache cache, string databaseName = null)
-        {
-            var response = cache._firestore.BeginTransaction(
-                databaseName ?? cache.SessionDatabaseName);
-            return new FirestoreTransactionScope(cache, response);                
-        }
-        
-        public static async Task<FirestoreTransactionScope> BeginAsync(
-            FirestoreDistributedCache cache, string databaseName = null)
-        {
-            var response = await cache._firestore.BeginTransactionAsync(
-                databaseName ?? cache.SessionDatabaseName);
-            return new FirestoreTransactionScope(cache, response);                
-        }
-
-        public void Commit() 
-        {
-            if (!_committed)
-            {
-                _committed = true;
-                _cache._firestore.Commit(_cache.SessionDatabaseName, Writes);
-            }
-        }
-
-        public async Task CommitAsync() 
-        {
-            if (!_committed)
-            {
-                _committed = true;
-                await _cache._firestore.CommitAsync(_cache.SessionDatabaseName, Writes);
-            }
-        }
-
-        #region IDisposable Support
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_committed)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects).
-                }
-
-                _cache._firestore.Rollback(_cache.SessionDatabaseName, Transaction);
-                _committed = true;
-            }
-        }
-
-        ~FirestoreTransactionScope() {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(false);
-        }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        #endregion
-
+        // Optional.
+        public string CollectionId { get; set; }
     }
 
     class FirestoreDistributedCache : IDistributedCache
@@ -123,22 +44,13 @@ namespace SessionState
         /// <summary>
         /// My connection to Google Cloud Firestore.
         /// </summary>
-        internal FirestoreClient _firestore;
-        internal ILogger _logger;
 
-        internal string _projectId;
+        readonly FirestoreDb _firestore;
+        readonly ILogger _logger;
 
-        public string SessionDatabaseName 
-        { 
-            get => $"projects/{_projectId}/databases/sessions"; 
-            private set {} 
-        }
-
-        public string SessionSweepDatabaseName 
-        { 
-            get => $"projects/{_projectId}/databases/sessionsweep"; 
-            private set {} 
-        }
+        readonly string _projectId;
+        readonly string _sessionCollectionId;
+        readonly CollectionReference _sessionCollection;
 
         /// <summary>
         /// Only run one sweep task per process.
@@ -154,24 +66,29 @@ namespace SessionState
                 new BackoffSettings(TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), 1),
                 Expiration.FromTimeout(TimeSpan.FromSeconds(30)))));
 
-        /// <summary>
-        /// Property names and kind names for the datastore entities.
-        /// </summary>
-        private const string
-            // The Session entity just stores the bytes in the entity.
-            SESSION_KIND = "Session",
-            BYTES = "bytes",
-            // The SessionExpires entity stores expiration information.
-            SESSION_EXPIRES_KIND = "SessionExpires",
-            EXPIRATION = "expires",
-            SLIDING_EXPIRATION = "sliding";
+        const string SLIDING = "sliding",
+            EXPIRES = "expires";
+
+        class SessionDoc {
+            [FirestoreProperty]
+            public byte[] Bytes { get; set; }
+
+            [FirestoreProperty(EXPIRES)]
+            public DateTime? ExpirationDate { get; set; }
+
+            [FirestoreProperty(SLIDING)]
+            public TimeSpan? SlidingExpiration { get; set; }
+        }
 
         public FirestoreDistributedCache(IOptions<FirestoreDistributedCacheOptions> options,
             ILogger<FirestoreDistributedCache> logger)
         {
             _logger = logger;
             var opts = options.Value;
-            _firestore = FirestoreClient.Create();
+            _projectId = opts.ProjectId;
+            _sessionCollectionId = string.IsNullOrWhiteSpace(opts.CollectionId) ?
+                "sessions" : opts.CollectionId;
+            _firestore = FirestoreDb.Create(_projectId);            
             lock (s_sweepTaskLock)
             {
                 if (s_sweepTask == null)
@@ -180,77 +97,55 @@ namespace SessionState
                 }
             }
         }
-
-        string ToSessionDocName(string key) =>
-            $"{SessionDatabaseName}/documents/{key}";
-
-        string SweepLockDocName { 
-            get => $"${SessionSweepDatabaseName}/documents/sweeplock";            
-        }
-
         public byte[] Get(string key) 
         {
             _logger.LogDebug("Get({0})", key);
-            var doc = _firestore.GetDocument(new GetDocumentRequest() {
-                Name = ToSessionDocName(key)
-            });            
-            return BytesFromDoc(doc);
+            var snapshot = _sessionCollection.Document(key).SnapshotAsync().Result;
+            return snapshot?.Deserialize<SessionDoc>()?.Bytes;
         }
 
         public async Task<byte[]> GetAsync(string key, 
             CancellationToken token = default(CancellationToken))
         {
             _logger.LogDebug("GetAsync({0})", key);
-            var doc = await _firestore.GetDocumentAsync(new GetDocumentRequest() {
-                Name = ToSessionDocName(key)
-            });            
-            return BytesFromDoc(doc);
+            var snapshot = await _sessionCollection.Document(key).SnapshotAsync();
+            return snapshot?.Deserialize<SessionDoc>()?.Bytes;
         }
+
+        /// Common implementation for Refresh and RefreshAsync().
+        public Task RefreshCommonAsync(string key,
+            CancellationToken token = default(CancellationToken))
+        {
+            var sessionRef = _sessionCollection.Document(key);
+            return _firestore.RunTransactionAsync(async (transaction) => {
+                var sessionSnapshot = await
+                    transaction.GetDocumentSnapshotAsync(sessionRef, token);
+                var sessionDoc = sessionSnapshot.Deserialize<SessionDoc>();
+                var now = DateTime.UtcNow;
+                if (sessionDoc.ExpirationDate >= now) {
+                    sessionDoc.ExpirationDate = now + sessionDoc.SlidingExpiration;
+                    Dictionary<FieldPath, object> updates = 
+                        new Dictionary<FieldPath, object>() 
+                    {
+                        [new FieldPath(EXPIRES)] = sessionDoc.ExpirationDate
+                    };
+                    transaction.Update(sessionRef, updates);
+                }
+            }, cancellationToken: token);
+        }
+
 
         public void Refresh(string key)
         {
             _logger.LogDebug("Refresh({0})", key);
-            using (var transaction = FirestoreTransactionScope.Begin(this))
-            {
-                var doc = _firestore.GetDocument(new GetDocumentRequest() {
-                    Name = ToSessionDocName(key),
-                    Transaction = transaction.Transaction
-                });
-                if (UpdateExpiration(doc))
-                {
-                    transaction.Writes.Add(new Write() {
-                        Update = doc,
-                        // I really dislike update masks.  Is there an easy way
-                        // to say 'update everything'?
-                        UpdateMask = new DocumentMask() {
-                            FieldPaths = {EXPIRATION}
-                        }
-                    });
-                    transaction.Commit();
-                }
-            }
+            RefreshCommonAsync(key).Wait();
         }
 
-        public async Task RefreshAsync(string key, CancellationToken token = default(CancellationToken))
+        public Task RefreshAsync(string key,
+            CancellationToken token = default(CancellationToken))
         {
             _logger.LogDebug("Refresh({0})", key);
-            using (var transaction = await FirestoreTransactionScope.BeginAsync(this))
-            {
-                var doc = await _firestore.GetDocumentAsync(new GetDocumentRequest() {
-                    Name = ToSessionDocName(key),
-                    Transaction = transaction.Transaction
-                });
-                if (UpdateExpiration(doc))
-                {
-                    transaction.Writes.Add(new Write() {
-                        Update = doc,
-                        UpdateMask = new DocumentMask() {
-                            FieldPaths = {EXPIRATION}
-                        }
-                    });
-                    await transaction.CommitAsync();
-                }
-            }
+            return RefreshCommonAsync(key, token);
         }
 
         // This is a very complicated way to do a write.
@@ -276,6 +171,7 @@ namespace SessionState
         public void Remove(string key) 
         {
             _logger.LogDebug("Remove({0})", key);
+            
             WriteAsync(new Write() { Delete = key}).Wait();
         }
 
