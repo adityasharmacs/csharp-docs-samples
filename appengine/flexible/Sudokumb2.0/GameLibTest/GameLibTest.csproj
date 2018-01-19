@@ -16,4 +16,8 @@
     <ProjectReference Include="..\GameLib\GameLib.csproj" />
   </ItemGroup>
 
+<ItemGroup>
+  <None Update="SampleBoard.txt" CopyToOutputDirectory="PreserveNewest" />
+</ItemGroup>
+
 </Project>

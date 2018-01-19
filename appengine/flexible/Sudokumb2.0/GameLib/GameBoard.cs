@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -204,6 +205,52 @@ namespace Sudokumb
                     s.AppendLine("---+---+---");
             }
             return s.ToString();
+        }
+
+        /// <summary>
+        /// Parse a GameBoard from user input or the like.  The format is
+        /// different from the pretty output, but very easier to enter by hand.
+        /// Digits for digits, and anything else for blank spaces.
+        /// Whitespace is ignored.  Example:
+        /// 1 2 3   5 . .   7 8 9
+        /// . . .   . . .   . . .
+        /// . . .   . . .   . . .
+        ///
+        /// . . .   4 . .   . . .                
+        /// . 7 .   . 5 .   . . .
+        /// . . .   . . 6   2 . .
+        ///
+        /// . . 1   . . .   . . .
+        /// . 5 .   3 . .   . . .
+        /// 3 . .   . . .   1 . .
+        /// </summary>
+        /// <param name="input">An input stream.  Try Console.OpenStandordInput()</param>
+        public static GameBoard ParseHandInput(Stream input) {
+            var reader = new StreamReader(input);
+            // Parse the first line to see if it's a simple format or pretty
+            // format.
+            StringBuilder board = new StringBuilder();
+            do {
+                int n = reader.Read();
+                if (n < 0) 
+                {
+                    throw new ArgumentException("Input stream did contain a full board.");
+                }
+                char c = (char)n;
+                if ("123456789".Contains(c))
+                {
+                    board.Append(c);
+                }
+                else if (Char.IsWhiteSpace(c))
+                {
+                    continue;
+                }
+                else
+                {
+                    board.Append(" ");
+                }
+            } while (board.Length < 81);
+            return GameBoard.Create(board.ToString());
         }
     }
 }

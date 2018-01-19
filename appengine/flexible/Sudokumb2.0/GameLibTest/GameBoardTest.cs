@@ -15,6 +15,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -90,6 +91,16 @@ namespace Sudokumb
             for (int i = 0; i < expectedNextBoards.Count(); ++i)
             {
                 Assert.Equal(expectedNextBoards.ElementAt(i).Board, nextBoards.ElementAt(i).Board);
+            }
+        }
+
+        [Fact]
+        public void TestParseHandInput()
+        {
+            using (Stream m = File.OpenRead("SampleBoard.txt"))
+            {
+                GameBoard a = GameBoard.ParseHandInput(m);
+                Assert.Equal(_boardA.Board, a.Board);
             }
         }
 
