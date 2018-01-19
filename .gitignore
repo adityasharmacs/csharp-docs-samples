@@ -13,3 +13,7 @@ PublishProfiles/
 *~
 *.xproj.user
 project.lock.json
+.vscode/
+secrets.ps1
+google_application_credentials.json
+**/Properties/launchSettings.json

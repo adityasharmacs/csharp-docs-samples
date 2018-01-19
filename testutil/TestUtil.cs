@@ -44,11 +44,15 @@ namespace GoogleCloudSamples
             }
         }
     }
+
+    // TODO: Remove this class and use 
+    //       Transient Fault Handling Application Block:
+    //       https://msdn.microsoft.com/en-us/library/dn440719(v=pandp.60).aspx
     public class RetryRobot
     {
         public int FirstRetryDelayMs { get; set; } = 1000;
         public float DelayMultiplier { get; set; } = 2;
-        public int MaxTryCount { get; set; } = 6;
+        public int MaxTryCount { get; set; } = 7;
         public IEnumerable<Type> RetryWhenExceptions { get; set; } = new Type[0];
         public Func<Exception, bool> ShouldRetry { get; set; }
 
@@ -141,6 +145,41 @@ namespace GoogleCloudSamples
                 finally
                 {
                     Console.SetOut(consoleOut);
+                }
+            }
+        }
+
+        public ConsoleOutput RunWithStdIn(string stdIn, params string[] arguments)
+        {
+            lock (s_lock)
+            {
+                Console.Write($"{Command} ");
+                Console.WriteLine(string.Join(" ", arguments));
+
+                TextWriter consoleOut = Console.Out;
+                TextReader consoleIn = Console.In;
+                StringWriter stringOut = new StringWriter();
+                Console.SetOut(stringOut);
+                Console.SetIn(new StringReader(stdIn));
+                try
+                {
+                    int exitCode = 0;
+                    if (null == VoidMain)
+                        exitCode = Main(arguments);
+                    else
+                        VoidMain(arguments);
+                    var consoleOutput = new ConsoleOutput()
+                    {
+                        ExitCode = exitCode,
+                        Stdout = stringOut.ToString()
+                    };
+                    Console.Write(consoleOutput.Stdout);
+                    return consoleOutput;
+                }
+                finally
+                {
+                    Console.SetOut(consoleOut);
+                    Console.SetIn(consoleIn);
                 }
             }
         }

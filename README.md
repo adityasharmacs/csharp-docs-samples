@@ -8,7 +8,11 @@ lists all the _Cloud_ APIs you can call from .NET.
 
 The samples in this repo cover only _some_ of the total APIs that you can call from .NET.
 
-[![Build Status](https://jenkins.on2flixcloud.tv/buildStatus/icon?job=dotnet-docs-samples)](https://jenkins.on2flixcloud.tv/job/dotnet-docs-samples/)
+### Build Status
+
+| Windows | Linux |
+|---------|-------|
+|![Windows][windows-badge] | ![Linux][linux-badge] |
 
 ## Build and Run
 
@@ -28,6 +32,8 @@ But no sample will work until you:
     4.  Give your project a name.
     5.  Make a note of the project ID, which might be different from the project
         name. The project ID is used in commands and in configurations.
+    6.  In each sample directory, a README.md contains additional steps necessary 
+        to run the sample. Don't forget to follow those instructions too.
 
 2.  **Enable billing for your project**.
     If you haven't already enabled billing for your project,
@@ -36,7 +42,7 @@ But no sample will work until you:
     as running instances and storing data.
 
 3.  **Download credentials**.
-    1.  [Visit the API Manager Dashboard](https://console.cloud.google.com/apis/dashboard)
+    1.  [Visit the APIs & services dashboard](https://console.cloud.google.com/apis/dashboard)
         and click **Credentials**.  
     2.  Click **Create credentials** and choose **Service Account key**.
     3.  Under Service account, choose **Compute Engine default service
@@ -54,7 +60,7 @@ But no sample will work until you:
         ```
 
 4.  **Enable APIs.**
-    [Visit the API Manager Dashboard](https://console.cloud.google.com/apis/dashboard)
+    [Visit the APIs & services dashboard](https://console.cloud.google.com/apis/dashboard)
     and click **ENABLE API**.  Enable the APIs you plan to call.
     Are you going to use Cloud Datastore?
     Enable the Cloud Datastore API.  Each API must be enabled
@@ -80,3 +86,6 @@ But no sample will work until you:
 ## Testing
 
 * See [TESTING.md](TESTING.md)
+
+[windows-badge]: https://www.googleapis.com/download/storage/v1/b/silver-python2-kokoro-badges/o/dotnet-docs-samples%2Fsystem_tests-windows.png?alt=media
+[linux-badge]: https://www.googleapis.com/download/storage/v1/b/silver-python2-kokoro-badges/o/dotnet-docs-samples%2Fsystem_tests-linux.png?alt=media

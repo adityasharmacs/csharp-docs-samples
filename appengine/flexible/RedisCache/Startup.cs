@@ -46,7 +46,8 @@ namespace RedisCache
             // Add framework services.
             services.AddMvc();
             string redisEndpoint = Configuration["RedisEndpoint"];
-            redisEndpoint = new string[] { null, "", "your-redis-endpoint" }.Contains(redisEndpoint) ?
+            redisEndpoint = new string[] { null, "", "your-redis-endpoint" }
+                .Contains(redisEndpoint) ?
                 "" : WorkAroundIssue463(redisEndpoint);
             // [BEGIN redis_startup]
             services.AddDistributedRedisCache(options =>

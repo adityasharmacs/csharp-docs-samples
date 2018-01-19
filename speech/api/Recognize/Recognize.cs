@@ -19,6 +19,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Speech.V1;
 using Grpc.Auth;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,11 +44,23 @@ namespace GoogleCloudSamples
     }
 
     [Verb("sync", HelpText = "Detects speech in an audio file.")]
-    class SyncOptions : StorageOptions { }
+    class SyncOptions : StorageOptions
+    {
+        [Option('w', HelpText = "Report the time offsets of individual words.")]
+        public bool EnableWordTimeOffsets { get; set; }
+    }
+
+    [Verb("with-context", HelpText = "Detects speech in an audio file."
+        + " Add additional context on stdin.")]
+    class OptionsWithContext : StorageOptions { }
 
     [Verb("async", HelpText = "Creates a job to detect speech in an audio "
         + "file, and waits for the job to complete.")]
-    class AsyncOptions : StorageOptions { }
+    class AsyncOptions : StorageOptions
+    {
+        [Option('w', HelpText = "Report the time offsets of individual words.")]
+        public bool EnableWordTimeOffsets { get; set; }
+    }
 
     [Verb("sync-creds", HelpText = "Detects speech in an audio file.")]
     class SyncOptionsWithCreds
@@ -68,7 +81,7 @@ namespace GoogleCloudSamples
     class ListenOptions
     {
         [Value(0, HelpText = "Number of seconds to listen for.", Required = false)]
-        public int Seconds { get; set; } = int.MaxValue;
+        public int Seconds { get; set; } = 3;
     }
 
     [Verb("rec", HelpText = "Detects speech in an audio file. Supports other file formats.")]
@@ -125,6 +138,79 @@ namespace GoogleCloudSamples
             return 0;
         }
         // [END speech_sync_recognize]
+
+
+        // [START speech_sync_recognize_words]
+        static object SyncRecognizeWords(string filePath)
+        {
+            var speech = SpeechClient.Create();
+            var response = speech.Recognize(new RecognitionConfig()
+            {
+                Encoding = RecognitionConfig.Types.AudioEncoding.Linear16,
+                SampleRateHertz = 16000,
+                LanguageCode = "en",
+                EnableWordTimeOffsets = true,
+            }, RecognitionAudio.FromFile(filePath));
+            foreach (var result in response.Results)
+            {
+                foreach (var alternative in result.Alternatives)
+                {
+                    Console.WriteLine($"Transcript: { alternative.Transcript}");
+                    Console.WriteLine("Word details:");
+                    Console.WriteLine($" Word count:{alternative.Words.Count}");
+                    foreach (var item in alternative.Words)
+                    {
+                        Console.WriteLine($"  {item.Word}");
+                        Console.WriteLine($"    WordStartTime: {item.StartTime}");
+                        Console.WriteLine($"    WordEndTime: {item.EndTime}");
+                    }
+                }
+            }
+            return 0;
+        }
+        // [END speech_sync_recognize_words]
+
+
+        /// <summary>
+        /// Reads a list of phrases from stdin.
+        /// </summary>
+        static List<string> ReadPhrases()
+        {
+            Console.Write("Reading phrases from stdin.  Finish with blank line.\n> ");
+            var phrases = new List<string>();
+            string line = Console.ReadLine();
+            while (!string.IsNullOrWhiteSpace(line))
+            {
+                phrases.Add(line.Trim());
+                Console.Write("> ");
+                line = Console.ReadLine();
+            }
+            return phrases;
+        }
+
+        static object RecognizeWithContext(string filePath, IEnumerable<string> phrases)
+        {
+            var speech = SpeechClient.Create();
+            var config = new RecognitionConfig()
+            {
+                SpeechContexts = { new SpeechContext() { Phrases = { phrases } } },
+                Encoding = RecognitionConfig.Types.AudioEncoding.Linear16,
+                SampleRateHertz = 16000,
+                LanguageCode = "en",
+            };
+            var audio = IsStorageUri(filePath) ?
+                RecognitionAudio.FromStorageUri(filePath) :
+                RecognitionAudio.FromFile(filePath);
+            var response = speech.Recognize(config, audio);
+            foreach (var result in response.Results)
+            {
+                foreach (var alternative in result.Alternatives)
+                {
+                    Console.WriteLine(alternative.Transcript);
+                }
+            }
+            return 0;
+        }
 
         static object SyncRecognizeWithCredentials(string filePath, string credentialsFilePath)
         {
@@ -210,12 +296,44 @@ namespace GoogleCloudSamples
             {
                 foreach (var alternative in result.Alternatives)
                 {
-                    Console.WriteLine(alternative.Transcript);
+                    Console.WriteLine($"Transcript: { alternative.Transcript}");
                 }
             }
             return 0;
         }
         // [END speech_async_recognize_gcs]
+
+        // [START speech_async_recognize_gcs_words]
+        static object AsyncRecognizeGcsWords(string storageUri)
+        {
+            var speech = SpeechClient.Create();
+            var longOperation = speech.LongRunningRecognize(new RecognitionConfig()
+            {
+                Encoding = RecognitionConfig.Types.AudioEncoding.Linear16,
+                SampleRateHertz = 16000,
+                LanguageCode = "en",
+                EnableWordTimeOffsets = true,
+            }, RecognitionAudio.FromStorageUri(storageUri));
+            longOperation = longOperation.PollUntilCompleted();
+            var response = longOperation.Result;
+            foreach (var result in response.Results)
+            {
+                foreach (var alternative in result.Alternatives)
+                {
+                    Console.WriteLine($"Transcript: { alternative.Transcript}");
+                    Console.WriteLine("Word details:");
+                    Console.WriteLine($" Word count:{alternative.Words.Count}");
+                    foreach (var item in alternative.Words)
+                    {
+                        Console.WriteLine($"  {item.Word}");
+                        Console.WriteLine($"    WordStartTime: {item.StartTime}");
+                        Console.WriteLine($"    WordEndTime: {item.EndTime}");
+                    }
+                }
+            }
+            return 0;
+        }
+        // [END speech_async_recognize_gcs_words]
 
         /// <summary>
         /// Stream the content of the file to the API in 32kb chunks.
@@ -362,17 +480,22 @@ namespace GoogleCloudSamples
             return (int)Parser.Default.ParseArguments<
                 SyncOptions, AsyncOptions,
                 StreamingOptions, ListenOptions,
-                RecOptions, SyncOptionsWithCreds
+                RecOptions, SyncOptionsWithCreds,
+                OptionsWithContext
                 >(args).MapResult(
                 (SyncOptions opts) => IsStorageUri(opts.FilePath) ?
-                    SyncRecognizeGcs(opts.FilePath) : SyncRecognize(opts.FilePath),
+                    SyncRecognizeGcs(opts.FilePath) : opts.EnableWordTimeOffsets ?
+                    SyncRecognizeWords(opts.FilePath) : SyncRecognize(opts.FilePath),
                 (AsyncOptions opts) => IsStorageUri(opts.FilePath) ?
-                    AsyncRecognizeGcs(opts.FilePath) : LongRunningRecognize(opts.FilePath),
+                    (opts.EnableWordTimeOffsets ? AsyncRecognizeGcsWords(opts.FilePath)
+                    : AsyncRecognizeGcs(opts.FilePath))
+                    : LongRunningRecognize(opts.FilePath),
                 (StreamingOptions opts) => StreamingRecognizeAsync(opts.FilePath).Result,
                 (ListenOptions opts) => StreamingMicRecognizeAsync(opts.Seconds).Result,
                 (RecOptions opts) => Rec(opts.FilePath, opts.BitRate, opts.Encoding),
                 (SyncOptionsWithCreds opts) => SyncRecognizeWithCredentials(
                     opts.FilePath, opts.CredentialsFilePath),
+                (OptionsWithContext opts) => RecognizeWithContext(opts.FilePath, ReadPhrases()),
                 errs => 1);
         }
     }

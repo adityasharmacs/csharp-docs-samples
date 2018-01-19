@@ -29,7 +29,7 @@ namespace GoogleCloudSamples
 
         readonly CommandLineRunner _cloudMonitoring = new CommandLineRunner()
         {
-            VoidMain = Program.Main,
+            VoidMain = Monitoring.Main,
             Command = "Monitoring"
         };
 
@@ -101,7 +101,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestGetMonitoredResourceDescriptor()
         {
-            string testResourceDisplayName = "API Endpoint";
+            string testResourceDisplayName = "Produced API";
             var output = _cloudMonitoring.Run("getResource", s_projectId, "api");
             Assert.Equal(0, output.ExitCode);
             Assert.Contains(testResourceDisplayName, output.Stdout);
@@ -175,7 +175,7 @@ namespace GoogleCloudSamples
         readonly CommandLineRunner _quickStart = new CommandLineRunner()
         {
             VoidMain = QuickStart.Main,
-            Command = "QuickStart"
+            Command = "dotnet run"
         };
 
         [Fact]

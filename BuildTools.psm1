@@ -118,7 +118,10 @@ function When-Empty($Target, $ArgList, [ScriptBlock]$ScriptBlock) {
 #
 ##############################################################################
 filter Get-Config ($Target, $ArgList, $Mask="Web.config") {
-    When-Empty $Target $ArgList {Find-Files -Masks $Mask} | Resolve-Path -Relative
+    $paths = When-Empty $Target $ArgList {Find-Files -Masks $Mask}
+    if ($paths) {
+        $paths | Resolve-Path -Relative
+    }
 }
 
 ##############################################################################
@@ -154,6 +157,9 @@ filter Update-Config ([switch]$Yes) {
             if ("a" -eq $reply) { $Yes = $true }
         }
         $config = Select-Xml -Path $configPath -XPath configuration
+        if (-not $config) {
+            continue;
+        }
         Add-Setting $config 'GoogleCloudSamples:BookStore' $env:GoogleCloudSamples:BookStore
         Add-Setting $config 'GoogleCloudSamples:ProjectId' $env:GoogleCloudSamples:ProjectId
         Add-Setting $config 'GoogleCloudSamples:BucketName' $env:GoogleCloudSamples:BucketName
@@ -302,6 +308,49 @@ function UpFind-File([string[]]$Masks = '*')
 
 ##############################################################################
 #.SYNOPSIS
+# Sets the timeout for a runTests.ps1.
+#
+#.DESCRIPTION
+# When Run-TestScripts calls a runTests.ps1, then the runTests.ps1 can call
+# Set-TestTimeout to override the default timeout.
+#
+#.EXAMPLE
+# Set-TestTimeout 900
+##############################################################################
+function Set-TestTimeout($seconds) {
+    New-Object PSObject -Property @{TimeoutSeconds = $seconds}
+}
+
+##############################################################################
+#.SYNOPSIS
+# Skips the currently running test.  Exits the currently running script.
+#
+#.EXAMPLE
+# Skip-Test
+##############################################################################
+function Skip-Test() {
+    New-Object PSObject -Property @{Skipped = $true} | Write-Output
+    exit
+}
+
+##############################################################################
+#.SYNOPSIS
+# Checks the currrently running platform.  Exits if it's the wrong one.
+#
+#.EXAMPLE
+# Require-Platform Win*
+##############################################################################
+function Require-Platform([string[]] $platforms) {
+    foreach ($platform in $platforms) {
+        if ([environment]::OSVersion.Platform -match $platform) {
+            return
+        }
+    }
+    Skip-Test
+}
+
+##############################################################################
+#.SYNOPSIS
 # Runs powershell scripts and prints a summary of successes and errors.
 #
 #.INPUTS
@@ -318,40 +367,64 @@ function Run-TestScripts($TimeoutSeconds=300) {
     # Array of strings: the relative path of the inner script.
     $results = @{}
     foreach ($script in $scripts) {
+        $startDate = Get-Date
         $relativePath = Resolve-Path -Relative $script.FullName
         $verb = "Starting"
         $jobState = 'Failed'  # Retry once on failure.
         for ($try = 0; $try -lt 2 -and $jobState -eq 'Failed'; ++$try) {
-            echo "$verb $relativePath..."
+            Write-Output "$verb $relativePath..."
             $verb = "Retrying"
             $job = Start-Job -ArgumentList $relativePath, $script.Directory, `
                 ('.\"{0}"' -f $script.Name) {
-                echo ("-" * 79)
-                echo $args[0]
+                Write-Output ("-" * 79)
+                Write-Output $args[0]
                 Set-Location $args[1]
                 Invoke-Expression $args[2]
                 if ($LASTEXITCODE) {
                     throw "FAILED with exit code $LASTEXITCODE"
                 }
             }
-            if (Wait-Job $job -Timeout $TimeoutSeconds) {
-                Receive-Job $job
+            # Call Receive-Job every second so the stdout for the job
+            # streams to my stdout. 
+            while ($true) {
+                Wait-Job $job -Timeout 1 | Out-Null
                 $jobState = $job.State
-            } else {
-                Receive-Job $job
-                $jobState = 'Timed Out'
+                foreach ($line in (Receive-Job $job)) {
+                    # Look at the output of the job to see if it requested
+                    # a longer timeout.
+                    if ($line.TimeoutSeconds) {
+                        $TimeoutSeconds = $line.TimeoutSeconds
+                        "Set timeout to $TimeoutSeconds seconds."
+                    } elseif ($line.Skipped) {
+                        Write-Output "SKIPPED"
+                        $jobState = 'Skipped'
+                        break
+                    } else {
+                        $line
+                    }
+                }
+                if ($jobState -eq 'Running') {
+                    $deadline = $startDate.AddSeconds($TimeoutSeconds)                    
+                    if ((Get-Date) -gt $deadline) {
+                        Write-Output "TIME OUT"
+                        $jobState = 'Timed Out'
+                        break
+                    }
+                } else {
+                    break
+                }
             }
-            Remove-Job $job
+            Remove-Job -Force $job
         }
         $results[$jobState] += @($relativePath)
     }
     # Print a final summary.
-    echo ("=" * 79)
+    Write-Output ("=" * 79)
     foreach ($key in $results.Keys) {
         $count = $results[$key].Length
         $result = $key.Replace('Completed', 'Succeeded').ToUpper()
-        echo "$count $result"
-        echo $results[$key]
+        Write-Output "$count $result"
+        Write-Output $results[$key]
     }
     # Throw an exception to set ERRORLEVEL to 1 in the calling process.
     $failureCount = $results['Failed'].Length
@@ -402,11 +475,70 @@ function BuildAndRun-CoreTest($TestJs = "test.js") {
 filter Format-Code {
     $projects = When-Empty $_ $args { Find-Files -Masks *.csproj }
     foreach ($project in $projects) {
-        codeformatter.exe /rule:BraceNewLine /rule:ExplicitThis /rule-:ExplicitVisibility /rule:FieldNames /rule:FormatDocument /rule:ReadonlyFields /rule:UsingLocation /nocopyright $project
-        if ($LASTEXITCODE) {
-            $project.FullName
-            throw "codeformatter failed with exit code $LASTEXITCODE."
+        Backup-File -Files $project -ScriptBlock {
+            Convert-2003ProjectToCore $project
+            "codeformatter.exe $project" | Write-Host
+            codeformatter.exe /rule:BraceNewLine /rule:ExplicitThis `
+                /rule-:ExplicitVisibility /rule:FieldNames `
+                /rule:FormatDocument /rule:ReadonlyFields /rule:UsingLocation `
+                /nocopyright $project
+            if ($LASTEXITCODE) {
+                $project.FullName
+                throw "codeformatter failed with exit code $LASTEXITCODE."
+            }
         }
+    }
+}
+
+$coreProjectText = @"
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <ItemGroup>
+        <Compile Include="Program.cs" />
+    </ItemGroup>
+</Project>
+"@
+
+##############################################################################
+#.SYNOPSIS
+# Converts .NET Core csproj to MSBuild 2003.
+#
+#.DESCRIPTION
+# Creates the bare minimal project for code-formatter to work.
+# If you open the project with Visual Studio everything will be broken.
+#
+#.PARAMETER csproj
+# A project to convert.
+#
+#.EXAMPLE
+# Convert-2003ProjectToCore AuthSample.csproj
+##############################################################################
+function Convert-2003ProjectToCore($csproj) {
+    $cspath = (Resolve-Path $csproj).Path
+    $xml = [xml](Get-Content $csproj)
+    if (-not $xml.Project.xmlns -eq "http://schemas.microsoft.com/developer/msbuild/2003") {
+        Write-Host "Converting .NET core $cspath to msbuild/2003..."
+        $doc = [xml]$coreProjectText
+        $group = $doc.Project.ItemGroup
+        $compileTemplate = $group.Compile
+        $sourceFiles = (Get-ChildItem -Path (Split-Path $cspath) -Filter "*.cs")
+        foreach ($sourceFile in $sourceFiles) {
+            $compile = $compileTemplate.Clone()
+            $compile.Include = $sourceFile.FullName
+            $group.AppendChild($compile) | Out-Null
+        }
+        $group.RemoveChild($compileTemplate) | Out-Null
+        $doc.save($cspath)
+    } else {
+        Write-Host "$cspath looks like a 2003 .csproj to me!"
+        $doc = [xml] (Get-Content $cspath)
+        # This one import causes codeformatter to choke.  Turn it off.
+        foreach ($import in $doc.Project.Import | Where-Object `
+            {$_.Project -like '*\Microsoft.WebApplication.targets'}) 
+        {
+            $import.Condition = 'false'
+        }
+        $doc.save($cspath)
     }
 }
 
@@ -426,7 +558,7 @@ filter Format-Code {
 filter Lint-Code {
     $projects = When-Empty $_ $args { Find-Files -Masks *.csproj }
     foreach ($project in $projects) {
-        @($project) | Format-Code
+        @($project) | Format-Code            
         # If git reports a diff, codeformatter changed something, and that's bad.
         $diff = git diff
         if ($diff) {
@@ -599,16 +731,18 @@ function Run-KestrelTest([Parameter(mandatory=$true)]$PortNumber, $TestJs = 'tes
 }
 
 function Run-CasperJs($TestJs='test.js', $Url) {
-    Start-Sleep -Seconds 2  # Wait for web process to start up.
-    casperjs $TestJs $Url
-    if ($LASTEXITCODE) {
-        # Try again
-        Start-Sleep -Seconds 2  # Wait for web process to start up.
-        casperjs $TestJs $Url
-        if ($LASTEXITCODE) {
-            throw "Casperjs failed with error code $LASTEXITCODE"
+    $sleepSeconds = 2
+    for ($tryCount = 0; $tryCount -lt 5; $tryCount++) {
+        Start-Sleep -Seconds $sleepSeconds  # Wait for web process to start up.
+        $casperOut = casperjs $TestJs $Url
+        if ($LASTEXITCODE -eq 0) {
+            $casperOut | Write-Host
+            return
         }
+        $sleepSeconds *= 2
     }
+    $casperOut | Write-Host
+    throw "Casperjs failed with error code $LASTEXITCODE"
 }
 
 ##############################################################################
@@ -624,7 +758,7 @@ function Run-CasperJs($TestJs='test.js', $Url) {
 ##############################################################################
 function Deploy-CasperJsTest($testJs ='test.js') {
     while ($true) {
-		$yamls = Get-Item .\bin\debug\netcoreapp1.0\publish\*.yaml | Resolve-Path -Relative
+		$yamls = Get-Item .\bin\debug\netcoreapp*\publish\*.yaml | Resolve-Path -Relative
 		echo "gcloud beta app deploy --quiet --no-promote -v deploytest $yamls"
         gcloud beta app deploy --quiet --no-promote -v deploytest $yamls
         if ($LASTEXITCODE -eq 0) {
@@ -837,4 +971,29 @@ function Find-Utf16($Path=@('*.yaml', '*.cs', '*.xml')) {
 filter ConvertTo-Utf8 {
     $lines = [System.IO.File]::ReadAllLines($_)
     [System.IO.File]::WriteAllLines($_, $lines)
+}
+
+##############################################################################
+#.SYNOPSIS
+# Given a path to a runTests.ps1 script, find the git timestamp of changes in
+# the same directory. 
+##############################################################################
+function Get-GitTimeStampForScript($script) {
+    Push-Location
+    try {
+        Set-Location (Split-Path $script)
+        $dateText = git log -n 1 --format=%cd --date=iso .
+        $newestDate = @(($dateText | Get-Date).ToUniversalTime().ToString("o"))
+        # Search for dependencies too.
+        $references = dotnet list reference | Where-Object {Test-Path $_ }
+        # Look up the timestamp for each dependency.
+        foreach ($ref in $references) {
+            $dateText = git log -n 1 --format=%cd --date=iso (Split-Path $ref)
+            $newestDate += @(($dateText | Get-Date).ToUniversalTime().ToString("o"))
+        }
+        # Return a string combining all the timestamps in descending order.
+        return ($newestDate | Sort-Object -Descending) -join "+"
+    } finally {
+        Pop-Location
+    }
 }

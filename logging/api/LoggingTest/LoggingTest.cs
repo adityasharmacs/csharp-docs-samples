@@ -128,6 +128,23 @@ namespace GoogleCloudSamples
             }
 
             [Fact]
+            public void TestWithLogId()
+            {
+                StackdriverLogWriter.ProjectId = _projectId;
+                StackdriverLogWriter.LogId = "TestWithLogId";
+                string message1 = "TestWithLogId test example";
+                _logsToDelete.Add(StackdriverLogWriter.LogId);
+                StackdriverLogWriter.WriteLog("TestWithLogId test example");
+                Eventually(() =>
+                {
+                    // Retrieve the log entries just added, using the logId as a filter.
+                    var results = Run("list-log-entries", StackdriverLogWriter.LogId);
+                    // Confirm returned log entry contains expected value.
+                    Assert.Contains(message1, results.Stdout);
+                });
+            }
+
+            [Fact]
             public void TestDeleteLog()
             {
                 string logId = "logForTestDeleteLog";
@@ -135,22 +152,8 @@ namespace GoogleCloudSamples
                 //Try creating a log entry
                 var created = Run("create-log-entry", logId, message);
                 created.AssertSucceeded();
-                Eventually(() =>
-                {
-                    // Retrieve the log entry just added, using the logId as a filter.
-                    var results = Run("list-log-entries", logId);
-                    // Confirm returned log entry contains expected value.
-                    Assert.Contains(message, results.Stdout);
-                });
-                // Try deleting log.
+                // Try deleting log and assert on success.
                 Run("delete-log", logId).AssertSucceeded();
-                Eventually(() =>
-                {
-                    // Try listing the log entries.  There should be none.
-                    var listed = Run("list-log-entries", logId);
-                    listed.AssertSucceeded();
-                    Assert.Equal("", listed.Stdout.Trim());
-                });
             }
 
             [Fact]
@@ -242,31 +245,22 @@ namespace GoogleCloudSamples
                     sinkClient.GetSink(SinkNameOneof.From(sinkName)));
             }
 
-            private string GetConsoleAppOutput(string filePath)
+            readonly CommandLineRunner _quickStart = new CommandLineRunner()
             {
-                string output = "";
-                Process consoleApp = new Process();
-                consoleApp.StartInfo.FileName = filePath;
-                consoleApp.StartInfo.UseShellExecute = false;
-                consoleApp.StartInfo.RedirectStandardOutput = true;
-                consoleApp.Start();
-                output = consoleApp.StandardOutput.ReadToEnd();
-                consoleApp.WaitForExit();
-                return output;
-            }
+                VoidMain = QuickStart.Main,
+                Command = "dotnet run"
+            };
 
             [Fact]
-            public void TestQuickStartConsoleApp()
+            public void TestRunQuickStart()
             {
-                string output;
-                string filePath = @"..\..\..\QuickStart\bin\Debug\QuickStart.exe";
                 string expectedOutput = "Log Entry created.";
                 // This logId should match the logId value set in QuickStart\QuickStart.cs
                 string logId = "my-log";
                 string message = "Hello World!";
                 _logsToDelete.Add(logId);
-                output = GetConsoleAppOutput(filePath).Trim();
-                Assert.Equal(expectedOutput, output);
+                var output = _quickStart.Run();
+                Assert.Equal(expectedOutput, output.Stdout.Trim());
                 Eventually(() =>
                 {
                     // Retrieve the log entry just added, using the logId as a filter.

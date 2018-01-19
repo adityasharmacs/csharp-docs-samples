@@ -14,6 +14,7 @@
  * the License.
  */
 
+using System;
 using System.IO;
 using Xunit;
 
@@ -51,18 +52,13 @@ namespace GoogleCloudSamples
         /// <param name="args">Command line arguments to Main().</param>
         protected abstract ConsoleOutput Run(params string[] args);
 
+        protected string _audioRawPath = Path.Combine("resources", "audio.raw");
+        protected string _audioFlacPath = Path.Combine("resources", "audio.flac");
+
         [Fact]
         public void TestSync()
         {
-            var output = Run("sync", @"resources\audio.raw");
-            Assert.Equal(0, output.ExitCode);
-            Assert.Contains("Brooklyn", output.Stdout);
-        }
-
-        [Fact]
-        public void TestAsync()
-        {
-            var output = Run("async", @"resources\audio.raw");
+            var output = Run("sync", _audioRawPath);
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("Brooklyn", output.Stdout);
         }
@@ -76,7 +72,7 @@ namespace GoogleCloudSamples
         [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/723")]
         public void TestStreaming()
         {
-            var output = _recognize.Run("stream", @"resources\audio.raw");
+            var output = _recognize.Run("stream", _audioRawPath);
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("Brooklyn", output.Stdout);
         }
@@ -94,7 +90,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestFlac()
         {
-            var output = _recognize.Run("rec", "-e", "Flac", @"resources\audio.flac");
+            var output = _recognize.Run("rec", "-e", "Flac", _audioFlacPath);
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("Brooklyn", output.Stdout);
         }
@@ -102,31 +98,76 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestSyncWithCredentials()
         {
-            var output = Run("sync-creds", @"resources\audio.raw",
+            var output = Run("sync-creds", _audioRawPath,
                 System.Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS"));
             Assert.Equal(0, output.ExitCode);
             Assert.Contains("Brooklyn", output.Stdout);
         }
+
+        [Fact]
+        public void TestWithContext()
+        {
+            string stdin = "Good day!\nBye bye.\n\n";
+            var output = _recognize.RunWithStdIn(stdin, "with-context", _audioRawPath);
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Brooklyn", output.Stdout);
+        }
+
+        [Fact]
+        public void TestSyncWords()
+        {
+            var output = Run("sync", "-w", _audioRawPath);
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Brooklyn", output.Stdout);
+            Assert.Contains("WordStartTime:", output.Stdout);
+        }
     }
 
-    public class CloudStorageRecognizeTests : CommonRecognizeTests, IClassFixture<RandomBucketFixture>
+    public class CloudStorageRecognizeTests : CommonRecognizeTests, IClassFixture<RandomBucketFixture>, System.IDisposable
     {
         readonly string _bucketName;
+        readonly BucketCollector _bucketCollector;
 
         public CloudStorageRecognizeTests(RandomBucketFixture bucketFixture)
         {
             _bucketName = bucketFixture.BucketName;
+            _bucketCollector = new BucketCollector(_bucketName);
+        }
+
+        string Upload(string localPath)
+        {
+            string objectName = Path.GetFileName(localPath);
+            string gsPath = $"gs://{_bucketName}/{objectName}";
+            _bucketCollector.CopyToBucket(localPath, objectName);
+            return gsPath;
+        }
+
+        [Fact]
+        public void TestAsync()
+        {
+            var output = Run("async", Upload(_audioRawPath));
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Brooklyn", output.Stdout);
+            Assert.Contains("how", output.Stdout);
+        }
+
+        [Fact]
+        public void TestAsyncWords()
+        {
+            var output = Run("async", "-w", Upload(_audioRawPath));
+            Assert.Equal(0, output.ExitCode);
+            Assert.Contains("Brooklyn", output.Stdout);
+            Assert.Contains("WordStartTime:", output.Stdout);
+        }
+
+        public void Dispose()
+        {
+            ((IDisposable)_bucketCollector).Dispose();
         }
 
         protected override ConsoleOutput Run(params string[] args)
         {
-            string objectName = Path.GetFileName(args[1]);
-            string[] cmdArgs = { args[0], $"gs://{_bucketName}/{objectName}" };
-            using (var collector = new BucketCollector(_bucketName))
-            {
-                collector.CopyToBucket(args[1], objectName);
-                return _recognize.Run(cmdArgs);
-            }
+            return _recognize.Run(args);
         }
     }
 }

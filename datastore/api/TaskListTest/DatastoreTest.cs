@@ -40,13 +40,15 @@ namespace GoogleCloudSamples
         // [END retry]
         private readonly RetryRobot _retryRobot = new RetryRobot()
         {
-            RetryWhenExceptions = new[] { typeof(Xunit.Sdk.XunitException) }
+            RetryWhenExceptions = new[] { typeof(Xunit.Sdk.XunitException) },
+            // Eventually consistency can take a long time.
+            MaxTryCount = 8
         };
 
         public DatastoreTest()
         {
             _projectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
-            _db = DatastoreDb.Create(_projectId, "ghijklmnop");
+            _db = DatastoreDb.Create(_projectId, TestUtil.RandomName());
             _keyFactory = _db.CreateKeyFactory("Task");
             _sampleTask = new Entity()
             {
@@ -627,7 +629,6 @@ namespace GoogleCloudSamples
                 };
                 // [END kind_run_query]
                 Assert.Contains("Task", kinds);
-                Assert.Contains("TaskList", kinds);
             });
         }
 
@@ -658,6 +659,7 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestPropertyByKindRunQuery()
         {
+            ClearTasks();
             UpsertTaskList();
             Eventually(() =>
             {

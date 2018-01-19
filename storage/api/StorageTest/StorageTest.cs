@@ -525,6 +525,40 @@ namespace GoogleCloudSamples
         }
 
         [Fact]
+        public void TestViewBucketIamMembers()
+        {
+            var printedIamMembers = Run("view-bucket-iam-members", _bucketName);
+            AssertSucceeded(printedIamMembers);
+        }
+
+        [Fact]
+        public void TestAddBucketIamMember()
+        {
+            string member =
+               "230835935096-8io28ro0tvbbv612p5k6nstlaucmhnrq@developer.gserviceaccount.com";
+            string memberType = "serviceAccount";
+            string role = "roles/storage.objectViewer";
+
+            // Add the member.
+            var addedMember = Run("add-bucket-iam-member", _bucketName,
+                role, $"{memberType}:{member}");
+            AssertSucceeded(addedMember);
+
+            // Make sure view-bucket-iam-members shows us the user.
+            var printedIamMembers = Run("view-bucket-iam-members", _bucketName);
+            AssertSucceeded(printedIamMembers);
+            Assert.Contains(member, printedIamMembers.Stdout);
+
+            // Remove the member.
+            var removedMember = Run("remove-bucket-iam-member", _bucketName,
+                role, $"{memberType}:{member}");
+            AssertSucceeded(removedMember);
+            printedIamMembers = Run("view-bucket-iam-members", _bucketName);
+            AssertSucceeded(printedIamMembers);
+            Assert.DoesNotContain(member, printedIamMembers.Stdout);
+        }
+
+        [Fact]
         public void TestSignUrl()
         {
             Run("upload", _bucketName, Collect("Hello.txt"));
@@ -561,6 +595,59 @@ namespace GoogleCloudSamples
             AssertSucceeded(output);
             Assert.Equal(File.ReadAllText("Hello.txt"),
                 File.ReadAllText("Hello-downloaded.txt"));
+        }
+
+        [Fact]
+        public void TestEnableAndDisableRequesterPays()
+        {
+            try
+            {
+                var enabled = Run("enable-requester-pays", _bucketName);
+                AssertSucceeded(enabled);
+                Assert.Equal(1, Run("get-requester-pays", _bucketName).ExitCode);
+
+                var disabled = Run("disable-requester-pays", _bucketName);
+                AssertSucceeded(disabled);
+                Assert.Equal(0, Run("get-requester-pays", _bucketName).ExitCode);
+
+                enabled = Run("enable-requester-pays", _bucketName);
+                AssertSucceeded(enabled);
+                Assert.Equal(1, Run("get-requester-pays", _bucketName).ExitCode);
+            }
+            finally
+            {
+                Run("disable-requester-pays", _bucketName);
+            }
+        }
+
+        [Fact]
+        public void TestDownloadObjectRequesterPays()
+        {
+            try
+            {
+                var enabled = Run("enable-requester-pays", _bucketName);
+                AssertSucceeded(enabled);
+
+                var uploaded = Run("upload", _bucketName, Collect("Hello.txt"));
+                AssertSucceeded(uploaded);
+
+                var downloaded = Run("download", _bucketName, "-pay",
+                    "Hello.txt", "Hello2.txt");
+                AssertSucceeded(downloaded);
+                try
+                {
+                    Assert.Equal(File.ReadAllText("Hello.txt"),
+                        File.ReadAllText("Hello2.txt"));
+                }
+                finally
+                {
+                    File.Delete("Hello2.txt");
+                }
+            }
+            finally
+            {
+                Run("disable-requester-pays", _bucketName);
+            }
         }
     }
 }

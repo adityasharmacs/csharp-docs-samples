@@ -16,19 +16,22 @@ using Google.Cloud.Language.V1;
 using System;
 using System.Collections.Generic;
 using static Google.Cloud.Language.V1.AnnotateTextRequest.Types;
+using Google.Protobuf.Collections;
 
 namespace GoogleCloudSamples
 {
     public class Analyze
     {
         public static string Usage = @"Usage:
-C:\> Analyze command text
-C:\> Analyze command gs://bucketName/objectName
+C:\> dotnet run command text
+C:\> dotnet run command gs://bucketName/objectName
 
 Where command is one of
     entities
     sentiment
     syntax
+    entity-sentiment
+    classify-text
     everything
 ";
 
@@ -71,7 +74,9 @@ Where command is one of
                     Console.WriteLine($"\t\t{mention.Text.BeginOffset}: {mention.Text.Content}");
                 Console.WriteLine("\tMetadata:");
                 foreach (var keyval in entity.Metadata)
+                {
                     Console.WriteLine($"\t\t{keyval.Key}: {keyval.Value}");
+                }
             }
         }
         // [END analyze_entities_from_file]
@@ -86,7 +91,7 @@ Where command is one of
                 GcsContentUri = gcsUri,
                 Type = Document.Types.Type.PlainText
             });
-            WriteSentiment(response.DocumentSentiment);
+            WriteSentiment(response.DocumentSentiment, response.Sentences);
         }
         // [END analyze_sentiment_from_file]
 
@@ -99,14 +104,22 @@ Where command is one of
                 Content = text,
                 Type = Document.Types.Type.PlainText
             });
-            WriteSentiment(response.DocumentSentiment);
+            WriteSentiment(response.DocumentSentiment, response.Sentences);
         }
 
         // [START analyze_sentiment_from_file]
-        private static void WriteSentiment(Sentiment sentiment)
+        private static void WriteSentiment(Sentiment sentiment,
+            RepeatedField<Sentence> sentences)
         {
-            Console.WriteLine($"Score: {sentiment.Score}");
-            Console.WriteLine($"Magnitude: {sentiment.Magnitude}");
+            Console.WriteLine("Overall document sentiment:");
+            Console.WriteLine($"\tScore: {sentiment.Score}");
+            Console.WriteLine($"\tMagnitude: {sentiment.Magnitude}");
+            Console.WriteLine("Sentence level sentiment:");
+            foreach (var sentence in sentences)
+            {
+                Console.WriteLine($"\t{sentence.Text.Content}: "
+                    + $"({sentence.Sentiment.Score})");
+            }
         }
         // [END analyze_sentiment_from_file]
         // [END analyze_sentiment_from_string]
@@ -121,7 +134,7 @@ Where command is one of
                 Type = Document.Types.Type.PlainText
             },
             new Features() { ExtractSyntax = true });
-            WriteSentences(response.Sentences);
+            WriteSentences(response.Sentences, response.Tokens);
         }
         // [END analyze_syntax_from_file]
 
@@ -135,20 +148,105 @@ Where command is one of
                 Type = Document.Types.Type.PlainText
             },
             new Features() { ExtractSyntax = true });
-            WriteSentences(response.Sentences);
+            WriteSentences(response.Sentences, response.Tokens);
         }
 
         // [START analyze_syntax_from_file]
-        private static void WriteSentences(IEnumerable<Sentence> sentences)
+        private static void WriteSentences(IEnumerable<Sentence> sentences,
+            RepeatedField<Token> tokens)
         {
             Console.WriteLine("Sentences:");
             foreach (var sentence in sentences)
             {
                 Console.WriteLine($"\t{sentence.Text.BeginOffset}: {sentence.Text.Content}");
             }
+            Console.WriteLine("Tokens:");
+            foreach (var token in tokens)
+            {
+                Console.WriteLine($"\t{token.PartOfSpeech.Tag} "
+                    + $"{token.Text.Content}");
+            }
         }
         // [END analyze_syntax_from_file]
         // [END analyze_syntax_from_string]
+
+        // [START analyze_entity_sentiment_from_file]
+        private static void AnalyzeEntitySentimentFromFile(string gcsUri)
+        {
+            var client = LanguageServiceClient.Create();
+            var response = client.AnalyzeEntitySentiment(new Document()
+            {
+                GcsContentUri = gcsUri,
+                Type = Document.Types.Type.PlainText
+            });
+            WriteEntitySentiment(response.Entities);
+        }
+        // [END analyze_entity_sentiment_from_file]
+
+        // [START analyze_entity_sentiment_from_string]
+        private static void AnalyzeEntitySentimentFromText(string text)
+        {
+            var client = LanguageServiceClient.Create();
+            var response = client.AnalyzeEntitySentiment(new Document()
+            {
+                Content = text,
+                Type = Document.Types.Type.PlainText
+            });
+            WriteEntitySentiment(response.Entities);
+        }
+
+        // [START analyze_entity_sentiment_from_file]
+        private static void WriteEntitySentiment(IEnumerable<Entity> entities)
+        {
+            Console.WriteLine("Entity Sentiment:");
+            foreach (var entity in entities)
+            {
+                Console.WriteLine($"\t{entity.Name} "
+                    + $"({(int)(entity.Salience * 100)}%)");
+                Console.WriteLine($"\t\tScore: {entity.Sentiment.Score}");
+                Console.WriteLine($"\t\tMagnitude { entity.Sentiment.Magnitude}");
+            }
+        }
+        // [END analyze_entity_sentiment_from_file]
+        // [END analyze_entity_sentiment_from_string]
+
+        // [START language_classify_file]
+        private static void ClassifyTextFromFile(string gcsUri)
+        {
+            var client = LanguageServiceClient.Create();
+            var response = client.ClassifyText(new Document()
+            {
+                GcsContentUri = gcsUri,
+                Type = Document.Types.Type.PlainText
+            });
+            WriteCategories(response.Categories);
+        }
+        // [END language_classify_file]
+
+        // [START language_classify_string]
+        private static void ClassifyTextFromText(string text)
+        {
+            var client = LanguageServiceClient.Create();
+            var response = client.ClassifyText(new Document()
+            {
+                Content = text,
+                Type = Document.Types.Type.PlainText
+            });
+            WriteCategories(response.Categories);
+        }
+
+        // [START language_classify_file]
+        private static void WriteCategories(IEnumerable<ClassificationCategory> categories)
+        {
+            Console.WriteLine("Categories:");
+            foreach (var category in categories)
+            {
+                Console.WriteLine($"\tCategory: {category.Name}");
+                Console.WriteLine($"\t\tConfidence: {category.Confidence}");
+            }
+        }
+        // [END language_classify_string]
+        // [END language_classify_file]
 
         private static void AnalyzeEverything(string text)
         {
@@ -163,11 +261,15 @@ Where command is one of
                 ExtractSyntax = true,
                 ExtractDocumentSentiment = true,
                 ExtractEntities = true,
+                ExtractEntitySentiment = true,
+                ClassifyText = true,
             });
             Console.WriteLine($"Language: {response.Language}");
-            WriteSentiment(response.DocumentSentiment);
-            WriteSentences(response.Sentences);
+            WriteSentiment(response.DocumentSentiment, response.Sentences);
+            WriteSentences(response.Sentences, response.Tokens);
             WriteEntities(response.Entities);
+            WriteEntitySentiment(response.Entities);
+            WriteCategories(response.Categories);
         }
 
         public static void Main(string[] args)
@@ -202,6 +304,20 @@ Where command is one of
                         AnalyzeSentimentFromText(text);
                     else
                         AnalyzeSentimentFromFile(gcsUri);
+                    break;
+
+                case "entity-sentiment":
+                    if (null == gcsUri)
+                        AnalyzeEntitySentimentFromText(text);
+                    else
+                        AnalyzeEntitySentimentFromFile(gcsUri);
+                    break;
+
+                case "classify-text":
+                    if (null == gcsUri)
+                        ClassifyTextFromText(text);
+                    else
+                        ClassifyTextFromFile(gcsUri);
                     break;
 
                 case "everything":

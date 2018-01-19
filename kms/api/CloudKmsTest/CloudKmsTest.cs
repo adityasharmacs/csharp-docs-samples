@@ -105,27 +105,27 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestEncryptData()
         {
-            string inFile = @"..\..\..\test\data\test_file.txt";
-            string outFile = @"..\..\..\test\data\test_file_encrypted.txt";
-            string testFile = @"..\..\..\test\data\test_file_decrypted.txt";
+            string inFile = @"../../../../test/data/test_file.txt";
+            string outFile = @"../../../../test/data/test_file_encrypted.txt";
+            string testFile = @"../../../../test/data/test_file_decrypted.txt";
             string timeStamp = $"-{DateTime.Now.ToString("yyyyMMddHHmmssfff")}";
             string keyRing = $"testKeyRing{timeStamp}";
             string cryptoKey = $"testCryptoKey{timeStamp}";
             var createKeyRingOutput = Run("createKeyRing", s_projectId, "global", keyRing);
             var createCryptoKeyOutput = Run("createCryptoKey", s_projectId, "global", keyRing, cryptoKey);
-            var outputEncrypt = Run("encrypt", s_projectId, "global", keyRing, cryptoKey, inFile, outFile);
+            var encryptOutput = Run("encrypt", s_projectId, "global", keyRing, cryptoKey, inFile, outFile);
             // Confirm original input file contents are not equal to encrypted file's contents
             Eventually(() =>
             {
-                Assert.Equal(0, outputEncrypt.ExitCode);
+                Assert.Equal(0, encryptOutput.ExitCode);
                 Assert.False(File.ReadLines(inFile).SequenceEqual(File.ReadLines(outFile)));
             });
             // Confirm original input file contents are equal to decrypted file's contents
-            Console.WriteLine("Confirming decrypted contents match original content...");
-            var outputDecrypt = Run("decrypt", s_projectId, "global", keyRing, cryptoKey, outFile, testFile);
+            Console.WriteLine("Confirming decrypted contents match original contents...");
+            var decryptOutput = Run("decrypt", s_projectId, "global", keyRing, cryptoKey, outFile, testFile);
             Eventually(() =>
             {
-                Assert.Equal(0, outputDecrypt.ExitCode);
+                Assert.Equal(0, decryptOutput.ExitCode);
                 Assert.True(File.ReadLines(inFile).SequenceEqual(File.ReadLines(testFile)));
             });
             // Delete encrypted & decrypted files to clean up

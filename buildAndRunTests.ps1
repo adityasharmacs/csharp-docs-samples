@@ -42,22 +42,24 @@ $private:invocation = (Get-Variable MyInvocation -Scope 0).Value
 Import-Module (Join-Path (Split-Path $invocation.MyCommand.Path) `
     BuildTools.psm1) -DisableNameChecking
 
+# Dump the current state of gcloud, because it can affect a lot of tests.
+gcloud info
+
 # First, lint everything.  If the lint fails, don't waste time running
 # tests.
 if ($Lint) {
-    Lint-Code
+    Find-Files -Masks *.csproj -AntiMasks appengine,endpoints,QuickStartCore | Lint-Code
 }
 if ($UpdatePackages) {
     Update-Packages $PackageMask
 }
 $private:modifiedConfigs = Update-Config
 Try {
-    $timeoutSeconds = 300
+    $timeoutSeconds = 600
     $masks = if ($Skip) {
         "*runTest*.ps1"
     } elseif ($Deploy) {
         "*deployTest*.ps1"
-        $timeoutSeconds = 1200
     } else {
         $TestMasks
     }
