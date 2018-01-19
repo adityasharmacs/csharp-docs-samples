@@ -103,25 +103,5 @@ namespace Sudokumb
                 Assert.Equal(_boardA.Board, a.Board);
             }
         }
-
-        [Fact]
-        public void TestSolve()
-        {
-            var moves = new Stack<GameBoard>();
-            Console.WriteLine("Solving\n{0}", _boardA.ToPrettyString());
-            moves.Push(_boardA);
-            while (moves.Count > 0)
-            {
-                GameBoard board = moves.Pop();
-                if (!board.HasEmptyCell())
-                {
-                    Console.WriteLine("Solved!\n{0}", board.ToPrettyString());
-                    return;
-                }
-                foreach (var move in board.FillNextEmptyCell())
-                    moves.Push(move);
-            }
-            Console.WriteLine("No solution found.");
-        }
     }
 }
