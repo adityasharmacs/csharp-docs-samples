@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace Sudokumb
 {
-    public class DatastoreUserStore<U> : IUserStore<U> where U : IdentityUser, new()
+    public class DatastoreUserStore<U> : IUserPasswordStore<U>, IUserRoleStore<U>, IUserStore<U> where U : IdentityUser, new()
     {
         DatastoreDb _datastore;
         KeyFactory _userKeyFactory;
@@ -20,7 +20,8 @@ namespace Sudokumb
             NORMALIZED_EMAIL = "normalized-email",
             NORMALIZED_NAME = "normalized-name",
             USER_NAME = "user-name",
-            CONCURRENCY_STAMP = "concurrency-stamp";
+            CONCURRENCY_STAMP = "concurrency-stamp",
+            PASSWORD_HASH = "password-hash";
 
         public DatastoreUserStore(DatastoreDb datastore)
         {
@@ -37,9 +38,11 @@ namespace Sudokumb
                 [NORMALIZED_NAME] = user.NormalizedUserName,
                 [USER_NAME] = user.UserName,
                 [CONCURRENCY_STAMP] = user.ConcurrencyStamp,
+                [PASSWORD_HASH] = user.PasswordHash,
                 Key = KeyFromUserId(user.Id)
             };
             entity[CONCURRENCY_STAMP].ExcludeFromIndexes = true;
+            entity[PASSWORD_HASH].ExcludeFromIndexes = true;
             return entity;
         }
 
@@ -54,6 +57,7 @@ namespace Sudokumb
                 NormalizedUserName = (string)entity[NORMALIZED_NAME],
                 NormalizedEmail = (string)entity[NORMALIZED_EMAIL],
                 UserName = (string)entity[USER_NAME],
+                PasswordHash = (string)entity[PASSWORD_HASH],
                 ConcurrencyStamp = (string)entity[CONCURRENCY_STAMP]
             };
             return user;
@@ -121,6 +125,47 @@ namespace Sudokumb
         {
             return await Rpc.WrapExceptionsAsync(() => 
                 _datastore.UpsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));
+        }
+
+        public Task AddToRoleAsync(U user, string roleName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task RemoveFromRoleAsync(U user, string roleName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IList<string>> GetRolesAsync(U user, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> IsInRoleAsync(U user, string roleName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IList<U>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SetPasswordHashAsync(U user, string passwordHash, CancellationToken cancellationToken)
+        {
+            user.PasswordHash = passwordHash;
+            return Task.CompletedTask;
+        }
+
+        public Task<string> GetPasswordHashAsync(U user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.PasswordHash);
+        }
+
+        public Task<bool> HasPasswordAsync(U user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(!string.IsNullOrWhiteSpace(user.PasswordHash));
         }
     }
 }
