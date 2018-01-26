@@ -31,9 +31,12 @@ namespace WebApp
             services.AddSingleton(typeof(DatastoreDb), provider => DatastoreDb.Create(
                 Configuration["Google:Datastore:ProjectId"],
                 Configuration["Google:Datastore:NamespaceId"] ?? ""));
-            services.AddIdentity<ApplicationUser, IdentityRole>().AddDefaultTokenProviders();
-            services.AddTransient(typeof(IUserStore<ApplicationUser>),
-                typeof(DatastoreUserStore<ApplicationUser>));
+            services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddDefaultTokenProviders();
+            services.AddTransient<IUserStore<ApplicationUser>,
+                DatastoreUserStore<ApplicationUser>>();
+            services.AddTransient<IRoleStore<IdentityRole>,
+                DatastoreRoleStore<IdentityRole>>();
 #if false
             services.AddAuthentication().AddGoogle(googleOptions =>
             {

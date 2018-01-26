@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Google.Api.Gax.Grpc;
 using System.Linq;
 using Microsoft.Extensions.Options;
+using System.Collections.Generic;
 
 namespace Sudokumb
 {
@@ -28,23 +29,6 @@ namespace Sudokumb
         }
 
         Key KeyFromUserId(string userId) => _userKeyFactory.CreateKey(userId);
-
-        // Converts exceptions into IdentityResults.
-        async Task<IdentityResult> WrapRpcExceptionsAsync(Func<Task> f)
-        {
-            try
-            {
-                await f();
-                return IdentityResult.Success;
-            }
-            catch (Grpc.Core.RpcException e)
-            {
-                return IdentityResult.Failed(new IdentityError() {
-                    Code = e.Status.Detail,
-                    Description = e.Message
-                });
-            }
-        }
 
         Entity UserToEntity(U user) {
             var entity = new Entity() 
@@ -79,14 +63,14 @@ namespace Sudokumb
         public async Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {                        
-            return await WrapRpcExceptionsAsync(() => 
+            return await Rpc.WrapExceptionsAsync(() => 
                 _datastore.InsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));
         }
 
         public async Task<IdentityResult> DeleteAsync(U user,
             CancellationToken cancellationToken)
         {
-            return await WrapRpcExceptionsAsync(() => 
+            return await Rpc.WrapExceptionsAsync(() => 
                 _datastore.DeleteAsync(KeyFromUserId(user.Id), CallSettings.FromCancellationToken(cancellationToken)));                        
         }
 
@@ -135,7 +119,7 @@ namespace Sudokumb
         }
         public async Task<IdentityResult> UpdateAsync(U user, CancellationToken cancellationToken)
         {
-            return await WrapRpcExceptionsAsync(() => 
+            return await Rpc.WrapExceptionsAsync(() => 
                 _datastore.UpsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));
         }
     }
