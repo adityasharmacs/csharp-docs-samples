@@ -35,6 +35,8 @@ namespace Sudokumb
         }
 
         Key KeyFromUserId(string userId) => _userKeyFactory.CreateKey(userId);
+
+        // Converts exceptions into IdentityResults.
         async Task<IdentityResult> WrapRpcExceptionsAsync(Func<Task> f)
         {
             try
