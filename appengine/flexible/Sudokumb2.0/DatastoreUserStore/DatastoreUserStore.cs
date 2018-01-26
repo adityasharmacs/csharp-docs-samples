@@ -9,13 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace Sudokumb
 {
-    public class DatastoreOptions 
-    {
-        public string ProjectId { get; set; }
-        public string Namespace { get; set; }
-    }
-
-    public class DatastoreUserStore : IUserStore<IdentityUser>
+    public class DatastoreUserStore<U> : IUserStore<U> where U : IdentityUser, new()
     {
         DatastoreDb _datastore;
         KeyFactory _userKeyFactory;
@@ -27,11 +21,10 @@ namespace Sudokumb
             USER_NAME = "user-name",
             CONCURRENCY_STAMP = "concurrency-stamp";
 
-        public DatastoreUserStore(DatastoreDb datastore, IOptions<DatastoreOptions> options)
+        public DatastoreUserStore(DatastoreDb datastore)
         {
             _datastore = datastore;
-            var opts = options.Value;
-            _userKeyFactory = new KeyFactory(opts.ProjectId, opts.Namespace, KIND);
+            _userKeyFactory = new KeyFactory(_datastore.ProjectId, _datastore.NamespaceId, KIND);
         }
 
         Key KeyFromUserId(string userId) => _userKeyFactory.CreateKey(userId);
@@ -53,7 +46,7 @@ namespace Sudokumb
             }
         }
 
-        Entity UserToEntity(IdentityUser user) {
+        Entity UserToEntity(U user) {
             var entity = new Entity() 
             {
                 [NORMALIZED_EMAIL] = user.NormalizedEmail,
@@ -66,13 +59,13 @@ namespace Sudokumb
             return entity;
         }
 
-        IdentityUser EntityToUser(Entity entity)
+        U EntityToUser(Entity entity)
         {
             if (null == entity)
             {
                 return null;
             }
-            IdentityUser user = new IdentityUser()
+            U user = new U()
             {
                 NormalizedUserName = (string)entity[NORMALIZED_NAME],
                 NormalizedEmail = (string)entity[NORMALIZED_EMAIL],
@@ -83,27 +76,27 @@ namespace Sudokumb
         }
 
 
-        public async Task<IdentityResult> CreateAsync(IdentityUser user,
+        public async Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {                        
             return await WrapRpcExceptionsAsync(() => 
                 _datastore.InsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));
         }
 
-        public async Task<IdentityResult> DeleteAsync(IdentityUser user,
+        public async Task<IdentityResult> DeleteAsync(U user,
             CancellationToken cancellationToken)
         {
             return await WrapRpcExceptionsAsync(() => 
                 _datastore.DeleteAsync(KeyFromUserId(user.Id), CallSettings.FromCancellationToken(cancellationToken)));                        
         }
 
-        public async Task<IdentityUser> FindByIdAsync(string userId, CancellationToken cancellationToken)
+        public async Task<U> FindByIdAsync(string userId, CancellationToken cancellationToken)
         {
             return EntityToUser(await _datastore.LookupAsync(KeyFromUserId(userId),
                 callSettings:CallSettings.FromCancellationToken(cancellationToken)));            
         }
 
-        public async Task<IdentityUser> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
+        public async Task<U> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
         {
             var result = await _datastore.RunQueryAsync(new Query(KIND) {
                 Filter = Filter.Equal(NORMALIZED_NAME, normalizedUserName)
@@ -111,28 +104,28 @@ namespace Sudokumb
             return EntityToUser(result.Entities.FirstOrDefault());
         }
 
-        public Task<string> GetNormalizedUserNameAsync(IdentityUser user, CancellationToken cancellationToken)
+        public Task<string> GetNormalizedUserNameAsync(U user, CancellationToken cancellationToken)
         {
             return Task.FromResult(user.NormalizedUserName);
         }
 
-        public Task<string> GetUserIdAsync(IdentityUser user, CancellationToken cancellationToken)
+        public Task<string> GetUserIdAsync(U user, CancellationToken cancellationToken)
         {
             return Task.FromResult(user.Id);
         }
 
-        public Task<string> GetUserNameAsync(IdentityUser user, CancellationToken cancellationToken)
+        public Task<string> GetUserNameAsync(U user, CancellationToken cancellationToken)
         {
             return Task.FromResult(user.UserName);
         }
 
-        public Task SetNormalizedUserNameAsync(IdentityUser user, string normalizedName, CancellationToken cancellationToken)
+        public Task SetNormalizedUserNameAsync(U user, string normalizedName, CancellationToken cancellationToken)
         {
             user.NormalizedUserName = normalizedName;
             return Task.CompletedTask;
         }
 
-        public Task SetUserNameAsync(IdentityUser user, string userName, CancellationToken cancellationToken)
+        public Task SetUserNameAsync(U user, string userName, CancellationToken cancellationToken)
         {
             user.UserName = userName;
             return Task.CompletedTask;
@@ -140,7 +133,7 @@ namespace Sudokumb
         void IDisposable.Dispose()
         {
         }
-        public async Task<IdentityResult> UpdateAsync(IdentityUser user, CancellationToken cancellationToken)
+        public async Task<IdentityResult> UpdateAsync(U user, CancellationToken cancellationToken)
         {
             return await WrapRpcExceptionsAsync(() => 
                 _datastore.UpsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));

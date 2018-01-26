@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using WebApp.Data;
 using WebApp.Models;
 using WebApp.Services;
+using Sudokumb;
+using Google.Cloud.Datastore.V1;
 
 namespace WebApp
 {
@@ -26,13 +28,26 @@ namespace WebApp
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddSingleton(typeof(DatastoreDb), provider => DatastoreDb.Create(
+                Configuration["Google:Datastore:ProjectId"],
+                Configuration["Google:Datastore:NamespaceId"] ?? ""));
+            services.AddIdentity<ApplicationUser, IdentityRole>().AddDefaultTokenProviders();
+            services.AddTransient(typeof(IUserStore<ApplicationUser>),
+                typeof(DatastoreUserStore<ApplicationUser>));
+#if false
+            services.AddAuthentication().AddGoogle(googleOptions =>
+            {
+                googleOptions.ClientId =
+                    Configuration["Authentication:Google:ClientId"];
+                googleOptions.ClientSecret =
+                    Configuration["Authentication:Google:ClientSecret"];
+            });
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
-
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
-
+#endif
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
