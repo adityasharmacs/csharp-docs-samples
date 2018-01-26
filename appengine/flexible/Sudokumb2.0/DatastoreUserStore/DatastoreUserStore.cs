@@ -12,7 +12,7 @@ using static Google.Cloud.Datastore.V1.Key.Types;
 namespace Sudokumb
 {
     public class DatastoreUserStore<U> : IUserPasswordStore<U>, IUserRoleStore<U>, IUserStore<U> 
-        where U : IdentityUser, IUserWithRoles, new()
+        where U : IdentityUser<long>, IUserWithRoles, new()
     {
         DatastoreDb _datastore;
         KeyFactory _userKeyFactory;
@@ -32,7 +32,7 @@ namespace Sudokumb
             _userKeyFactory = new KeyFactory(_datastore.ProjectId, _datastore.NamespaceId, KIND);
         }
 
-        Key KeyFromUserId(string userId) => _userKeyFactory.CreateKey(userId);
+        Key KeyFromUserId(long userId) => _userKeyFactory.CreateKey(userId);
 
         Entity UserToEntity(U user) {
                 
@@ -59,7 +59,7 @@ namespace Sudokumb
             }
             U user = new U()
             {
-                Id = entity.Key.Path.First().Name,
+                Id = entity.Key.Path.First().Id,
                 NormalizedUserName = (string)entity[NORMALIZED_NAME],
                 NormalizedEmail = (string)entity[NORMALIZED_EMAIL],
                 UserName = (string)entity[USER_NAME],
@@ -76,8 +76,14 @@ namespace Sudokumb
         public async Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {                        
-            return await Rpc.WrapExceptionsAsync(() => 
-                _datastore.InsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));
+            var entity = UserToEntity(user);
+            entity.Key = _userKeyFactory.CreateIncompleteKey();
+            return await Rpc.WrapExceptionsAsync(async () =>
+            {
+                var newKey = await _datastore.InsertAsync(entity,
+                    CallSettings.FromCancellationToken(cancellationToken));
+                user.Id = newKey.Path.First().Id;
+            });
         }
 
         public async Task<IdentityResult> DeleteAsync(U user,
@@ -89,7 +95,7 @@ namespace Sudokumb
 
         public async Task<U> FindByIdAsync(string userId, CancellationToken cancellationToken)
         {
-            return EntityToUser(await _datastore.LookupAsync(KeyFromUserId(userId),
+            return EntityToUser(await _datastore.LookupAsync(KeyFromUserId(long.Parse(userId)),
                 callSettings:CallSettings.FromCancellationToken(cancellationToken)));            
         }
 
@@ -108,7 +114,7 @@ namespace Sudokumb
 
         public Task<string> GetUserIdAsync(U user, CancellationToken cancellationToken)
         {
-            return Task.FromResult(user.Id);
+            return Task.FromResult(user.Id.ToString());
         }
 
         public Task<string> GetUserNameAsync(U user, CancellationToken cancellationToken)
