@@ -19,7 +19,12 @@ namespace WebApp
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
+                .ConfigureAppConfiguration((context, config) => 
+                {
+                    var env = context.HostingEnvironment;
+                    config.AddJsonFile("appsecrets.json", optional: true, reloadOnChange: true);
+                    config.AddJsonFile($"appsecrets.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
+                }).UseStartup<Startup>()
                 .Build();
     }
 }
