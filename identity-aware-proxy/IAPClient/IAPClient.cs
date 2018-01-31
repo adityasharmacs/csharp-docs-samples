@@ -41,7 +41,6 @@ namespace GoogleCloudSamples
             {
                 credentials = NewtonsoftJsonSerializer.Instance
                     .Deserialize<Credentials>(fs);
-
             }
 
             // Generate a JWT signed with the service account's private key 
