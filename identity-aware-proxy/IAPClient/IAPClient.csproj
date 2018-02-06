@@ -5,6 +5,7 @@
     <PackageReference Include="CommandLineParser" Version="2.2.1" />
     <PackageReference Include="Google.Api.Gax" Version="2.2.1" />
     <PackageReference Include="Google.Apis.Auth" Version="1.32.1" />
+    <PackageReference Include="Google.Cloud.Metadata.V1" Version="1.0.0-alpha07" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.1.5" />
   </ItemGroup>
   <PropertyGroup>

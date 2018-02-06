@@ -21,13 +21,18 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading;
+using System.Threading.Tasks;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Requests;
+using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Json;
+using Google.Apis.Logging;
+using Google.Cloud.Metadata.V1;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
@@ -46,27 +51,10 @@ namespace GoogleCloudSamples
         public static string InvokeRequest(string iapClientId,
             string uri)
         {
-            Google.Api.Gax.Platform platform = Google.Api.Gax.Platform.Instance();
-            string serviceAccountId = platform.ProjectId + 
-                "@appspot.gserviceaccount.com";
-            
-            // Read credentials from the credentials .json file.
-            ComputeCredential computeCredential = new ComputeCredential();
-
-            // Generate a JWT signed with the service account's private key 
-            // containing a special "target_audience" claim.
-            var jwtBasedAccessToken =
-                CreateAccessToken(computeCredential, iapClientId,
-                serviceAccountId);
-
-            // Request an OIDC token for the Cloud IAP-secured client ID.
-            var req = new GoogleAssertionTokenRequest()
-            {
-                Assertion = jwtBasedAccessToken
-            };
-            var result = req.ExecuteAsync(computeCredential.HttpClient,
-                computeCredential.TokenServerUrl, CancellationToken.None,
-                computeCredential.Clock).Result;
+            MetadataClient metadataClient = 
+                Google.Cloud.Metadata.V1.MetadataClient.Create();
+            var result = metadataClient.GetAccessTokenAsync(
+                iapClientId, CancellationToken.None).Result;
             string token = result.IdToken;
 
             // Include the OIDC token in an Authorization: Bearer header to 
@@ -78,49 +66,63 @@ namespace GoogleCloudSamples
             return response;
         }
 
-        /// <summary>
-        /// Generate a JWT signed with the service account's private key 
-        /// containing a special "target_audience" claim.
-        /// </summary>
-        /// <param name="privateKey">The private key string pulled from
-        /// a credentials .json file.</param>
-        /// <param name="iapClientId">The client id observed on 
-        /// https://console.cloud.google.com/apis/credentials.</param>
-        /// <param name="email">The e-mail address associated with the
-        /// privateKey.</param>
-        /// <returns>An access token.</returns>
-        static string CreateAccessToken(ComputeCredential computeCredential,
-            string iapClientId, string serviceAccountId)
+    }
+
+    internal static class MetadataClientExtensions 
+    {
+        private const string MetadataFlavor = "Metadata-Flavor";
+        private const string GoogleMetadataHeader = "Google";
+        private const string DefaultMetadataHost = "169.254.169.254";
+        private const string EmulatorEnvironmentVariable = "METADATA_EMULATOR_HOST";
+        private static readonly ILogger Logger = Google.ApplicationContext
+            .Logger.ForType<MetadataClientImpl>();
+        private static readonly Lazy<string> MetadataHost = 
+        new Lazy<string>(() =>
         {
-            var now = computeCredential.Clock.UtcNow;
-            var currentTime = ToUnixEpochDate(now);
-            var expTime = ToUnixEpochDate(now.AddHours(1));
+            var emulatorHost = Environment.GetEnvironmentVariable(EmulatorEnvironmentVariable);
+            return string.IsNullOrEmpty(emulatorHost) ? DefaultMetadataHost : emulatorHost;
+        });
 
-            var claims = new[]
+        public static async Task<HttpResponseMessage> RequestMetadataAsync(
+            this MetadataClient client, Uri uri, 
+            CancellationToken cancellationToken,
+            bool requireMetadataFlavorHeader = true)
+        {
+            var httpRequest = new HttpRequestMessage(HttpMethod.Get, uri);
+            httpRequest.Headers.Add(MetadataFlavor, GoogleMetadataHeader);
+            var response = await client.HttpClient.SendAsync(httpRequest, 
+                cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            if (requireMetadataFlavorHeader)
             {
-                new Claim(JwtRegisteredClaimNames.Aud,
-                    GoogleAuthConsts.OidcTokenUrl),
-                new Claim(JwtRegisteredClaimNames.Sub, serviceAccountId),
-                new Claim(JwtRegisteredClaimNames.Iat, currentTime.ToString()),
-                new Claim(JwtRegisteredClaimNames.Exp, expTime.ToString()),
-                new Claim(JwtRegisteredClaimNames.Iss, serviceAccountId),
-
-                // We need to generate a JWT signed with the service account's 
-                // private key containing a special "target_audience" claim. 
-                // That claim should contain the clientId of IAP we eventually
-                // want to access.
-                new Claim("target_audience", iapClientId)
-            };
-
-            var token = new JwtSecurityToken(
-                claims: claims);
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                IEnumerable<string> metadataFlavorHeaders;
+                if (!response.Headers.TryGetValues(
+                        MetadataFlavor, out metadataFlavorHeaders) ||
+                    !metadataFlavorHeaders.Contains(GoogleMetadataHeader))
+                {
+                    throw new HttpRequestException("The response from the metadata server was not valid.");
+                }
+            }
+            return response;
         }
+        private static Uri BaseUri =
+            new Uri($"http://{MetadataHost.Value}/computeMetadata/v1/");
 
-        static long ToUnixEpochDate(DateTime date)
-              => (long)Math.Round((date.ToUniversalTime() -
-                                   new DateTimeOffset(1970, 1, 1, 0, 0, 0,
-                                        TimeSpan.Zero)).TotalSeconds);
+        public static async Task<TokenResponse> GetAccessTokenAsync(
+            this MetadataClient client, string audience,
+            CancellationToken cancellationToken)
+        {
+            var uri = new UriBuilder(BaseUri);
+            uri.Path += "instance/service-accounts/default/token";
+            uri.Query = $"audience={audience}";
+            var response = await client.RequestMetadataAsync(uri.Uri,
+                cancellationToken, requireMetadataFlavorHeader: false)
+                .ConfigureAwait(false);
+            return await TokenResponse.FromHttpResponseAsync(
+                response, Google.Apis.Util.SystemClock.Default, Logger)
+                .ConfigureAwait(false);
+        }            
     }
 }
 // [END generate_iap_request]
