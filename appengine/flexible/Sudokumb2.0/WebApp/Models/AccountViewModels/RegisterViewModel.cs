@@ -23,5 +23,8 @@ namespace WebApp.Models.AccountViewModels
         [Display(Name = "Confirm password")]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
         public string ConfirmPassword { get; set; }
+
+        [Display(Name = "Roles", Description = "Comma-separated list of roles for this user.")]
+        public string Roles { get; set; }
     }
 }

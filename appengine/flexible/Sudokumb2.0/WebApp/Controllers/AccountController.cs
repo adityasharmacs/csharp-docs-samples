@@ -24,17 +24,20 @@ namespace WebApp.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
         private readonly ILogger _logger;
+        private readonly IOptions<AccountOptions> _accountOptions;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailSender emailSender,
-            ILogger<AccountController> logger)
+            ILogger<AccountController> logger,
+            IOptions<AccountOptions> options)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
             _logger = logger;
+            _accountOptions = options;
         }
 
         [TempData]
@@ -209,6 +212,7 @@ namespace WebApp.Controllers
         public IActionResult Register(string returnUrl = null)
         {
             ViewData["ReturnUrl"] = returnUrl;
+            ViewData["ShowRoles"] = _accountOptions.Value.EnableRoles;
             return View();
         }
 
@@ -221,6 +225,10 @@ namespace WebApp.Controllers
             if (ModelState.IsValid)
             {
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                if (_accountOptions.Value.EnableRoles)
+                {
+                    user.Roles = model.Roles.Split(',').Select(role => role.Trim()).ToList();
+                }
                 var result = await _userManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {

@@ -28,8 +28,8 @@ namespace WebApp
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddOptions();
-            services.Configure<DatastoreUserStoreOptions>(
-                Configuration.GetSection("Google:Datastore"));
+            services.Configure<Models.AccountViewModels.AccountOptions>(
+                Configuration.GetSection("Account"));
             services.AddSingleton(typeof(DatastoreDb), provider => DatastoreDb.Create(
                 Configuration["Google:Datastore:ProjectId"],
                 Configuration["Google:Datastore:NamespaceId"] ?? ""));

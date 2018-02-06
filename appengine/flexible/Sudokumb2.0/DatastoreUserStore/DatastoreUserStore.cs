@@ -16,7 +16,6 @@ namespace Sudokumb
     {
         DatastoreDb _datastore;
         KeyFactory _userKeyFactory;
-        IOptions<DatastoreUserStoreOptions> _seed;
 
         static string
             KIND = "webuser",
@@ -27,9 +26,8 @@ namespace Sudokumb
             PASSWORD_HASH = "password-hash",
             ROLES = "roles";
 
-        public DatastoreUserStore(DatastoreDb datastore, IOptions<DatastoreUserStoreOptions> seed)
+        public DatastoreUserStore(DatastoreDb datastore)
         {
-            _seed = seed;
             _datastore = datastore;
             _userKeyFactory = new KeyFactory(_datastore.ProjectId, _datastore.NamespaceId, KIND);
         }
@@ -70,24 +68,13 @@ namespace Sudokumb
                 Roles = (null == entity[ROLES] ? 
                     new List<string>() : ((string[]) entity[ROLES]).ToList())
             };
-            return MaybeAddSeedRole(user);
-        }
-
-        U MaybeAddSeedRole(U user)
-        {
-            var seed = _seed?.Value;
-            if (seed?.SeedUserName?.ToUpper() == user.NormalizedUserName &&
-                !string.IsNullOrWhiteSpace(seed?.SeedRoleName)) 
-            {
-                user.Roles.Add(seed.SeedRoleName);
-            }
             return user;
         }
 
         public async Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {
-            var entity = UserToEntity(MaybeAddSeedRole(user));
+            var entity = UserToEntity(user);
             entity.Key = _userKeyFactory.CreateIncompleteKey();            
             return await Rpc.WrapExceptionsAsync(async () =>
             {
