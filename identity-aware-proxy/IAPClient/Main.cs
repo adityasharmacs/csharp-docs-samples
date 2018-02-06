@@ -45,6 +45,9 @@ namespace GoogleCloudSamples
             set { _credentialsPath = value; }
         }
 
+        [Option('e', "compute-engine", HelpText = "Pull credentials from compute engine metadata.")]
+        public bool UseComputeEngineCredentials { get; set; }
+
         [Option('u', "uri", Required = true, HelpText = "The URI to fetch.")]
         public string Uri { get; set; }
 
@@ -58,8 +61,22 @@ namespace GoogleCloudSamples
         static void Main(string[] args)
         {
             CommandLine.Parser.Default.ParseArguments<Options>(args)
-                .WithParsed<Options>(opts => Console.WriteLine(
-                    ServiceAccountClient.InvokeRequest(opts.IapClientId, opts.CredentialsPath, opts.Uri)));
+                .WithParsed<Options>(opts => Run(opts));
+        }
+
+        static void Run(Options opts)
+        {
+            if (opts.UseComputeEngineCredentials)
+            {
+                Console.WriteLine(ComputeEngineClient
+                    .InvokeRequest(opts.IapClientId, opts.Uri));
+            }
+            else 
+            {
+                Console.WriteLine(
+                    ServiceAccountClient.InvokeRequest(opts.IapClientId, 
+                    opts.CredentialsPath, opts.Uri));
+            }
         }
     }
 }
