@@ -26,7 +26,7 @@
                 <input asp-for="ConfirmPassword" class="form-control" />
                 <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
             </div>
-            @if (ViewData["ShowRoles"]) {
+            @if ((bool)ViewData["ShowRoles"]) {
                 <div class="form-group">
                     <label asp-for="Roles"></label>
                     <input asp-for="Roles" class="form-control" />
