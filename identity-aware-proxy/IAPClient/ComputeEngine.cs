@@ -55,7 +55,7 @@ namespace GoogleCloudSamples
                 Google.Cloud.Metadata.V1.MetadataClient.Create();
             var result = metadataClient.GetAccessTokenAsync(
                 iapClientId, CancellationToken.None).Result;
-            string token = result.IdToken;
+            string token = result.AccessToken;
 
             // Include the OIDC token in an Authorization: Bearer header to 
             // IAP-secured resource
