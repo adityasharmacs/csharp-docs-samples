@@ -33,7 +33,7 @@ using Newtonsoft.Json;
 
 namespace GoogleCloudSamples
 {
-    class IAPClient
+    class ServiceAccountClient
     {
         /// <summary>
         /// Authenticates using the client id and credentials, then fetches
@@ -50,7 +50,8 @@ namespace GoogleCloudSamples
             string credentialsFilePath, string uri)
         {
             // Read credentials from the credentials .json file.
-            ServiceAccountCredential saCredential;
+            ServiceAccountCredential saCredential;            
+
             using (var fs = new FileStream(credentialsFilePath,
                 FileMode.Open, FileAccess.Read))
             {
