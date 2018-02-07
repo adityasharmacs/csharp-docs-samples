@@ -2,8 +2,27 @@
     ViewData["Title"] = "Sudokumb";
 }
 
+<h2>@ViewData["Title"]</h2>
 <div class="row">
-    <div class "col">
-        Sudoku is dumb.
+    <div class="col-md-4">
+        <section>
+            <form asp-route-returnurl="@ViewData["ReturnUrl"]" method="post">
+                <h4>Enter an incomplete Sudoku puzzle.</h4>
+                <hr />
+                <div asp-validation-summary="All" class="text-danger"></div>
+                <div class="form-group">
+                    <label asp-for="Puzzle"></label>
+                    <input asp-for="Puzzle" class="form-control" />
+                    <span asp-validation-for="Puzzle" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-default">Solve</button>
+                </div>
+            </form>
+        </section>
     </div>
 </div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
