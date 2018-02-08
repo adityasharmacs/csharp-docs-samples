@@ -9,16 +9,26 @@ namespace WebApp.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            // Show the user a puzzle by default.    
+            var model = new IndexViewModel
+            { 
+                Form = new IndexViewForm() 
+                {
+                    Puzzle = IndexViewForm.SamplePuzzle
+                }
+            };
+            return View(model);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Index(IndexViewModel model)
+        public IActionResult Index(IndexViewForm form)
         {
+            var model = new IndexViewModel { Form = form };
             if (ModelState.IsValid)  
             {
-                GameBoard board = GameBoard.ParseHandInput(model.Puzzle);
+                // Solve the puzzle.
+                GameBoard board = GameBoard.ParseHandInput(form.Puzzle);
                 GameBoard solution = Solver.Solve(board);
                 model.Solution = solution.ToHandInputString();
             }

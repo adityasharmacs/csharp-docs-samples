@@ -68,13 +68,13 @@ namespace Sudokumb
                 for (int i = 0; i < 9; ++i)
                 {
                     if (!IsLegal(GetRow(i, value)))
-                        throw new ArgumentException("value", $"Row {i} contains duplicates: {GetRow(i, value)}");
+                        throw new BadGameBoardException($"Row {i} contains duplicates: {GetRow(i, value)}");
                     if (!IsLegal(GetColumn(i, value)))
-                        throw new ArgumentException("value", $"Column {i} contains duplicates: {GetColumn(i ,value)}");
+                        throw new BadGameBoardException($"Column {i} contains duplicates: {GetColumn(i ,value)}");
                     int row = s_groupCenters[i, 0];
                     int col = s_groupCenters[i, 1];
                     if (!IsLegal(GetGroup(row, col, value)))
-                        throw new ArgumentException("value", 
+                        throw new BadGameBoardException( 
                             $"Group at row {row} column {col} contains duplicates: {GetGroup(row, col, value)}");
                 }
                 _board = value;
@@ -278,6 +278,13 @@ namespace Sudokumb
                 }
             }
             return s.ToString();
+        }
+    }
+
+    public class BadGameBoardException : Exception
+    {
+        public BadGameBoardException(string message) : base(message)
+        {
         }
     }
 }
