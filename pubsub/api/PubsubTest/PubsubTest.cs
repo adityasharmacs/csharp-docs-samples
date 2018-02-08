@@ -536,7 +536,7 @@ namespace GoogleCloudSamples
     {
         readonly CommandLineRunner _quickStart = new CommandLineRunner()
         {
-            VoidMain = QuickStart.Main,
+            Main = QuickStart.Main,
             Command = "dotnet run"
         };
 
