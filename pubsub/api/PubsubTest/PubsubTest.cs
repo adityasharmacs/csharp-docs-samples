@@ -62,7 +62,7 @@ namespace GoogleCloudSamples
                     {
                         delete();
                     }
-                    catch (Grpc.Core.RpcException e) 
+                    catch (Grpc.Core.RpcException e)
                     when (e.Status.StatusCode == StatusCode.DeadlineExceeded)
                     {
                         sawTimeout = true;
@@ -75,13 +75,13 @@ namespace GoogleCloudSamples
                     {
                         delete();
                     }
-                    catch (Grpc.Core.RpcException e) 
+                    catch (Grpc.Core.RpcException e)
                     when (e.Status.StatusCode == StatusCode.NotFound)
                     {
                         // Earlier timeout request that deleted the thing
                         // actually succeeded on the server.
                     }
-                }                
+                }
             };
         }
 
@@ -89,12 +89,12 @@ namespace GoogleCloudSamples
         {
             foreach (string topicId in _tempTopicIds)
             {
-                Eventually(HandleDeleteRace(() => 
+                Eventually(HandleDeleteRace(() =>
                     Run("deleteTopic", _projectId, topicId)));
             }
             foreach (string subscriptionId in _tempSubscriptionIds)
             {
-                Eventually(HandleDeleteRace(() => 
+                Eventually(HandleDeleteRace(() =>
                     Run("deleteSubscription", _projectId, subscriptionId)));
             }
         }
