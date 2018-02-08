@@ -18,9 +18,10 @@ namespace WebApp.Models.SudokumbViewModels
                     Encoding.UTF8.GetBytes((string)value)));
                 return board != null;
             } 
-            catch (Exception e)
+            catch (ArgumentException e)
             {
-                this.   
+                this.ErrorMessage = e.Message;
+                return false;
             }
         }
 

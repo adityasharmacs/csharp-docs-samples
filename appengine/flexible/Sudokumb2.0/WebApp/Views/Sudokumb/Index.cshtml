@@ -1,3 +1,5 @@
+@model WebApp.Models.SudokumbViewModels.IndexViewModel
+
 @{
     ViewData["Title"] = "Sudokumb";
 }
@@ -12,7 +14,7 @@
                 <div asp-validation-summary="All" class="text-danger"></div>
                 <div class="form-group">
                     <label asp-for="Puzzle"></label>
-                    <input asp-for="Puzzle" class="form-control" />
+                    <textarea asp-for="Puzzle" rows=12 cols=24 class="form-control" style="font-family:monospace;"></textarea>
                     <span asp-validation-for="Puzzle" class="text-danger"></span>
                 </div>
                 <div class="form-group">
