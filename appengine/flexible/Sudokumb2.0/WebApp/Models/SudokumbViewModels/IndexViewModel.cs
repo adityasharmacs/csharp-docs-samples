@@ -18,9 +18,9 @@ namespace WebApp.Models.SudokumbViewModels
                     Encoding.UTF8.GetBytes((string)value)));
                 return board != null;
             } 
-            catch (ArgumentException e)
+            catch (ArgumentException)
             {
-                this.ErrorMessage = e.Message;
+                this.ErrorMessage = "The puzzle must have 81 numbers or dots.";
                 return false;
             }
         }
