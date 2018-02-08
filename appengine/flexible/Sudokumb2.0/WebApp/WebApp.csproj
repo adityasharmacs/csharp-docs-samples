@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DatastoreUserStore\DatastoreUserStore.csproj" />
     <ProjectReference Include="..\GameLib\GameLib.csproj" />
+    <ProjectReference Include="..\Solve\Solve.csproj" />
   </ItemGroup>
 
 </Project>

@@ -14,8 +14,7 @@ namespace WebApp.Models.SudokumbViewModels
         {
             try 
             {                    
-                var board = Sudokumb.GameBoard.ParseHandInput(new MemoryStream(
-                    Encoding.UTF8.GetBytes((string)value)));
+                var board = Sudokumb.GameBoard.ParseHandInput((string)value);
                 return board != null;
             } 
             catch (ArgumentException)
@@ -35,7 +34,7 @@ namespace WebApp.Models.SudokumbViewModels
         [Puzzle]
         [DataType(DataType.MultilineText)]
         [Display(Prompt = samplePuzzle)]
-
         public string Puzzle { get; set; }
     }
+
 }
