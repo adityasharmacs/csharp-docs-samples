@@ -252,5 +252,32 @@ namespace Sudokumb
             } while (board.Length < 81);
             return GameBoard.Create(board.ToString());
         }
+
+        public static GameBoard ParseHandInput(string inputString)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(inputString));
+            return ParseHandInput(stream);
+        }
+
+        public string ToHandInputString()
+        {
+            StringBuilder s = new StringBuilder();
+            string b = _board.Replace(' ', '.');
+            int i = 0;
+            // Line
+            while (i < b.Length)
+            {
+                // Line
+                s.AppendFormat("{0} {1} {2}   {3} {4} {5}   {6} {7} {8}\n",
+                    b[i++], b[i++], b[i++],
+                    b[i++], b[i++], b[i++],
+                    b[i++], b[i++], b[i++]);
+                if (i == 27 || i == 54)
+                {                    
+                    s.AppendLine();
+                }
+            }
+            return s.ToString();
+        }
     }
 }
