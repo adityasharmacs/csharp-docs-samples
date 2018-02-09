@@ -95,13 +95,20 @@
         <h2>Dumb</h2>
         <dl>
             <dt>
-                Sudokumb uses <a href="https://cloud.google.com/pubsub/docs/">
-                Google Cloud Pub/Sub</a> to distribute work.
+                Sudokumb distributes tiny fragments of work.
             </dt>
             <dd>
                 While distributing work across multiple machines is smart,
                 breaking up a tiny problem into trivial fragments and
                 distributing them across multiple machines is dumb.
+                The network overhead is orders of magnitude greater than
+                just solving the problem in place.
+            </dd>
+            <dd>
+                However, creating lots of distributed work is a good
+                demonstration of the power and scalability of 
+                <a href="https://cloud.google.com/pubsub/docs/">
+                Google Cloud Pub/Sub</a>.
             </dd>
         </dl>
     </div>
