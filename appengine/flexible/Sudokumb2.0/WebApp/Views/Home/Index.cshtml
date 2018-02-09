@@ -6,28 +6,46 @@
 </style>
 
 <div class="row">
-    <h1>Sudoku + Dumb = Sudokumb</h1>
+    <div class="col-md-6">
+        <h1>Sudoku + Dumb = Sudokumb</h1>
+        <p>
+            <strong>Sudokumb</strong> is a
+            <a href="https://en.wikipedia.org/wiki/Sudoku">Sudoku</a> solver.
+            In order to demonstrate some cool features of 
+            <a href="https://cloud.google.com/">Google Cloud Platform</a>,
+            Sudokumb solves the puzzles in a very dumb way.
+            But some things it does are actually pretty smart.
+        </p>
+        <form asp-controller="Sudokumb" asp-action="Index" method=GET>
+            <button type="submit" class="btn btn-primary">Try it!</button>
+        </form>
+    </div>
+    <div class="col-md-4" style="padding-top: 1em">
+        <pre>1 2 3   6 4 5   7 8 9
+9 8 7   3 2 1   6 5 4
+6 4 5   9 8 7   3 1 2
 
-    <strong>Sudokumb</strong> is a Sudoku solver.  It is implemented in a very
-    dumb way, in order to demonstrate some cool features of Google Cloud.
-    But somethings it does are actually pretty smart.
+8 3 9   4 7 2   5 6 1
+2 7 6   1 5 9   8 4 3
+5 1 4   8 3 6   9 2 7
+
+7 9 1   2 6 8   4 3 5
+4 5 8   7 1 3   2 9 6
+3 6 2   5 9 4   1 7 8</pre>
+    </div>
 </div>
 
-<div class="row">
-    <form asp-controller="Sudokumb" asp-action="Index" method=GET>
-        <button type="submit" class="btn btn-primary">Try it!</button>
-    </form>
- </div>
 
 <div class="row">
     <div class="col-md-5">
         <h2>Smart</h2>
         <dl>
-            <dt>
-                Sudokumb implements <a href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity-custom-storage-providers">
+            <dt>Sudokumb stores user info in Datastore.</dt>
+            <dd>
+                Sudokumb implements a <a href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity-custom-storage-providers">
                 custom storage provider for identity</a> to
                 store user names, password hashes, etc. in <a href="https://cloud.google.com/datastore/">Google Cloud Datastore.</a>
-            </dt>
+            </dd>
             <dd>
                 <a href="https://cloud.google.com/datastore/">Google Cloud Datastore</a>
                 is a fully managed, <a href="https://en.wikipedia.org/wiki/NoSQL">NoSQL</a>
@@ -48,16 +66,14 @@
             </dd>
 
             <dt>
-                Sudokumb uses Stackdriver to collect logs, report errors, and provide
-                the ability to profile, trace, and debug live applications.
+                Sudokumb logs and reports errors to Stackdriver.
             </dt>
             <dd>
                 TODO: add content here.
             </dd>
 
             <dt>
-                Sudokumb automatically scales up (creates more instances of itself)
-                when running on 
+                Sudokumb automatically scales up
                 <a href="https://cloud.google.com/appengine/docs/flexible/dotnet/">
                 App Engine</a>.
             </dt>
@@ -66,8 +82,8 @@
             </dd>
 
             <dt>
-                Sudokumb signs cookies and validation tokens with
-                <a href="https://cloud.google.com/kms/">Google Cloud Key Management 
+                Sudokumb secures forms and cookies with
+                <a href="https://cloud.google.com/kms/">Key Management 
                 Service</a>
             </dt>
             <dd>
@@ -80,94 +96,20 @@
         <dl>
             <dt>
                 Sudokumb uses <a href="https://cloud.google.com/pubsub/docs/">
-                Google Cloud Pub/Sub</a> to distribute the work of evaluating game
-                boards.
+                Google Cloud Pub/Sub</a> to distribute work.
             </dt>
             <dd>
-                TODO: add content here.
+                While distributing work across multiple machines is smart,
+                breaking up a tiny problem into trivial fragments and
+                distributing them across multiple machines is dumb.
             </dd>
         </dl>
     </div>
 </div>
-<!--
-
 <div class="row">
-    <div class="col">
-        a
-    </div>
-    <div class="col">
-        b
-    </div>
-</div>
-
-<div class="row">
-    <div class="col">
-        <h3>Smart</h3>
-        <dl>
-            <dt>
-                Sudokumb implements <a href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity-custom-storage-providers">
-                custom storage provider for identity</a> to
-                store user names, password hashes, etc. in <a href="https://cloud.google.com/datastore/">Google Cloud Datastore.</a>
-            </dt>
-            <dd>
-                <a href="https://cloud.google.com/datastore/">Google Cloud Datastore</a>
-                is a fully managed, <a href="https://en.wikipedia.org/wiki/NoSQL">NoSQL</a>
-                database.  Because it is fully managed,
-                you never have to upgrade hardware or operating systems.  There are
-                no database instances for you to maintain.  You only
-                pay for the data you store, read, and write.
-            </dd>
-            <dd>
-                User data fits perfectly into <a href="https://cloud.google.com/datastore/">Google Cloud Datastore</a>,
-                because user data is often read and rarely written.  What's more, a NoSQL
-                database can perform better than an SQL database.  An ASP.NET application
-                checks the user database every time the user visits a page to see if
-                the user has the right roles to see the page.  That check entails
-                latency and makes the page load take longer.  With an SQL database,
-                that check requires reading from two tables.  With Cloud Datastore, 
-                it requires only a single, fast read from a single table.
-            </dd>
-
-            <dt>
-                Sudokumb uses Stackdriver to collect logs, report errors, and provide
-                the ability to profile, trace, and debug live applications.
-            </dt>
-            <dd>
-                TODO: add content here.
-            </dd>
-
-            <dt>
-                Sudokumb automatically scales up (creates more instances of itself)
-                when running on 
-                <a href="https://cloud.google.com/appengine/docs/flexible/dotnet/">
-                App Engine</a>.
-            </dt>
-            <dd>
-                TODO: add content here.
-            </dd>
-
-            <dt>
-                Sudokumb signs cookies and validation tokens with
-                <a href="https://cloud.google.com/kms/">Google Cloud Key Management 
-                Service</a>
-            </dt>
-            <dd>
-                TODO: add content here.
-            </dd>
-        </dl>
-    </div>
-    <div class="col">
-        <h3>Dumb</h3>
-        <dl>
-            <dt>
-                Sudokumb uses <a href="https://cloud.google.com/pubsub/docs/">
-                Google Cloud Pub/Sub</a> to distribute the work of evaluating game
-                boards.
-            </dt>
-            <dd>
-                TODO: add content here.
-            </dd>
-        </dl>
+    <div class="col-md-4">
+        <form asp-controller="Sudokumb" asp-action="Index" method=GET>
+            <button type="submit" class="btn btn-primary">Try it!</button>
+        </form>
     </div>
 </div>
--->
