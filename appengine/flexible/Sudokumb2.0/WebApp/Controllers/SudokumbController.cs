@@ -40,7 +40,11 @@ namespace WebApp.Controllers
         [HttpGet]
         public IActionResult Solve(string id)
         {
-            return new StatusCodeResult(200);
+            return new JsonResult(new {
+                complete = false,
+                boardsExaminedCount = 99,
+                solution = "Hi Jeff."
+            });
         }
 
         [Authorize(Roles="admin")]
