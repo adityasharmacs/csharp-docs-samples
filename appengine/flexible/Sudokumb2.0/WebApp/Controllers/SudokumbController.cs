@@ -1,13 +1,22 @@
 using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sudokumb;
+using WebApp.Models;
 using WebApp.Models.SudokumbViewModels;
 
 namespace WebApp.Controllers
 {
     public class SudokumbController : Controller
     {
+        readonly SolveStateStore solveStateStore_;
+
+        public SudokumbController(SolveStateStore solveStateStore)
+        {
+            solveStateStore_ = solveStateStore;
+        }
+
         public IActionResult Index()
         {
             // Show the user a puzzle by default.
@@ -38,14 +47,8 @@ namespace WebApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Solve(string id)
-        {
-            return new JsonResult(new {
-                complete = false,
-                boardsExaminedCount = 99,
-                solution = "Hi Jeff."
-            });
-        }
+        public async Task<IActionResult> Solve(string id) =>
+            new JsonResult(await solveStateStore_.GetAsync(id));
 
         [Authorize(Roles="admin")]
         public IActionResult Admin()

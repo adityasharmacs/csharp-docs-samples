@@ -54,7 +54,7 @@
         <script>
 
         function handleSolveResponse(response) {
-            if (response.complete) {
+            if (response.solution) {
                 $("#solutionPre").text(response.solution);
                 $("#solvingMessage").hide(1000);
                 $("#solutionPre").show(1000);

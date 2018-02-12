@@ -30,7 +30,7 @@ namespace WebApp
             services.AddOptions();
             services.Configure<Models.AccountViewModels.AccountOptions>(
                 Configuration.GetSection("Account"));
-            services.AddSingleton(typeof(DatastoreDb), provider => DatastoreDb.Create(
+            services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:Datastore:ProjectId"],
                 Configuration["Google:Datastore:NamespaceId"] ?? ""));
             services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -39,20 +39,7 @@ namespace WebApp
                 DatastoreUserStore<ApplicationUser>>();
             services.AddTransient<IRoleStore<IdentityRole>,
                 DatastoreRoleStore<IdentityRole>>();
-#if false
-            services.AddAuthentication().AddGoogle(googleOptions =>
-            {
-                googleOptions.ClientId =
-                    Configuration["Authentication:Google:ClientId"];
-                googleOptions.ClientSecret =
-                    Configuration["Authentication:Google:ClientSecret"];
-            });
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
-            services.AddIdentity<ApplicationUser, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
-#endif
+            services.AddSingleton<SolveStateStore, SolveStateStore>();
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
