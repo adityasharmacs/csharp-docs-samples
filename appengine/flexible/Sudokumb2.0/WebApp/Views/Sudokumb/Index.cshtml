@@ -26,25 +26,13 @@
         </section>
     </div>
     @{
-        string displaySolutionCol = "display:block";
-        string displaySolutionPre = "display:block";
-        string displaySolvingMessage = "display:block";
-        if (Model.Solution == null)
-        {
-            displaySolutionPre = "display:none";
-            if (Model.SolveRequestId == null)
-            {
-                displaySolutionCol = "display:none";
-            }
-            else
-            {
-
-            }
-        }
-        else
-        {
-            displaySolvingMessage = "display:none";
-        }
+        bool solving = Model.Solution == null && Model.SolveRequestId != null;
+        bool solved = Model.Solution != null;
+        string displaySolutionCol =
+            solving || solved ? "display:block" : "display:none";
+        string displaySolutionPre = solved ? "display:block" : "display:none";
+        string displaySolvingMessage =
+            solving ? "display:block" : "display:none";
     }
     <div id=solutionCol class="col-md-4"
         style="@displaySolutionCol">
@@ -61,4 +49,12 @@
 
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
+    @if (solving)
+    {
+        <script>
+        $(document).ready(function() {
+            $.get('@Url.Action("Solve", new { Id = Model.SolveRequestId })');
+        });
+        </script>
+    }
 }

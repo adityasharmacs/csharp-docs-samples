@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sudokumb;
@@ -9,10 +10,10 @@ namespace WebApp.Controllers
     {
         public IActionResult Index()
         {
-            // Show the user a puzzle by default.    
+            // Show the user a puzzle by default.
             var model = new IndexViewModel
-            { 
-                Form = new IndexViewForm() 
+            {
+                Form = new IndexViewForm()
                 {
                     Puzzle = IndexViewForm.SamplePuzzle
                 }
@@ -25,14 +26,21 @@ namespace WebApp.Controllers
         public IActionResult Index(IndexViewForm form)
         {
             var model = new IndexViewModel { Form = form };
-            if (ModelState.IsValid)  
+            if (ModelState.IsValid)
             {
                 // Solve the puzzle.
                 GameBoard board = GameBoard.ParseHandInput(form.Puzzle);
-                GameBoard solution = Solver.Solve(board);
-                model.Solution = solution.ToHandInputString();
+                model.SolveRequestId = Guid.NewGuid().ToString();
+                // GameBoard solution = Solver.Solve(board);
+                // model.Solution = solution.ToHandInputString();
             }
             return View(model);
+        }
+
+        [HttpGet]
+        public IActionResult Solve(string id)
+        {
+            return new StatusCodeResult(200);
         }
 
         [Authorize(Roles="admin")]
@@ -40,5 +48,5 @@ namespace WebApp.Controllers
         {
             return View();
         }
-    }        
+    }
 }
