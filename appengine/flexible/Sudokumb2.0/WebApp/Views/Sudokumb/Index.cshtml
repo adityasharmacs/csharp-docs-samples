@@ -14,7 +14,9 @@
                 <div asp-validation-summary="All" class="text-danger"></div>
                 <div class="form-group">
                     <label asp-for="Form.Puzzle"></label>
-                    <textarea asp-for="Form.Puzzle" rows=12 cols=24 class="form-control" style="font-family:monospace;"></textarea>
+                    <textarea asp-for="Form.Puzzle" rows=12 cols=24
+                        class="form-control" style="font-family:monospace;">
+                    </textarea>
                     <span asp-validation-for="Form.Puzzle" class="text-danger"></span>
                 </div>
                 <div class="form-group">
@@ -23,16 +25,38 @@
             </form>
         </section>
     </div>
-    @if (Model?.Solution != null)
-    {
-        <div class="col-md-4">
-            <section>
-                    <h4>Solution</h4>
-                    <hr />
-                    <pre>@Model.Solution</pre>
-            </section>
-        </div>
+    @{
+        string displaySolutionCol = "display:block";
+        string displaySolutionPre = "display:block";
+        string displaySolvingMessage = "display:block";
+        if (Model.Solution == null)
+        {
+            displaySolutionPre = "display:none";
+            if (Model.SolveRequestId == null)
+            {
+                displaySolutionCol = "display:none";
+            }
+            else
+            {
+
+            }
+        }
+        else
+        {
+            displaySolvingMessage = "display:none";
+        }
     }
+    <div id=solutionCol class="col-md-4"
+        style="@displaySolutionCol">
+        <section>
+                <h4>Solution</h4>
+                <hr />
+                <div id=solvingMessage style="@displaySolvingMessage">
+                    Solving...
+                </div>
+                <pre id=solutionPre style="@displaySolutionPre">@Model.Solution</pre>
+        </section>
+    </div>
 </div>
 
 @section Scripts {

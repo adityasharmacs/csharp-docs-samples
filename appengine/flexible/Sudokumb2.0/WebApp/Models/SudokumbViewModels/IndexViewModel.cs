@@ -13,11 +13,11 @@ namespace WebApp.Models.SudokumbViewModels
     {
         public override bool IsValid(object value)
         {
-            try 
-            {                    
+            try
+            {
                 var board = GameBoard.ParseHandInput((string)value);
                 return board != null;
-            } 
+            }
             catch (BadGameBoardException e)
             {
                 this.ErrorMessage = e.Message;
@@ -47,6 +47,8 @@ namespace WebApp.Models.SudokumbViewModels
     {
         public IndexViewForm Form { get; set; }
         public string Solution { get; set; }
+
+        public string SolveRequestId { get; set; }
     }
 
 }
