@@ -1,4 +1,7 @@
+using System.Threading;
+using System.Threading.Tasks;
 using Google.Cloud.PubSub.V1;
+using Grpc.Core;
 using Microsoft.Extensions.Options;
 
 namespace WebApp.Services
@@ -22,9 +25,32 @@ namespace WebApp.Services
             publisher_ = publisher;
             subscriber_ = subscriber;
             options_ = options;
+
+            // Create the Topic and Subscription.
+            try
+            {
+                publisher_.CreateTopic(MyTopic);
+            }
+            catch (RpcException e)
+            when (e.Status.StatusCode == StatusCode.AlreadyExists)
+            {
+                // Already exists.  That's fine.
+            }
+
+            try
+            {
+                subscriber_.CreateSubscription(MySubscription, MyTopic,
+                    pushConfig: null, ackDeadlineSeconds: 10);
+
+            }
+            catch (RpcException e)
+            when (e.Status.StatusCode == StatusCode.AlreadyExists)
+            {
+                // Already exists.  That's fine.
+            }
         }
 
-        public TopicName Topic
+        public TopicName MyTopic
         {
              get
              {
@@ -33,7 +59,7 @@ namespace WebApp.Services
              }
         }
 
-        public SubscriptionName Subscription
+        public SubscriptionName MySubscription
         {
              get
              {
@@ -41,6 +67,12 @@ namespace WebApp.Services
                  return new SubscriptionName(opts.ProjectId,
                     opts.SubscriptionId);
              }
+        }
+
+        public async Task PullAndSolveLoopAsync(CancellationToken cancelationToken)
+        {
+
+
         }
     }
 }
