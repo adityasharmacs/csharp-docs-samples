@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,17 +10,46 @@ namespace Counters
     {
         static void Main(string[] args)
         {
-            RunBenchmark(1, new UnsynchronizedCounter());
-            RunBenchmark(1, new LockingCounter());
-            RunBenchmark(1, new InterlockedCounter());
-            RunBenchmark(1, new ShardedCounter());
-            
-            RunBenchmark(32, new LockingCounter());
-            RunBenchmark(32, new InterlockedCounter());
-            RunBenchmark(32, new ShardedCounter());
+            MemoryStream csvStream = new MemoryStream();
+            TextWriter csv = new StreamWriter(csvStream);
+            csv.WriteLine("Tasks\tCounter\tCount");
+
+            foreach (var type in new []
+            {
+                typeof(UnsynchronizedCounter),
+                typeof(LockingCounter),
+                typeof(InterlockedCounter),
+                typeof(ShardedCounter)
+            })
+            {
+                RunBenchmark(1, type, csv);
+            }
+            foreach (int taskCount in new int [] {2, 4, 8, 16})
+            {
+                foreach (var type in new []
+                {
+                    typeof(LockingCounter),
+                    typeof(InterlockedCounter),
+                    typeof(ShardedCounter)
+                })
+                {
+                    RunBenchmark(taskCount, type, csv);
+                }
+            }
+            csv.Flush();
+            csvStream.Seek(0, SeekOrigin.Begin);
+            Console.WriteLine();
+            csvStream.CopyTo(Console.OpenStandardOutput());
         }
 
-        static void RunBenchmark(int taskCount, Counter counter)
+        static void RunBenchmark(int taskCount, Type counterType, TextWriter csv)
+        {
+            long count = RunBenchmark(taskCount,
+                (Counter) Activator.CreateInstance(counterType));
+            csv.WriteLine("{0}\t{1}\t{2}", taskCount, counterType.FullName, count);
+        }
+
+        static long RunBenchmark(int taskCount, Counter counter)
         {
             Console.WriteLine("Running benchmark for {0} with {1} tasks...",
                 counter.GetType().FullName, taskCount);
@@ -33,13 +63,16 @@ namespace Counters
                         counter.Increase(1);
                 });
             }
+            long count = 0;
             for (int i = 0; i < 10; ++ i)
             {
                 Thread.Sleep(1000);
-                Console.WriteLine(counter.Count);
+                count = counter.Count;
+                Console.WriteLine(count);
             }
             cancel.Cancel();
             Task.WaitAll(tasks);
+            return count;
         }
     }
 }
