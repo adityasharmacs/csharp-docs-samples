@@ -50,7 +50,7 @@ namespace Counters
     {
         long count_ = 0;
 
-        public long Count => count_;
+        public long Count => Interlocked.CompareExchange(ref count_, 0, 0);
 
         public void Increase(long amount)
         {
@@ -106,7 +106,7 @@ namespace Counters
             counter.Increase(amount);
         }
 
-        class Shard : LockingCounter
+        class Shard : InterlockedCounter
         {
             public Thread Owner { get; set; }
         }
