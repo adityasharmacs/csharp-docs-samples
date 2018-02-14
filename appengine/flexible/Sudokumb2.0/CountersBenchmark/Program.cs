@@ -9,18 +9,22 @@ namespace Counters
     {
         static void Main(string[] args)
         {
-            RunBenchmark(new LockingCounter());
-            RunBenchmark(new InterlockedCounter());
-            RunBenchmark(new ShardedCounter());
+            RunBenchmark(1, new UnsynchronizedCounter());
+            RunBenchmark(1, new LockingCounter());
+            RunBenchmark(1, new InterlockedCounter());
+            RunBenchmark(1, new ShardedCounter());
+            
+            RunBenchmark(32, new LockingCounter());
+            RunBenchmark(32, new InterlockedCounter());
+            RunBenchmark(32, new ShardedCounter());
         }
 
-        static void RunBenchmark(Counter counter)
+        static void RunBenchmark(int taskCount, Counter counter)
         {
-            Console.WriteLine("Running benchmark for {0}",
-                counter.GetType().FullName);
+            Console.WriteLine("Running benchmark for {0} with {1} tasks...",
+                counter.GetType().FullName, taskCount);
             CancellationTokenSource cancel = new CancellationTokenSource();
-            const int TASK_COUNT = 100;
-            Task[] tasks = new Task[TASK_COUNT];
+            Task[] tasks = new Task[taskCount];
             for (int i = 0; i < tasks.Length; ++i)
             {
                 tasks[i] = Task.Run(() =>

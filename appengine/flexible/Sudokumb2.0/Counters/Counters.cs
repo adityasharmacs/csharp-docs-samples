@@ -11,6 +11,16 @@ namespace Counters
         long Count {get; }
     }
 
+    public class UnsynchronizedCounter : Counter
+    {
+        long count_ = 0;
+        public long Count => count_;
+        public void Increase(long amount)
+        {
+            count_ += 1;
+        }
+    }
+
     public class LockingCounter : Counter
     {
         long count_ = 0;
