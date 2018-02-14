@@ -60,18 +60,32 @@ namespace Counters
 
     public class ShardedCounter : Counter
     {
-        ConcurrentBag<LockingCounter> shards_ =
-            new ConcurrentBag<LockingCounter>();
-        LocalDataStoreSlot slot_ = Thread.AllocateDataSlot();
+        object thisLock_ = new object();
+        long deadShardSum_ = 0;
+        List<Shard> shards_ = new List<Shard>();
+        readonly LocalDataStoreSlot slot_ = Thread.AllocateDataSlot();
 
         public long Count
         {
             get
             {
-                long sum = 0;
-                foreach (LockingCounter counter in shards_)
+                long sum = deadShardSum_;
+                List<Shard> livingShards_ = new List<Shard>();
+                lock (thisLock_)
                 {
-                    sum += counter.Count;
+                    foreach (Shard shard in shards_)
+                    {
+                        sum += shard.Count;
+                        if (shard.Owner.IsAlive)
+                        {
+                            livingShards_.Add(shard);
+                        }
+                        else
+                        {
+                            deadShardSum_ += shard.Count;
+                        }
+                    }
+                    shards_ = livingShards_;
                 }
                 return sum;
             }
@@ -79,14 +93,22 @@ namespace Counters
 
         public void Increase(long amount)
         {
-            LockingCounter counter = Thread.GetData(slot_) as LockingCounter;
+            Shard counter = Thread.GetData(slot_) as Shard;
             if (null == counter)
             {
-                counter = new LockingCounter();
+                counter = new Shard()
+                {
+                    Owner = Thread.CurrentThread
+                };
                 Thread.SetData(slot_, counter);
-                shards_.Add(counter);
+                lock (thisLock_) shards_.Add(counter);
             }
             counter.Increase(amount);
+        }
+
+        class Shard : LockingCounter
+        {
+            public Thread Owner { get; set; }
         }
     }
 }
