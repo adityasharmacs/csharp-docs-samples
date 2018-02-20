@@ -12,7 +12,7 @@ namespace Sudokumb
             using (Stream m = File.OpenRead("SampleBoard.txt"))
             {
                 GameBoard a = GameBoard.ParseHandInput(m);
-                GameBoard solution = Solver.Solve(a);
+                GameBoard solution = CommandLineSolver.Solve(a);
                 var expectedSolution = GameBoard.Create(
                     "123|645|789" +
                     "987|321|654" +
@@ -25,7 +25,7 @@ namespace Sudokumb
                     "791|268|435" +
                     "458|713|296" +
                     "362|594|178");
-                Assert.Equal(expectedSolution.ToPrettyString(), 
+                Assert.Equal(expectedSolution.ToPrettyString(),
                     solution.ToPrettyString());
             }
         }

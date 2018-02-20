@@ -5,16 +5,17 @@ using Microsoft.AspNetCore.Mvc;
 using Sudokumb;
 using WebApp.Models;
 using WebApp.Models.SudokumbViewModels;
+using WebApp.Services;
 
 namespace WebApp.Controllers
 {
     public class SudokumbController : Controller
     {
-        readonly SolveStateStore solveStateStore_;
+        readonly Solver solver_;
 
-        public SudokumbController(SolveStateStore solveStateStore)
+        public SudokumbController(Solver solver)
         {
-            solveStateStore_ = solveStateStore;
+            solver_ = solver;
         }
 
         public IActionResult Index()
@@ -32,14 +33,14 @@ namespace WebApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Index(IndexViewForm form)
+        public async Task<IActionResult> Index(IndexViewForm form)
         {
             var model = new IndexViewModel { Form = form };
             if (ModelState.IsValid)
             {
                 // Solve the puzzle.
                 GameBoard board = GameBoard.ParseHandInput(form.Puzzle);
-                model.SolveRequestId = Guid.NewGuid().ToString();
+                model.SolveRequestId = await solver_.StartSolving(board);
                 // GameBoard solution = Solver.Solve(board);
                 // model.Solution = solution.ToHandInputString();
             }
@@ -47,8 +48,16 @@ namespace WebApp.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Solve(string id) =>
-            new JsonResult(await solveStateStore_.GetAsync(id));
+        public async Task<IActionResult> Solve(string id)
+        {
+            SolveState state = await solver_.GetProgress(id);
+            return new JsonResult(new
+            {
+                BoardsExaminedCount = state.BoardsExaminedCount,
+                Solution = state.Solution.ToHandInputString()
+            });
+        }
+
 
         [Authorize(Roles="admin")]
         public IActionResult Admin()

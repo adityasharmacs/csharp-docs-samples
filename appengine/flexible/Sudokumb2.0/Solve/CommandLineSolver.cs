@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 namespace Sudokumb
 {
-    public class Solver
+    public class CommandLineSolver
     {
         static void Main(string[] args)
         {
             Console.WriteLine("Type in a sudoku board:");
-            var board = GameBoard.ParseHandInput(Console.OpenStandardInput());            
+            var board = GameBoard.ParseHandInput(Console.OpenStandardInput());
             Console.WriteLine("Solving");
             Console.WriteLine(board.ToPrettyString());
-            
+
             var solution = Solve(board);
             if (null == solution)
             {

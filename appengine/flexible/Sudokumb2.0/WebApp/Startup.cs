@@ -12,6 +12,7 @@ using WebApp.Models;
 using WebApp.Services;
 using Sudokumb;
 using Google.Cloud.Datastore.V1;
+using Microsoft.Extensions.Hosting;
 
 namespace WebApp
 {
@@ -30,6 +31,8 @@ namespace WebApp
             services.AddOptions();
             services.Configure<Models.AccountViewModels.AccountOptions>(
                 Configuration.GetSection("Account"));
+            services.Configure<SolverOptions>(
+                Configuration.GetSection("Google:Datastore"));
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:Datastore:ProjectId"],
                 Configuration["Google:Datastore:NamespaceId"] ?? ""));
@@ -40,6 +43,8 @@ namespace WebApp
             services.AddTransient<IRoleStore<IdentityRole>,
                 DatastoreRoleStore<IdentityRole>>();
             services.AddSingleton<SolveStateStore, SolveStateStore>();
+            services.AddSingleton<IHostedService, Solver>();
+            services.AddSingleton<Solver, Solver>();
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
