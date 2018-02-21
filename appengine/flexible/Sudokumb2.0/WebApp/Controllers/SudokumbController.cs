@@ -12,10 +12,12 @@ namespace WebApp.Controllers
     public class SudokumbController : Controller
     {
         readonly Solver solver_;
+        readonly AdminSettings adminSettings_;
 
-        public SudokumbController(Solver solver)
+        public SudokumbController(Solver solver, AdminSettings adminSettings)
         {
             solver_ = solver;
+            adminSettings_ = adminSettings;
         }
 
         public IActionResult Index()
@@ -41,8 +43,6 @@ namespace WebApp.Controllers
                 // Solve the puzzle.
                 GameBoard board = GameBoard.ParseHandInput(form.Puzzle);
                 model.SolveRequestId = await solver_.StartSolving(board);
-                // GameBoard solution = Solver.Solve(board);
-                // model.Solution = solution.ToHandInputString();
             }
             return View(model);
         }
@@ -59,10 +59,23 @@ namespace WebApp.Controllers
         }
 
 
+        [HttpGet]
         [Authorize(Roles="admin")]
-        public IActionResult Admin()
+        public async Task<IActionResult> Admin()
         {
-            return View();
+            AdminViewModel model = new AdminViewModel()
+            {
+                Dumb = await adminSettings_.IsDumbAsync()
+            };
+            return View(model);
+        }
+
+        [HttpPost]
+        [Authorize(Roles="admin")]
+        public async Task<IActionResult> Admin(AdminViewModel model)
+        {
+            await adminSettings_.SetDumbAsync(model.Dumb);
+            return View(model);
         }
     }
 }

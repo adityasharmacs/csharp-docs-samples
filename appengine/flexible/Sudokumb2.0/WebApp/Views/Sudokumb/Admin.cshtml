@@ -1,9 +1,28 @@
+@model WebApp.Models.SudokumbViewModels.AdminViewModel
 @{
-    ViewData["Title"] = "Sudokumb";
+    ViewData["Title"] = "Admin";
 }
 
+<h2>@ViewData["Title"]</h2>
 <div class="row">
-    <div class "col">
-        Only administrators can see this page.
+    <div class="col-md-4">
+        <section>
+            <form method="post">
+                <div asp-validation-summary="All" class="text-danger"></div>
+                <div class="form-check">
+                    <input asp-for="Dumb" class="form-check-input" />
+                    <label asp-for="Dumb"></label>
+                    <span asp-validation-for="Dumb" class="text-danger"></span>
+                    <p>
+                        When Dumb is checked, Sudokumb will solve the puzzle
+                        in a very inefficient way.  It will pump millions
+                        of messages through Pub/Sub, and burn lots of CPU.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </section>
     </div>
 </div>
