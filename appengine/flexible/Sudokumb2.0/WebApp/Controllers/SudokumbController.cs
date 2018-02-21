@@ -13,7 +13,7 @@ namespace WebApp.Controllers
     {
         readonly Solver solver_;
 
-        public SudokumbController(Solver solver, AdminSettings adminSettings)
+        public SudokumbController(Solver solver)
         {
             solver_ = solver;
         }
@@ -54,7 +54,7 @@ namespace WebApp.Controllers
             return new JsonResult(new
             {
                 BoardsExaminedCount = state.BoardsExaminedCount,
-                Solution = state.Solution.ToHandInputString()
+                Solution = state.Solution?.ToHandInputString()
             });
         }
 

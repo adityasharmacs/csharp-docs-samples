@@ -22,6 +22,9 @@ namespace WebApp.Services
         public string SubscriptionId { get; set; } = "sudokumb";
         public string TopicId { get; set; } = "sudokumb";
     }
+    /// <summary>
+    /// Reads sudoku puzzles from Pub/Sub and solves them.
+    /// </summary>
     public class Solver : IHostedService
     {
         readonly PublisherServiceApiClient publisherApi_;
@@ -32,6 +35,8 @@ namespace WebApp.Services
         readonly ILogger<Solver> logger_;
         readonly IOptions<SolverOptions> options_;
 
+        readonly IsDumb isDumb_;
+
         class Message
         {
             public string SolveRequestId { get; set; }
@@ -40,10 +45,12 @@ namespace WebApp.Services
 
         public Solver(IOptions<SolverOptions> options,
             SolveStateStore solveStateStore,
+            IsDumb isDumb,
             ILogger<Solver> logger)
         {
             logger_ = logger;
             options_ = options;
+            isDumb_ = isDumb;
             solveStateStore_ = solveStateStore;
             publisherApi_ = PublisherServiceApiClient.Create();
             var subscriberApi = SubscriberServiceApiClient.Create();
@@ -95,6 +102,12 @@ namespace WebApp.Services
              }
         }
 
+        /// <summary>
+        /// Solve one sudoku puzzle.
+        /// </summary>
+        /// <param name="pubsubMessage">The message as it arrived from Pub/Sub.
+        /// </param>
+        /// <returns>Ack or Nack</returns>
         async Task<SubscriberClient.Reply> ProcessOneMessage(
             PubsubMessage pubsubMessage, CancellationToken cancellationToken)
         {
@@ -112,8 +125,13 @@ namespace WebApp.Services
             }
             var moves = new Stack<GameBoard>();
             moves.Push(message.Board);
-            while (moves.Count > 0 && !cancellationToken.IsCancellationRequested)
+            bool isDumb = await isDumb_.IsDumbAsync();
+            while (moves.Count > 0)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return SubscriberClient.Reply.Nack;
+                }
                 GameBoard board = moves.Pop();
                 if (!board.HasEmptyCell())
                 {
@@ -122,20 +140,43 @@ namespace WebApp.Services
                         board);
                     return SubscriberClient.Reply.Ack;
                 }
+                // Enumerate the next possible board states.
                 foreach (var move in board.FillNextEmptyCell())
                 {
-                    moves.Push(move);
+                    if (isDumb)
+                    {
+                        await Publish(message.SolveRequestId, move);
+                    }
+                    else
+                    {
+                        moves.Push(move);
+                    }
                 }
             }
-            return SubscriberClient.Reply.Nack;
+            return SubscriberClient.Reply.Ack;
         }
 
         public async Task<string> StartSolving(GameBoard gameBoard)
         {
             // Create a new request and publish it to pubsub.
+            string solveRequestId = Guid.NewGuid().ToString();
+            await Publish(solveRequestId, gameBoard);
+            return solveRequestId;
+        }
+
+        /// <summary>
+        /// Publishes a new game board to Pub/Sub to be solved.
+        /// </summary>
+        /// <param name="solveRequestId">The solve request id.</param>
+        /// <param name="gameBoard">The gameboard to be solved.</param>
+        /// <returns>A Task that completes when the message has been published
+        /// to Pub/Sub.</returns>
+        async Task Publish(string solveRequestId, GameBoard gameBoard)
+        {
+            // Create a new request and publish it to pubsub.
             var message = new Message()
             {
-                SolveRequestId = Guid.NewGuid().ToString(),
+                SolveRequestId = solveRequestId,
                 Board = gameBoard
             };
             await publisherApi_.PublishAsync(MyTopic, new []
@@ -146,7 +187,6 @@ namespace WebApp.Services
                         message))
                 }
             });
-            return message.SolveRequestId;
         }
 
         public Task<SolveState> GetProgress(string solveRequestId) =>
