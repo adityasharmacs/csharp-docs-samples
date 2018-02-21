@@ -32,10 +32,10 @@ namespace WebApp
             services.Configure<Models.AccountViewModels.AccountOptions>(
                 Configuration.GetSection("Account"));
             services.Configure<SolverOptions>(
-                Configuration.GetSection("Google:Datastore"));
+                Configuration.GetSection("Google"));
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
-                Configuration["Google:Datastore:ProjectId"],
-                Configuration["Google:Datastore:NamespaceId"] ?? ""));
+                Configuration["Google:ProjectId"],
+                Configuration["Google:NamespaceId"] ?? ""));
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddDefaultTokenProviders();
             services.AddTransient<IUserStore<ApplicationUser>,
@@ -45,7 +45,6 @@ namespace WebApp
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<Solver, Solver>();
-            // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddMvc();

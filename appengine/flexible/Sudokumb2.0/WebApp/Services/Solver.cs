@@ -132,6 +132,7 @@ namespace WebApp.Services
 
         public async Task<string> StartSolving(GameBoard gameBoard)
         {
+            // Create a new request and publish it to pubsub.
             var message = new Message()
             {
                 SolveRequestId = Guid.NewGuid().ToString(),
@@ -148,20 +149,14 @@ namespace WebApp.Services
             return message.SolveRequestId;
         }
 
-        public Task<SolveState> GetProgress(string solveRequestId)
-        {
-            return solveStateStore_.GetAsync(solveRequestId);
-        }
+        public Task<SolveState> GetProgress(string solveRequestId) =>
+            solveStateStore_.GetAsync(solveRequestId);
 
-        Task IHostedService.StartAsync(CancellationToken cancellationToken)
-        {
-            return subscriberClient_.StartAsync(
+        Task IHostedService.StartAsync(CancellationToken cancellationToken) =>
+            subscriberClient_.StartAsync(
                 (message, token) => ProcessOneMessage(message, token));
-         }
 
-        Task IHostedService.StopAsync(CancellationToken cancellationToken)
-        {
-            return subscriberClient_.StopAsync(cancellationToken);
-        }
+        Task IHostedService.StopAsync(CancellationToken cancellationToken) =>
+            subscriberClient_.StopAsync(cancellationToken);
     }
 }
