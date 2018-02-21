@@ -45,6 +45,7 @@ namespace WebApp
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<Solver, Solver>();
+            services.AddSingleton<AdminSettings, AdminSettings>();
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddMvc();

@@ -5,42 +5,60 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace WebApp.Models
 {
-    class AdminSettings
+    /// <summary>
+    /// Stores settings readable by everyone, but should only be set by
+    /// administrators.
+    /// </summary>
+    public class AdminSettings
     {
+        /// <summary>
+        /// Settings get stored in datastore.
+        /// </summary>
         readonly DatastoreDb datastore_;
+        /// <summary>
+        /// The key to the one entity that contains all the settings.
+        /// </summary>
         readonly Key key_;
 
-        MemoryCache cache_;
+        // Cache the datastore entity so we don't query datastore a million
+        // times, which would slow us down.  Performance optimization.
+        object cachedEntityLock_ = new object();
+        Task<Entity> cachedEntity_;
+        DateTime cachedEntityExpires_;
 
-        public AdminSettings(DatastoreDb datastore, MemoryCache cache)
+        public AdminSettings(DatastoreDb datastore)
         {
-            cache_ = cache;
+            cachedEntityExpires_ = DateTime.MinValue;
             datastore_ = datastore;
-            key_ = new KeyFactory(datastore.ProjectId, datastore.NamespaceId, ENTITY_KIND).CreateKey(0);
+            key_ = new KeyFactory(datastore.ProjectId, datastore.NamespaceId,
+                ENTITY_KIND).CreateKey(0);
         }
 
         const string ENTITY_KIND = "AdminSettings",
             DUMB = "dumb";
 
-        public Task<bool> IsDumbAsync()
+        /// <summary>
+        /// Dumb means every next possible move on the sudoku board gets
+        /// its own pub/sub message.
+        /// </summary>
+        public async Task<bool> IsDumbAsync()
         {
-            object isDumbObject;
-            if (cache_.TryGetValue(DUMB, out isDumbObject))
-            {
-                return (Task<bool>)isDumbObject;
-            }
-            else
-            {
-                Task<bool> result = LookupIsDumbAsync();
-                cache_.Set(DUMB, result, TimeSpan.FromSeconds(10));
-                return result;
-            }
+            var entity = await LookupEntityAsync();
+            return null == entity ? false : (bool)entity[DUMB];
         }
 
-        async Task<bool> LookupIsDumbAsync()
+        Task<Entity> LookupEntityAsync()
         {
-            Entity entity = await datastore_.LookupAsync(key_);
-            return entity != null || (bool)entity[DUMB];
+            lock(cachedEntityLock_)
+            {
+                var now = DateTime.Now;
+                if (now > cachedEntityExpires_)
+                {
+                    cachedEntityExpires_ = now.AddSeconds(10);
+                    cachedEntity_ = datastore_.LookupAsync(key_);
+                }
+                return cachedEntity_;
+            }
         }
 
         public Task SetDumbAsync(bool dumb)
@@ -50,6 +68,11 @@ namespace WebApp.Models
                 Key = key_,
                 [DUMB] = dumb
             };
+            lock(cachedEntityLock_)
+            {
+                cachedEntity_ = Task.FromResult(entity);
+                cachedEntityExpires_ = DateTime.Now.AddSeconds(10);
+            }
             return datastore_.UpsertAsync(entity);
         }
     }

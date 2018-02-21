@@ -13,7 +13,7 @@ namespace WebApp.Controllers
     {
         readonly Solver solver_;
 
-        public SudokumbController(Solver solver)
+        public SudokumbController(Solver solver, AdminSettings adminSettings)
         {
             solver_ = solver;
         }
