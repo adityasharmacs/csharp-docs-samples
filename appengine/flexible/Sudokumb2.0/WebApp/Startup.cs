@@ -33,6 +33,11 @@ namespace WebApp
                 Configuration.GetSection("Account"));
             services.Configure<SolverOptions>(
                 Configuration.GetSection("Google"));
+            services.PostConfigure<SolverOptions>(opts =>
+            {
+                AdminSettings settings = AdminSettings.FirstInstance;
+                opts.IsDumb = null == settings ? false : settings.IsDumbAsync().Result;
+            });
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:ProjectId"],
                 Configuration["Google:NamespaceId"] ?? ""));
@@ -46,7 +51,6 @@ namespace WebApp
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<Solver, Solver>();
             services.AddSingleton<AdminSettings, AdminSettings>();
-            services.AddSingleton<IsDumb, AdminSettings>();
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddMvc();

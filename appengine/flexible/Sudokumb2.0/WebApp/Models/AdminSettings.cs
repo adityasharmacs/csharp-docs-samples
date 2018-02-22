@@ -5,16 +5,11 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace WebApp.Models
 {
-    public interface IsDumb
-    {
-        Task<bool> IsDumbAsync();
-    }
-
     /// <summary>
     /// Stores settings readable by everyone, but should only be set by
     /// administrators.
     /// </summary>
-    public class AdminSettings : IsDumb
+    public class AdminSettings
     {
         /// <summary>
         /// Settings get stored in datastore.
@@ -31,12 +26,30 @@ namespace WebApp.Models
         Task<Entity> cachedEntity_;
         DateTime cachedEntityExpires_;
 
+        static object firstInstanceLock_ = new object();
+        static AdminSettings firstInstance_;
+
         public AdminSettings(DatastoreDb datastore)
         {
             cachedEntityExpires_ = DateTime.MinValue;
             datastore_ = datastore;
             key_ = new KeyFactory(datastore.ProjectId, datastore.NamespaceId,
                 ENTITY_KIND).CreateKey(1);
+            lock (firstInstanceLock_)
+            {
+                if (null == firstInstance_)
+                {
+                    firstInstance_ = this;
+                }
+            }
+        }
+
+        static public AdminSettings FirstInstance
+        {
+            get
+            {
+                lock(firstInstanceLock_) return firstInstance_;
+            }
         }
 
         const string ENTITY_KIND = "AdminSettings",
