@@ -18,7 +18,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CountersBenchmark", "Counte
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebSolver", "WebSolver\WebSolver.csproj", "{2984B17C-97D0-41AE-A6B4-59C7793F7BAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameSolverLib", "GameSolverLib\GameSolverLib.csproj", "{73AE2315-D1BD-4FC9-8A4B-0E01E3AAF47B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebLib", "WebLib\WebLib.csproj", "{73AE2315-D1BD-4FC9-8A4B-0E01E3AAF47B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
