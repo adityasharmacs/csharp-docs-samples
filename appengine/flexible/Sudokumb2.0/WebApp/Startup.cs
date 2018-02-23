@@ -43,8 +43,7 @@ namespace WebApp
             services.AddTransient<IRoleStore<IdentityRole>,
                 DatastoreRoleStore<IdentityRole>>();
             services.AddSingleton<SolveStateStore, SolveStateStore>();
-            services.AddSingleton<IHostedService, Solver>();
-            services.AddSingleton<Solver, Solver>();
+            services.AddSingleton<ISolveRequester, Solver>();
             services.AddSingleton<AdminSettings, AdminSettings>();
             services.AddSingleton<IDumb, AdminSettings>();
             services.AddTransient<IEmailSender, EmailSender>();

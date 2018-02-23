@@ -11,10 +11,11 @@ namespace WebApp.Controllers
 {
     public class SudokumbController : Controller
     {
-        readonly Solver solver_;
+        readonly ISolveRequester solver_;
         readonly AdminSettings adminSettings_;
 
-        public SudokumbController(Solver solver, AdminSettings adminSettings)
+        public SudokumbController(ISolveRequester solver,
+            AdminSettings adminSettings)
         {
             solver_ = solver;
             adminSettings_ = adminSettings;
