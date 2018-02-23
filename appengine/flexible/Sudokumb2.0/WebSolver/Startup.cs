@@ -42,6 +42,7 @@ namespace WebSolver
             {
                 options.ProjectId = Configuration["Stackdriver:ProjectId"];
                 options.Options = TraceOptions.Create(
+                    double.MaxValue,
                     bufferOptions: BufferOptions.NoBuffer());
             });
         }
