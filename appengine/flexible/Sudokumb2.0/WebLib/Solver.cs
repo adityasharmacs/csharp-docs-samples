@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -171,16 +172,14 @@ namespace Sudokumb
                     return SubscriberClient.Reply.Ack;
                 }
                 // Enumerate the next possible board states.
-                foreach (var move in board.FillNextEmptyCell())
+                if (isDumb)
                 {
-                    if (isDumb)
-                    {
-                        await Publish(message.SolveRequestId, move);
-                    }
-                    else
-                    {
-                        moves.Push(move);
-                    }
+                    await Publish(message.SolveRequestId,
+                        board.FillNextEmptyCell());
+                }
+                else foreach (var move in board.FillNextEmptyCell())
+                {
+                    moves.Push(move);
                 }
             }
             return SubscriberClient.Reply.Ack;
@@ -190,7 +189,7 @@ namespace Sudokumb
         {
             // Create a new request and publish it to pubsub.
             string solveRequestId = Guid.NewGuid().ToString();
-            await Publish(solveRequestId, gameBoard);
+            await Publish(solveRequestId, new [] { gameBoard });
             return solveRequestId;
         }
 
@@ -198,25 +197,23 @@ namespace Sudokumb
         /// Publishes a new game board to Pub/Sub to be solved.
         /// </summary>
         /// <param name="solveRequestId">The solve request id.</param>
-        /// <param name="gameBoard">The gameboard to be solved.</param>
+        /// <param name="gameBoards">The gameboards to be solved.</param>
         /// <returns>A Task that completes when the message has been published
         /// to Pub/Sub.</returns>
-        async Task Publish(string solveRequestId, GameBoard gameBoard)
+        async Task Publish(string solveRequestId,
+            IEnumerable<GameBoard> gameBoards)
         {
-            // Create a new request and publish it to pubsub.
-            var message = new Message()
+            var messages = gameBoards.Select(board => new Message()
             {
                 SolveRequestId = solveRequestId,
-                Board = gameBoard
-            };
-            await publisherApi_.PublishAsync(MyTopic, new []
-            {
-                new PubsubMessage()
-                {
-                    Data = ByteString.CopyFromUtf8(JsonConvert.SerializeObject(
-                        message))
-                }
+                Board = board
             });
+            var pubsubMessages = messages.Select(message => new PubsubMessage()
+            {
+                Data = ByteString.CopyFromUtf8(JsonConvert.SerializeObject(
+                    message))
+            });
+            await publisherApi_.PublishAsync(MyTopic, pubsubMessages);
         }
 
         public Task<SolveState> GetProgress(string solveRequestId) =>
