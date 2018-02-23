@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace WebApp.Models
+namespace Sudokumb
 {
     /// <summary>
     /// Stores settings readable by everyone, but should only be set by

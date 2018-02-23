@@ -33,6 +33,7 @@ namespace WebSolver
                 Configuration["Google:NamespaceId"] ?? ""));
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddSingleton<IHostedService, Solver>();
+            services.AddSingleton<IDumb, AdminSettings>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
