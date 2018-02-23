@@ -51,6 +51,8 @@ namespace Sudokumb
         readonly IOptions<SolverOptions> options_;
         readonly IDumb idumb_;
 
+        readonly ICounter counter_;
+
         class Message
         {
             public string SolveRequestId { get; set; }
@@ -65,17 +67,20 @@ namespace Sudokumb
         public Solver(IOptions<SolverOptions> options,
             SolveStateStore solveStateStore,
             ILogger<Solver> logger)
-            : this(options, solveStateStore, new NeverDumb(), logger) { }
+            : this(options, solveStateStore, new NeverDumb(), logger,
+                new InterlockedCounter()) { }
 
         public Solver(IOptions<SolverOptions> options,
             SolveStateStore solveStateStore,
             IDumb idumb,
-            ILogger<Solver> logger)
+            ILogger<Solver> logger,
+            ICounter counter)
         {
             logger_ = logger;
             options_ = options;
             idumb_ = idumb;
             solveStateStore_ = solveStateStore;
+            counter_ = counter;
             publisherApi_ = PublisherServiceApiClient.Create();
             var subscriberApi = SubscriberServiceApiClient.Create();
             publisherClient_ = PublisherClient.Create(MyTopic,
@@ -156,6 +161,7 @@ namespace Sudokumb
                 {
                     return SubscriberClient.Reply.Nack;
                 }
+                counter_.Increase(1);
                 GameBoard board = moves.Pop();
                 if (!board.HasEmptyCell())
                 {

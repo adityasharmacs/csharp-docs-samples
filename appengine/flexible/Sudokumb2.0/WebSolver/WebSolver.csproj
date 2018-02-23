@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GameLib\GameLib.csproj" />
     <ProjectReference Include="..\WebLib\WebLib.csproj" />
+    <ProjectReference Include="..\Counters\Counters.csproj" />
   </ItemGroup>
 
 </Project>

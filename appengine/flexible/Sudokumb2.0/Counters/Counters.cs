@@ -3,15 +3,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Counters
+namespace Sudokumb
 {
-    public interface Counter
+    public interface ICounter
     {
         void Increase(long amount);
         long Count {get; }
     }
 
-    public class UnsynchronizedCounter : Counter
+    public class UnsynchronizedCounter : ICounter
     {
         long count_ = 0;
         public long Count => count_;
@@ -21,7 +21,7 @@ namespace Counters
         }
     }
 
-    public class LockingCounter : Counter
+    public class LockingCounter : ICounter
     {
         long count_ = 0;
         object thisLock = new object();
@@ -46,7 +46,7 @@ namespace Counters
         }
     }
 
-    public class InterlockedCounter : Counter
+    public class InterlockedCounter : ICounter
     {
         long count_ = 0;
 
@@ -58,7 +58,7 @@ namespace Counters
         }
     }
 
-    public class ShardedCounter : Counter
+    public class ShardedCounter : ICounter
     {
         object thisLock_ = new object();
         long deadShardSum_ = 0;

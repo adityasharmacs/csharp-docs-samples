@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Counters
+namespace Sudokumb
 {
     class Program
     {
@@ -45,11 +45,11 @@ namespace Counters
         static void RunBenchmark(int taskCount, Type counterType, TextWriter csv)
         {
             long count = RunBenchmark(taskCount,
-                (Counter) Activator.CreateInstance(counterType));
+                (ICounter) Activator.CreateInstance(counterType));
             csv.WriteLine("{0}\t{1}\t{2}", taskCount, counterType.FullName, count);
         }
 
-        static long RunBenchmark(int taskCount, Counter counter)
+        static long RunBenchmark(int taskCount, ICounter counter)
         {
             Console.WriteLine("Running benchmark for {0} with {1} tasks...",
                 counter.GetType().FullName, taskCount);

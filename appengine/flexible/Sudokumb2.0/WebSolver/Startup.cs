@@ -34,6 +34,7 @@ namespace WebSolver
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<IDumb, AdminSettings>();
+            services.AddSingleton<ICounter, InterlockedCounter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -43,10 +44,12 @@ namespace WebSolver
             {
                 app.UseDeveloperExceptionPage();
             }
-
             app.Run(async (context) =>
             {
-                await context.Response.WriteAsync("Hello World!");
+                long count = app.ApplicationServices
+                    .GetService<ICounter>().Count;
+                await context.Response.WriteAsync(string.Format(
+                    "Examined {0} sudoku boards.", count));
             });
         }
     }
