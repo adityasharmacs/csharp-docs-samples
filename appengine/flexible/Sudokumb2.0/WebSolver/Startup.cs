@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Sudokumb;
+using Google.Cloud.Diagnostics.AspNetCore;
+using Google.Cloud.Diagnostics.Common;
 
 namespace WebSolver
 {
@@ -35,6 +37,13 @@ namespace WebSolver
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<IDumb, AdminSettings>();
             services.AddSingleton<ICounter, InterlockedCounter>();
+            // Add trace service.
+            services.AddGoogleTrace(options =>
+            {
+                options.ProjectId = Configuration["Stackdriver:ProjectId"];
+                options.Options = TraceOptions.Create(
+                    bufferOptions: BufferOptions.NoBuffer());
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -51,6 +60,8 @@ namespace WebSolver
                 await context.Response.WriteAsync(string.Format(
                     "Examined {0} sudoku boards.", count));
             });
+            // Configure trace service.
+            app.UseGoogleTrace();
         }
     }
 }

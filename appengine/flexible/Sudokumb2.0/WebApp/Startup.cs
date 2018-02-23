@@ -13,6 +13,8 @@ using WebApp.Services;
 using Sudokumb;
 using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Hosting;
+using Google.Cloud.Diagnostics.AspNetCore;
+using Google.Cloud.Diagnostics.Common;
 
 namespace WebApp
 {
@@ -48,6 +50,13 @@ namespace WebApp
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddMvc();
+            // Add trace service.
+            services.AddGoogleTrace(options =>
+            {
+                options.ProjectId = Configuration["Stackdriver:ProjectId"];
+                options.Options = TraceOptions.Create(
+                    bufferOptions: BufferOptions.NoBuffer());
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -73,6 +82,9 @@ namespace WebApp
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            // Configure trace service.
+            app.UseGoogleTrace();
         }
     }
 }
