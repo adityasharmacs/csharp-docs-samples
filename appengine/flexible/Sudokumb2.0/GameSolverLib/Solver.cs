@@ -29,10 +29,6 @@ namespace Sudokumb
         /// The Pub/sub topic where solve messages are written.
         /// </summary>
         public string TopicId { get; set; } = "sudokumb";
-        /// <summary>
-        /// Flag to solve sudoku problems the dumb way.
-        /// </summary>
-        public bool IsDumb { get; set; }
     }
 
     public interface ISolveRequester
@@ -53,6 +49,7 @@ namespace Sudokumb
         readonly SolveStateStore solveStateStore_;
         readonly ILogger<Solver> logger_;
         readonly IOptions<SolverOptions> options_;
+        readonly IDumb idumb_;
 
         class Message
         {
@@ -60,12 +57,24 @@ namespace Sudokumb
             public GameBoard Board { get; set; }
         }
 
+        class NeverDumb : IDumb
+        {
+            public Task<bool> IsDumbAsync() => Task.FromResult(false);
+        }
+
         public Solver(IOptions<SolverOptions> options,
             SolveStateStore solveStateStore,
+            ILogger<Solver> logger)
+            : this(options, solveStateStore, new NeverDumb(), logger) { }
+
+        public Solver(IOptions<SolverOptions> options,
+            SolveStateStore solveStateStore,
+            IDumb idumb,
             ILogger<Solver> logger)
         {
             logger_ = logger;
             options_ = options;
+            idumb_ = idumb;
             solveStateStore_ = solveStateStore;
             publisherApi_ = PublisherServiceApiClient.Create();
             var subscriberApi = SubscriberServiceApiClient.Create();
@@ -140,7 +149,7 @@ namespace Sudokumb
             }
             var moves = new Stack<GameBoard>();
             moves.Push(message.Board);
-            bool isDumb = options_.Value.IsDumb;
+            bool isDumb = await idumb_.IsDumbAsync();
             while (moves.Count > 0)
             {
                 if (cancellationToken.IsCancellationRequested)
