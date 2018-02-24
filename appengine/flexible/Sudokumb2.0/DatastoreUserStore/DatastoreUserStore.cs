@@ -8,35 +8,42 @@ using System.Linq;
 using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using static Google.Cloud.Datastore.V1.Key.Types;
+using Grpc.Core;
 
 namespace Sudokumb
 {
-    public class DatastoreUserStore<U> : IUserPasswordStore<U>, IUserRoleStore<U>, IUserStore<U> 
-        where U : IdentityUser<long>, IUserWithRoles, new()
+    public class DatastoreUserStore<U> : IUserPasswordStore<U>, IUserRoleStore<U>, IUserStore<U>
+        where U : IdentityUser<string>, IDatastoreUser, new()
     {
-        DatastoreDb _datastore;
-        KeyFactory _userKeyFactory;
+        readonly DatastoreDb _datastore;
+        readonly KeyFactory _userKeyFactory;
+        readonly KeyFactory _nnindexKeyFactory;
 
-        static string
-            KIND = "webuser",
-            NORMALIZED_EMAIL = "normalized-email",
-            NORMALIZED_NAME = "normalized-name",
-            USER_NAME = "user-name",
-            CONCURRENCY_STAMP = "concurrency-stamp",
-            PASSWORD_HASH = "password-hash",
-            ROLES = "roles";
+        const string
+            USER_KIND = "webuser",
+            NORMALIZED_EMAIL = "normalized-email",            
+            NORMALIZED_NAME = "normalized-name",            
+            USER_NAME = "user-name",            
+            CONCURRENCY_STAMP = "concurrency-stamp",            
+            PASSWORD_HASH = "password-hash",            
+            ROLES = "roles",
+            NORMALIZED_NAME_INDEX_KIND = "webuser-nnindex",
+            USER_KEY = "key";
 
         public DatastoreUserStore(DatastoreDb datastore)
         {
             _datastore = datastore;
-            _userKeyFactory = new KeyFactory(_datastore.ProjectId, _datastore.NamespaceId, KIND);
+            _userKeyFactory = new KeyFactory(_datastore.ProjectId,
+                _datastore.NamespaceId, USER_KIND);
+            _userKeyFactory = new KeyFactory(_datastore.ProjectId,
+                _datastore.NamespaceId, NORMALIZED_NAME_INDEX_KIND);
         }
 
-        Key KeyFromUserId(long userId) => _userKeyFactory.CreateKey(userId);
+        Key KeyFromUserId(string userId) => _userKeyFactory.CreateKey(userId);
 
-        Entity UserToEntity(U user) {
-                
-            var entity = new Entity() 
+        Entity UserToEntity(U user)
+        {
+            var entity = new Entity()
             {
                 [NORMALIZED_EMAIL] = user.NormalizedEmail,
                 [NORMALIZED_NAME] = user.NormalizedUserName,
@@ -48,6 +55,8 @@ namespace Sudokumb
             };
             entity[CONCURRENCY_STAMP].ExcludeFromIndexes = true;
             entity[PASSWORD_HASH].ExcludeFromIndexes = true;
+            // Normalized name has its own separate index.
+            entity[NORMALIZED_NAME].ExcludeFromIndexes = true;
             return entity;
         }
 
@@ -59,50 +68,80 @@ namespace Sudokumb
             }
             U user = new U()
             {
-                Id = entity.Key.Path.First().Id,
+                Id = entity.Key.Path.First().Name,
                 NormalizedUserName = (string)entity[NORMALIZED_NAME],
                 NormalizedEmail = (string)entity[NORMALIZED_EMAIL],
                 UserName = (string)entity[USER_NAME],
                 PasswordHash = (string)entity[PASSWORD_HASH],
                 ConcurrencyStamp = (string)entity[CONCURRENCY_STAMP],
-                Roles = (null == entity[ROLES] ? 
-                    new List<string>() : ((string[]) entity[ROLES]).ToList())
+                Roles = (null == entity[ROLES] ?
+                    new List<string>() : ((string[])entity[ROLES]).ToList())
             };
             return user;
         }
 
-        public async Task<IdentityResult> CreateAsync(U user,
+        public Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {
             var entity = UserToEntity(user);
-            entity.Key = _userKeyFactory.CreateIncompleteKey();            
-            return await Rpc.WrapExceptionsAsync(async () =>
+            entity.Key = _userKeyFactory.CreateKey(Guid.NewGuid().ToString());
+            Entity indexEntity = new Entity()
             {
-                var newKey = await _datastore.InsertAsync(entity,
-                    CallSettings.FromCancellationToken(cancellationToken));
-                user.Id = newKey.Path.First().Id;
+                Key = _nnindexKeyFactory.CreateKey(user.NormalizedUserName),
+                [USER_KEY] = entity.Key
+            };
+            indexEntity[USER_KEY].ExcludeFromIndexes = true;
+            return InTransactionAsync(
+                cancellationToken, async (transaction, callSettings) =>
+            {
+                transaction.Insert(new [] { entity, indexEntity });
+                await transaction.CommitAsync(callSettings);
             });
         }
 
-        public async Task<IdentityResult> DeleteAsync(U user,
+        public Task<IdentityResult> DeleteAsync(U user,
             CancellationToken cancellationToken)
         {
-            return await Rpc.WrapExceptionsAsync(() => 
-                _datastore.DeleteAsync(KeyFromUserId(user.Id), CallSettings.FromCancellationToken(cancellationToken)));                        
+            return InTransactionAsync(
+                cancellationToken, async (transaction, callSettings) =>
+            {
+                transaction.Delete(new [] { KeyFromUserId(user.Id), 
+                    _nnindexKeyFactory.CreateKey(user.NormalizedUserName) });
+                await transaction.CommitAsync(callSettings);
+            });
         }
 
         public async Task<U> FindByIdAsync(string userId, CancellationToken cancellationToken)
         {
-            return EntityToUser(await _datastore.LookupAsync(KeyFromUserId(long.Parse(userId)),
-                callSettings:CallSettings.FromCancellationToken(cancellationToken)));            
+            return EntityToUser(await _datastore.LookupAsync(KeyFromUserId(userId),
+                callSettings: CallSettings.FromCancellationToken(cancellationToken)));
         }
 
         public async Task<U> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
         {
-            var result = await _datastore.RunQueryAsync(new Query(KIND) {
-                Filter = Filter.Equal(NORMALIZED_NAME, normalizedUserName)
-            });
-            return EntityToUser(result.Entities.FirstOrDefault());
+            try
+            {
+                CallSettings callSettings =
+                    CallSettings.FromCancellationToken(cancellationToken);
+                using (var transaction = await _datastore.BeginTransactionAsync(
+                    callSettings))
+                {
+                    var indexEntity = await transaction.LookupAsync(
+                        _nnindexKeyFactory.CreateKey(normalizedUserName),
+                        callSettings);
+                    if (null == indexEntity) 
+                    {
+                        return null;
+                    }
+                    return EntityToUser(await transaction.LookupAsync(
+                        (Key)indexEntity[USER_KEY], callSettings));
+                }
+            }
+            catch (Grpc.Core.RpcException e)
+            when (e.Status.StatusCode == StatusCode.NotFound)
+            {
+                return null;
+            }            
         }
 
         public Task<string> GetNormalizedUserNameAsync(U user, CancellationToken cancellationToken)
@@ -137,12 +176,20 @@ namespace Sudokumb
 
         public async Task<IdentityResult> UpdateAsync(U user, CancellationToken cancellationToken)
         {
-            return await Rpc.WrapExceptionsAsync(() => 
-                _datastore.UpsertAsync(UserToEntity(user), CallSettings.FromCancellationToken(cancellationToken)));
+            if (user.WasNormalizedNameModified)
+            {
+                return await Rpc.TranslateExceptionsAsync(() =>
+                    _datastore.UpsertAsync(UserToEntity(user), 
+                    CallSettings.FromCancellationToken(cancellationToken)));
+            }
+            return await InTransactionAsync(cancellationToken, async (transaction, callSettings) =>
+            {
+                // WIP
+            });
         }
 
         public Task AddToRoleAsync(U user, string roleName, CancellationToken cancellationToken)
-        {   
+        {
             user.Roles.Add(roleName);
             return Task.CompletedTask;
         }
@@ -154,7 +201,7 @@ namespace Sudokumb
         }
 
         public Task<IList<string>> GetRolesAsync(U user, CancellationToken cancellationToken)
-        {            
+        {
             return Task.FromResult(user.Roles);
         }
 
@@ -165,7 +212,8 @@ namespace Sudokumb
 
         public async Task<IList<U>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
         {
-            var result = await _datastore.RunQueryAsync(new Query(KIND) {
+            var result = await _datastore.RunQueryAsync(new Query(USER_KIND)
+            {
                 Filter = Filter.Equal(ROLES, roleName)
             });
             return result.Entities.Select(e => EntityToUser(e)).ToList();
@@ -185,6 +233,32 @@ namespace Sudokumb
         public Task<bool> HasPasswordAsync(U user, CancellationToken cancellationToken)
         {
             return Task.FromResult(!string.IsNullOrWhiteSpace(user.PasswordHash));
+        }
+
+        async Task<IdentityResult> InTransactionAsync(
+            
+            CancellationToken cancellationToken,
+            Func<DatastoreTransaction, CallSettings, Task> f)
+        {
+            try
+            {
+                CallSettings callSettings =
+                    CallSettings.FromCancellationToken(cancellationToken);
+                using (var transaction = await _datastore.BeginTransactionAsync(
+                    callSettings))
+                {
+                    await f(transaction, callSettings);
+                }
+                return IdentityResult.Success;
+            }
+            catch (Grpc.Core.RpcException e)
+            {
+                return IdentityResult.Failed(new IdentityError()
+                {
+                    Code = e.Status.Detail,
+                    Description = e.Message
+                });
+            }            
         }
     }
 }
