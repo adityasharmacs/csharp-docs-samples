@@ -8,9 +8,5 @@ using Sudokumb;
 namespace WebApp.Models
 {
     // Add profile data for application users by adding properties to the ApplicationUser class
-    public class ApplicationUser : IdentityUser<long>, IDatastoreUser
-    {
-        IList<string> _roles = new List<string>();
-        public IList<string> Roles { get => _roles; set => _roles = value; }
-    }
+    public class ApplicationUser : IdentityUser<string> {}
 }

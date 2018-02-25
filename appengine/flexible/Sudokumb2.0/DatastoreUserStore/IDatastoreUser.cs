@@ -5,6 +5,6 @@ namespace Sudokumb
     public interface IDatastoreUser
     {
         IList<string> Roles { get; set; }
-        bool WasNormalizedNameModified { get; set; }
+        string NormalizedNameStoredInDatastore { get; set; }
     }
 }

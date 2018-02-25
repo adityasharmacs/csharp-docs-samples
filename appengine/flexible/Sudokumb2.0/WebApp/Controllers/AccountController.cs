@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -25,19 +26,21 @@ namespace WebApp.Controllers
         private readonly IEmailSender _emailSender;
         private readonly ILogger _logger;
         private readonly IOptions<AccountOptions> _accountOptions;
-
+        private readonly IUserRoleStore<ApplicationUser> _userRoleStore;
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailSender emailSender,
             ILogger<AccountController> logger,
-            IOptions<AccountOptions> options)
+            IOptions<AccountOptions> options,
+            IUserRoleStore<ApplicationUser> userRoleStore)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
             _logger = logger;
             _accountOptions = options;
+            _userRoleStore = userRoleStore;
         }
 
         [TempData]
@@ -228,7 +231,11 @@ namespace WebApp.Controllers
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
                 if (_accountOptions.Value.EnableRoles)
                 {
-                    user.Roles = model.Roles.Split(',').Select(role => role.Trim()).ToList();
+                    var roles = await _userRoleStore.GetRolesAsync(user, CancellationToken.None);
+                    foreach (string role in model.Roles.Split(','))
+                    {
+                        roles.Add(role.Trim());
+                    }
                 }
                 var result = await _userManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)

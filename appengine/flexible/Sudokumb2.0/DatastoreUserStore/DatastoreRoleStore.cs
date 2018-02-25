@@ -12,17 +12,19 @@ namespace Sudokumb
 {
     public class DatastoreRoleStore<R> : IRoleStore<R> where R : IdentityRole, new()
     {
-readonly         DatastoreDb _datastore;
-readonly         KeyFactory _roleKeyFactory;
+        readonly         DatastoreDb _datastore;
+        readonly         KeyFactory _roleKeyFactory;
 
-
-        static readonly string
-            s_KIND = "webuserrole",            s_NORMALIZED_NAME = "normalized-name",            s_ROLE_NAME = "name",            s_CONCURRENCY_STAMP = "concurrency-stamp";
+        const string
+            KIND = "webuserrole",            
+            NORMALIZED_NAME = "normalized-name",            
+            ROLE_NAME = "name",            
+            CONCURRENCY_STAMP = "concurrency-stamp";
 
         public DatastoreRoleStore(DatastoreDb datastore)
         {
             _datastore = datastore;
-            _roleKeyFactory = new KeyFactory(_datastore.ProjectId, _datastore.NamespaceId, s_KIND);
+            _roleKeyFactory = new KeyFactory(_datastore.ProjectId, _datastore.NamespaceId, KIND);
         }
 
         Key KeyFromRoleId(string roleId) => _roleKeyFactory.CreateKey(roleId);
@@ -31,12 +33,12 @@ readonly         KeyFactory _roleKeyFactory;
         {
             var entity = new Entity()
             {
-                [s_NORMALIZED_NAME] = role.NormalizedName,
-                [s_ROLE_NAME] = role.Name,
-                [s_CONCURRENCY_STAMP] = role.ConcurrencyStamp,
+                [NORMALIZED_NAME] = role.NormalizedName,
+                [ROLE_NAME] = role.Name,
+                [CONCURRENCY_STAMP] = role.ConcurrencyStamp,
                 Key = KeyFromRoleId(role.Id)
             };
-            entity[s_CONCURRENCY_STAMP].ExcludeFromIndexes = true;
+            entity[CONCURRENCY_STAMP].ExcludeFromIndexes = true;
             return entity;
         }
 
@@ -48,24 +50,24 @@ readonly         KeyFactory _roleKeyFactory;
             }
             R role = new R()
             {
-                NormalizedName = (string)entity[s_NORMALIZED_NAME],
-                Name = (string)entity[s_ROLE_NAME],
-                ConcurrencyStamp = (string)entity[s_CONCURRENCY_STAMP]
+                NormalizedName = (string)entity[NORMALIZED_NAME],
+                Name = (string)entity[ROLE_NAME],
+                ConcurrencyStamp = (string)entity[CONCURRENCY_STAMP]
             };
             return role;
         }
         public async Task<IdentityResult> CreateAsync(R role, CancellationToken cancellationToken)
         {
-            return await Rpc.WrapExceptionsAsync(() =>
+            return await Rpc.TranslateExceptionsAsync(() =>
                 _datastore.InsertAsync(RoleToEntity(role), CallSettings.FromCancellationToken(cancellationToken)));
         }
-Translatet
+
         public async Task<IdentityResult> DeleteAsync(R role, CancellationToken cancellationToken)
         {
-            return await Rpc.WrapExceptionsAsync(() =>
+            return await Rpc.TranslateExceptionsAsync(() =>
                 _datastore.DeleteAsync(KeyFromRoleId(role.Id), CallSettings.FromCancellationToken(cancellationToken)));
         }
-Translatet
+
         public void Dispose()
         {
         }
@@ -78,9 +80,9 @@ Translatet
 
         public async Task<R> FindByNameAsync(string normalizedRoleName, CancellationToken cancellationToken)
         {
-            var result = await _datastore.RunQueryAsync(new Query(s_KIND)
+            var result = await _datastore.RunQueryAsync(new Query(KIND)
             {
-                Filter = Filter.Equal(s_NORMALIZED_NAME, normalizedRoleName)
+                Filter = Filter.Equal(NORMALIZED_NAME, normalizedRoleName)
             });
             return EntityToRole(result.Entities.FirstOrDefault());
         }
@@ -114,9 +116,9 @@ Translatet
 
         public async Task<IdentityResult> UpdateAsync(R role, CancellationToken cancellationToken)
         {
-            return await Rpc.WrapExceptionsAsync(() =>
+            return await Rpc.TranslateExceptionsAsync(() =>
                 _datastore.UpsertAsync(RoleToEntity(role), CallSettings.FromCancellationToken(cancellationToken)));
-        }Translatet
+        }
     }
 }
 

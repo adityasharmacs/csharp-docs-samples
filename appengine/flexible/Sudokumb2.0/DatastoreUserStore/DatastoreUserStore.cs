@@ -9,15 +9,26 @@ using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using static Google.Cloud.Datastore.V1.Key.Types;
 using Grpc.Core;
+using System.Runtime.CompilerServices;
 
 namespace Sudokumb
 {
     public class DatastoreUserStore<U> : IUserPasswordStore<U>, IUserRoleStore<U>, IUserStore<U>
-        where U : IdentityUser<string>, IDatastoreUser, new()
+        where U : IdentityUser<string>, new()
     {
         readonly DatastoreDb _datastore;
         readonly KeyFactory _userKeyFactory;
         readonly KeyFactory _nnindexKeyFactory;
+
+        // Additional properties we store for each User instance
+        // in a ConditionalWeakTable. 
+        class UserAddendum 
+        {
+            public string NormalizedUserName { get; set; }
+            public List<string> Roles { get; set; } = new List<string>();
+        };
+        readonly ConditionalWeakTable<U, UserAddendum> _userAddendums
+            = new ConditionalWeakTable<U, UserAddendum>();
 
         const string
             USER_KIND = "webuser",
@@ -35,7 +46,7 @@ namespace Sudokumb
             _datastore = datastore;
             _userKeyFactory = new KeyFactory(_datastore.ProjectId,
                 _datastore.NamespaceId, USER_KIND);
-            _userKeyFactory = new KeyFactory(_datastore.ProjectId,
+            _nnindexKeyFactory = new KeyFactory(_datastore.ProjectId,
                 _datastore.NamespaceId, NORMALIZED_NAME_INDEX_KIND);
         }
 
@@ -50,7 +61,7 @@ namespace Sudokumb
                 [USER_NAME] = user.UserName,
                 [CONCURRENCY_STAMP] = user.ConcurrencyStamp,
                 [PASSWORD_HASH] = user.PasswordHash,
-                [ROLES] = user.Roles.ToArray(),
+                [ROLES] = _userAddendums.GetOrCreateValue(user).Roles.ToArray(),
                 Key = KeyFromUserId(user.Id)
             };
             entity[CONCURRENCY_STAMP].ExcludeFromIndexes = true;
@@ -74,9 +85,14 @@ namespace Sudokumb
                 UserName = (string)entity[USER_NAME],
                 PasswordHash = (string)entity[PASSWORD_HASH],
                 ConcurrencyStamp = (string)entity[CONCURRENCY_STAMP],
-                Roles = (null == entity[ROLES] ?
-                    new List<string>() : ((string[])entity[ROLES]).ToList())
             };
+            var addendum = _userAddendums.GetOrCreateValue(user);
+            var roles = (string[])entity[ROLES];
+            if (roles != null && roles.Count() > 0)
+            {
+                addendum.Roles.AddRange(roles);
+            }
+            addendum.NormalizedUserName = user.NormalizedUserName;
             return user;
         }
 
@@ -174,40 +190,68 @@ namespace Sudokumb
         {
         }
 
-        public async Task<IdentityResult> UpdateAsync(U user, CancellationToken cancellationToken)
+        public async Task<IdentityResult> UpdateAsync(U user,
+            CancellationToken cancellationToken)
         {
-            if (user.WasNormalizedNameModified)
+            // Was the NormalizedUserName modified?
+            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            if (user.NormalizedUserName == addendum.NormalizedUserName)
             {
+                // NormalizedUserName was not modified.  The common and efficient case.
                 return await Rpc.TranslateExceptionsAsync(() =>
                     _datastore.UpsertAsync(UserToEntity(user), 
                     CallSettings.FromCancellationToken(cancellationToken)));
             }
-            return await InTransactionAsync(cancellationToken, async (transaction, callSettings) =>
+            var result = await InTransactionAsync(cancellationToken, 
+                async (transaction, callSettings) =>
             {
-                // WIP
+                // NormalizedUserName was modified.  Have to update the
+                // index too.
+                if (!string.IsNullOrEmpty(addendum.NormalizedUserName))
+                {
+                    transaction.Delete(_nnindexKeyFactory
+                        .CreateKey(addendum.NormalizedUserName));
+                }
+                Entity entity = UserToEntity(user);
+                transaction.Upsert(entity);
+                transaction.Upsert(new Entity()
+                {
+                    Key = _nnindexKeyFactory.CreateKey(user.NormalizedUserName),
+                    [USER_KEY] = entity.Key
+                });
+                await transaction.CommitAsync(callSettings);
             });
+            if (result.Succeeded)
+            {
+                addendum.NormalizedUserName = user.NormalizedUserName;
+            }
+            return result;
         }
 
         public Task AddToRoleAsync(U user, string roleName, CancellationToken cancellationToken)
         {
-            user.Roles.Add(roleName);
+            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            addendum.Roles.Add(roleName);
             return Task.CompletedTask;
         }
 
         public Task RemoveFromRoleAsync(U user, string roleName, CancellationToken cancellationToken)
         {
-            user.Roles.Remove(roleName);
+            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            addendum.Roles.Remove(roleName);
             return Task.CompletedTask;
         }
 
         public Task<IList<string>> GetRolesAsync(U user, CancellationToken cancellationToken)
         {
-            return Task.FromResult(user.Roles);
+            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            return Task.FromResult((IList<string>)addendum.Roles);
         }
 
         public Task<bool> IsInRoleAsync(U user, string roleName, CancellationToken cancellationToken)
         {
-            return Task.FromResult(user.Roles.Contains(roleName));
+            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            return Task.FromResult(addendum.Roles.Contains(roleName));
         }
 
         public async Task<IList<U>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
