@@ -38,9 +38,12 @@ namespace WebApp
                 Configuration["Google:NamespaceId"] ?? ""));
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddDefaultTokenProviders();
-            services.AddTransient<IUserStore<ApplicationUser>,
-                DatastoreUserStore<ApplicationUser>>();
-            services.AddTransient<IRoleStore<IdentityRole>,
+            services.AddSingleton<DatastoreUserStore<ApplicationUser>>();
+            services.AddTransient<IUserStore<ApplicationUser>>(
+                (x) => x.GetService<DatastoreUserStore<ApplicationUser>>());
+            services.AddTransient<IUserRoleStore<ApplicationUser>>(
+                (x) => x.GetService<DatastoreUserStore<ApplicationUser>>());
+            services.AddSingleton<IRoleStore<IdentityRole>,
                 DatastoreRoleStore<IdentityRole>>();
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddSingleton<ISolveRequester, Solver>();

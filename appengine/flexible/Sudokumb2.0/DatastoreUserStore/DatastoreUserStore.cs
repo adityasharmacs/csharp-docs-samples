@@ -96,23 +96,29 @@ namespace Sudokumb
             return user;
         }
 
-        public Task<IdentityResult> CreateAsync(U user,
+        public async Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {
+            user.Id = Guid.NewGuid().ToString();
             var entity = UserToEntity(user);
-            entity.Key = _userKeyFactory.CreateKey(Guid.NewGuid().ToString());
             Entity indexEntity = new Entity()
             {
                 Key = _nnindexKeyFactory.CreateKey(user.NormalizedUserName),
                 [USER_KEY] = entity.Key
             };
             indexEntity[USER_KEY].ExcludeFromIndexes = true;
-            return InTransactionAsync(
+            var result = await InTransactionAsync(
                 cancellationToken, async (transaction, callSettings) =>
             {
                 transaction.Insert(new [] { entity, indexEntity });
                 await transaction.CommitAsync(callSettings);
             });
+            if (result.Succeeded)
+            {
+                _userAddendums.GetOrCreateValue(user).NormalizedUserName
+                    = user.NormalizedUserName;
+            }
+            return result;
         }
 
         public Task<IdentityResult> DeleteAsync(U user,
