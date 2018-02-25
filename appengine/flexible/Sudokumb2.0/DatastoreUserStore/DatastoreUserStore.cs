@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using static Google.Cloud.Datastore.V1.Key.Types;
 using Grpc.Core;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace Sudokumb
 {
@@ -19,6 +20,7 @@ namespace Sudokumb
         readonly DatastoreDb _datastore;
         readonly KeyFactory _userKeyFactory;
         readonly KeyFactory _nnindexKeyFactory;
+        readonly Microsoft.Extensions.Logging.ILogger _logger;
 
         // Additional properties we store for each User instance
         // in a ConditionalWeakTable. 
@@ -27,7 +29,7 @@ namespace Sudokumb
             public string NormalizedUserName { get; set; }
             public List<string> Roles { get; set; } = new List<string>();
         };
-        
+
         static readonly ConditionalWeakTable<U, UserAddendum> s_userAddendums
             = new ConditionalWeakTable<U, UserAddendum>();
 
@@ -42,13 +44,15 @@ namespace Sudokumb
             NORMALIZED_NAME_INDEX_KIND = "webuser-nnindex",
             USER_KEY = "key";
 
-        public DatastoreUserStore(DatastoreDb datastore)
+        public DatastoreUserStore(DatastoreDb datastore,
+            ILogger<DatastoreUserStore<U>> logger)
         {
             _datastore = datastore;
             _userKeyFactory = new KeyFactory(_datastore.ProjectId,
                 _datastore.NamespaceId, USER_KIND);
             _nnindexKeyFactory = new KeyFactory(_datastore.ProjectId,
                 _datastore.NamespaceId, NORMALIZED_NAME_INDEX_KIND);
+            _logger = logger;
         }
 
         Key KeyFromUserId(string userId) => _userKeyFactory.CreateKey(userId);
@@ -100,6 +104,7 @@ namespace Sudokumb
         public async Task<IdentityResult> CreateAsync(U user,
             CancellationToken cancellationToken)
         {
+            _logger.LogDebug("CreateAsync({0})", user.NormalizedEmail);
             user.Id = Guid.NewGuid().ToString();
             var entity = UserToEntity(user);
             Entity indexEntity = new Entity()
@@ -125,6 +130,7 @@ namespace Sudokumb
         public Task<IdentityResult> DeleteAsync(U user,
             CancellationToken cancellationToken)
         {
+            _logger.LogDebug("DeleteAsync({0})", user.NormalizedEmail);
             return InTransactionAsync(
                 cancellationToken, async (transaction, callSettings) =>
             {
@@ -136,12 +142,14 @@ namespace Sudokumb
 
         public async Task<U> FindByIdAsync(string userId, CancellationToken cancellationToken)
         {
+            _logger.LogDebug("FindByIdAsync({0})", userId);
             return EntityToUser(await _datastore.LookupAsync(KeyFromUserId(userId),
                 callSettings: CallSettings.FromCancellationToken(cancellationToken)));
         }
 
         public async Task<U> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
         {
+            _logger.LogDebug("FindByNameAsync({0})", normalizedUserName);
             try
             {
                 CallSettings callSettings =
@@ -200,6 +208,7 @@ namespace Sudokumb
         public async Task<IdentityResult> UpdateAsync(U user,
             CancellationToken cancellationToken)
         {
+            _logger.LogDebug("UpdateAsync({0})", user.NormalizedEmail);
             // Was the NormalizedUserName modified?
             UserAddendum addendum = s_userAddendums.GetOrCreateValue(user);
             if (user.NormalizedUserName == addendum.NormalizedUserName)
