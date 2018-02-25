@@ -13,6 +13,7 @@ using WebApp.Services;
 using Sudokumb;
 using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Hosting;
+using System.Runtime.CompilerServices;
 
 namespace WebApp
 {
@@ -38,12 +39,11 @@ namespace WebApp
                 Configuration["Google:NamespaceId"] ?? ""));
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddDefaultTokenProviders();
-            services.AddSingleton<DatastoreUserStore<ApplicationUser>>();
-            services.AddTransient<IUserStore<ApplicationUser>>(
-                (x) => x.GetService<DatastoreUserStore<ApplicationUser>>());
-            services.AddTransient<IUserRoleStore<ApplicationUser>>(
-                (x) => x.GetService<DatastoreUserStore<ApplicationUser>>());
-            services.AddSingleton<IRoleStore<IdentityRole>,
+            services.AddTransient<IUserStore<ApplicationUser>,
+                DatastoreUserStore<ApplicationUser>>();
+            services.AddTransient<IUserRoleStore<ApplicationUser>,
+                DatastoreUserStore<ApplicationUser>>();
+            services.AddTransient<IRoleStore<IdentityRole>,
                 DatastoreRoleStore<IdentityRole>>();
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddSingleton<ISolveRequester, Solver>();

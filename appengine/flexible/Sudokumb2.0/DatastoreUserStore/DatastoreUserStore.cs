@@ -22,12 +22,13 @@ namespace Sudokumb
 
         // Additional properties we store for each User instance
         // in a ConditionalWeakTable. 
-        class UserAddendum 
+        public class UserAddendum 
         {
             public string NormalizedUserName { get; set; }
             public List<string> Roles { get; set; } = new List<string>();
         };
-        readonly ConditionalWeakTable<U, UserAddendum> _userAddendums
+        
+        static readonly ConditionalWeakTable<U, UserAddendum> s_userAddendums
             = new ConditionalWeakTable<U, UserAddendum>();
 
         const string
@@ -61,7 +62,7 @@ namespace Sudokumb
                 [USER_NAME] = user.UserName,
                 [CONCURRENCY_STAMP] = user.ConcurrencyStamp,
                 [PASSWORD_HASH] = user.PasswordHash,
-                [ROLES] = _userAddendums.GetOrCreateValue(user).Roles.ToArray(),
+                [ROLES] = s_userAddendums.GetOrCreateValue(user).Roles.ToArray(),
                 Key = KeyFromUserId(user.Id)
             };
             entity[CONCURRENCY_STAMP].ExcludeFromIndexes = true;
@@ -86,7 +87,7 @@ namespace Sudokumb
                 PasswordHash = (string)entity[PASSWORD_HASH],
                 ConcurrencyStamp = (string)entity[CONCURRENCY_STAMP],
             };
-            var addendum = _userAddendums.GetOrCreateValue(user);
+            var addendum = s_userAddendums.GetOrCreateValue(user);
             var roles = (string[])entity[ROLES];
             if (roles != null && roles.Count() > 0)
             {
@@ -115,7 +116,7 @@ namespace Sudokumb
             });
             if (result.Succeeded)
             {
-                _userAddendums.GetOrCreateValue(user).NormalizedUserName
+                s_userAddendums.GetOrCreateValue(user).NormalizedUserName
                     = user.NormalizedUserName;
             }
             return result;
@@ -200,7 +201,7 @@ namespace Sudokumb
             CancellationToken cancellationToken)
         {
             // Was the NormalizedUserName modified?
-            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            UserAddendum addendum = s_userAddendums.GetOrCreateValue(user);
             if (user.NormalizedUserName == addendum.NormalizedUserName)
             {
                 // NormalizedUserName was not modified.  The common and efficient case.
@@ -236,27 +237,27 @@ namespace Sudokumb
 
         public Task AddToRoleAsync(U user, string roleName, CancellationToken cancellationToken)
         {
-            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            UserAddendum addendum = s_userAddendums.GetOrCreateValue(user);
             addendum.Roles.Add(roleName);
             return Task.CompletedTask;
         }
 
         public Task RemoveFromRoleAsync(U user, string roleName, CancellationToken cancellationToken)
         {
-            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            UserAddendum addendum = s_userAddendums.GetOrCreateValue(user);
             addendum.Roles.Remove(roleName);
             return Task.CompletedTask;
         }
 
         public Task<IList<string>> GetRolesAsync(U user, CancellationToken cancellationToken)
         {
-            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            UserAddendum addendum = s_userAddendums.GetOrCreateValue(user);
             return Task.FromResult((IList<string>)addendum.Roles);
         }
 
         public Task<bool> IsInRoleAsync(U user, string roleName, CancellationToken cancellationToken)
         {
-            UserAddendum addendum = _userAddendums.GetOrCreateValue(user);
+            UserAddendum addendum = s_userAddendums.GetOrCreateValue(user);
             return Task.FromResult(addendum.Roles.Contains(roleName));
         }
 
