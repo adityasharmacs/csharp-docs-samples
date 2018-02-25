@@ -231,10 +231,10 @@ namespace WebApp.Controllers
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
                 if (_accountOptions.Value.EnableRoles)
                 {
-                    var roles = await _userRoleStore.GetRolesAsync(user, CancellationToken.None);
                     foreach (string role in model.Roles.Split(','))
                     {
-                        roles.Add(role.Trim());
+                        await _userRoleStore.AddToRoleAsync(user, role.Trim(), 
+                            CancellationToken.None);
                     }
                 }
                 var result = await _userManager.CreateAsync(user, model.Password);
