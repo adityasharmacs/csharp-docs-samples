@@ -218,6 +218,12 @@ namespace Sudokumb
                     _datastore.UpsertAsync(UserToEntity(user), 
                     CallSettings.FromCancellationToken(cancellationToken)));
             }
+            Entity entity = UserToEntity(user);
+            Entity indexEntity = new Entity()
+            {
+                Key = _nnindexKeyFactory.CreateKey(user.NormalizedUserName),
+                [USER_KEY] = entity.Key
+            };
             var result = await InTransactionAsync(cancellationToken, 
                 async (transaction, callSettings) =>
             {
@@ -228,13 +234,9 @@ namespace Sudokumb
                     transaction.Delete(_nnindexKeyFactory
                         .CreateKey(addendum.NormalizedUserName));
                 }
-                Entity entity = UserToEntity(user);
+                indexEntity[USER_KEY].ExcludeFromIndexes = true;
                 transaction.Upsert(entity);
-                transaction.Upsert(new Entity()
-                {
-                    Key = _nnindexKeyFactory.CreateKey(user.NormalizedUserName),
-                    [USER_KEY] = entity.Key
-                });
+                transaction.Upsert(indexEntity);
                 await transaction.CommitAsync(callSettings);
             });
             if (result.Succeeded)
