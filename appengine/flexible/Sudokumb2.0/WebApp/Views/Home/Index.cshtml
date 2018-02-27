@@ -11,8 +11,10 @@
         <p>
             <strong>Sudokumb</strong> is a
             <a href="https://en.wikipedia.org/wiki/Sudoku">Sudoku</a> solver.
-            In order to demonstrate some cool features of 
-            <a href="https://cloud.google.com/">Google Cloud Platform</a>,
+            In order to demonstrate some cool features of
+            <a href="https://cloud.google.com/">Google Cloud Platform
+            <img src="http://cloud.google.com/_static/images/cloud/products/logos/svg/gcp.svg"
+                width=16 /></a>,
             Sudokumb solves the puzzles in a very dumb way.
             But some things it does are actually pretty smart.
         </p>
@@ -40,8 +42,12 @@
     <div class="col-md-5">
         <h2>Smart</h2>
         <dl>
-            <dt>Sudokumb stores user info in Datastore.</dt>
+            <dt>
+                Sudokumb stores user info in Datastore.
+            </dt>
             <dd>
+                <img src="http://cloud.google.com/_static/images/cloud/products/logos/svg/datastore.svg"
+                     width=64/>
                 Sudokumb implements a <a href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity-custom-storage-providers">
                 custom storage provider for identity</a> to
                 store user names, password hashes, etc. in <a href="https://cloud.google.com/datastore/">Google Cloud Datastore.</a>
@@ -55,38 +61,40 @@
                 pay for the data you store, read, and write.
             </dd>
             <dd>
-                User data fits perfectly into <a href="https://cloud.google.com/datastore/">Google Cloud Datastore</a>,
-                because user data is often read and rarely written.  What's more, a NoSQL
-                database can perform better than an SQL database.  An ASP.NET application
-                checks the user database every time the user visits a page to see if
-                the user has the right roles to see the page.  That check entails
-                latency and makes the page load take longer.  With an SQL database,
-                that check requires reading from two tables.  With Cloud Datastore, 
-                it requires only a single, fast read from a single table.
+                User data fits perfectly into
+                <a href="https://cloud.google.com/datastore/">
+                Google Cloud Datastore</a>,
+                because user data is often read and rarely written.
             </dd>
 
             <dt>
                 Sudokumb logs and reports errors to Stackdriver.
             </dt>
             <dd>
+                <img src="http://cloud.google.com/_static/images/cloud/products/logos/svg/stackdriver.svg"
+                     width=64/>
                 TODO: add content here.
             </dd>
 
             <dt>
-                Sudokumb automatically scales up
+                Sudokumb automatically scales on
                 <a href="https://cloud.google.com/appengine/docs/flexible/dotnet/">
                 App Engine</a>.
             </dt>
             <dd>
+                <img src="http://cloud.google.com/_static/images/cloud/products/logos/svg/appengine.svg"
+                     width=64/>
                 TODO: add content here.
             </dd>
 
             <dt>
                 Sudokumb secures forms and cookies with
-                <a href="https://cloud.google.com/kms/">Key Management 
+                <a href="https://cloud.google.com/kms/">Key Management
                 Service</a>
             </dt>
             <dd>
+                <img src="http://cloud.google.com/_static/images/cloud/products/logos/svg/kms.svg"
+                     width=64/>
                 TODO: add content here.
             </dd>
         </dl>
@@ -105,8 +113,10 @@
                 just solving the problem in place.
             </dd>
             <dd>
+                <img src="http://cloud.google.com/_static/images/cloud/products/logos/svg/pubsub.svg"
+                     width=64/>
                 However, creating lots of distributed work is a good
-                demonstration of the power and scalability of 
+                demonstration of the power and scalability of
                 <a href="https://cloud.google.com/pubsub/docs/">
                 Google Cloud Pub/Sub</a>.
             </dd>
