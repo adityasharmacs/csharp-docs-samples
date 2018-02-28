@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Datastore.V1;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,18 @@ namespace Sudokumb
     public class DatastoreCounterOptions
     {
         public string Kind { get; set; } = "Counter";
+    }
+
+    public static class DatastoreCounterExtensions
+    {
+        public static IServiceCollection AddDatastoreCounter(
+            this IServiceCollection services)
+        {
+            services.AddSingleton<DatastoreCounter, DatastoreCounter>();
+            services.AddSingleton<IHostedService>(
+                (p) => p.GetService<DatastoreCounter>());
+            return services;
+        }
     }
 
     public class DatastoreCounter : IHostedService
