@@ -42,7 +42,7 @@ namespace Sudokumb
             CancellationToken cancellationToken)
         {
             int randomShard = s_random.Next(0, _options.Value.Shards);
-            Key dkey = _keyFactory.CreateKey($"{key}:{randomShard}");
+            Key dkey = _keyFactory.CreateKey($"{randomShard}:{key}");
             var callSettings = CallSettings.FromCancellationToken(
                 cancellationToken);
             using (var transaction =
@@ -70,20 +70,18 @@ namespace Sudokumb
         {
             var callSettings = CallSettings.FromCancellationToken(
                 cancellationToken);
-            long count = 0;
-            Task<Entity>[] lookups = new Task<Entity>[_options.Value.Shards];
-            for (int i = 0; i < lookups.Length; ++i)
+            Key[] keys = new Key[_options.Value.Shards];
+            for (int i = 0; i < keys.Length; ++i)
             {
-                lookups[i] = _datastore.LookupAsync(
-                    _keyFactory.CreateKey($"{key}:{i}"),
-                    callSettings: callSettings);
+                keys[i] = _keyFactory.CreateKey($"{i}:{key}");
             }
-            for (int i = 0; i < lookups.Length; ++i)
+            long count = 0;
+            foreach (Entity entity in await _datastore.LookupAsync(keys,
+                    callSettings: callSettings))
             {
-                Entity entity = await lookups[i];
                 if (null != entity && null != entity[COUNT])
                 {
-                    count += (long) entity[COUNT];
+                    count += (long)entity[COUNT];
                 }
             }
             return count;
