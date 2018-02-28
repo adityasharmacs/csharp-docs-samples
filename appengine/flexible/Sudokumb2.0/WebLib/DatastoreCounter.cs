@@ -17,6 +17,7 @@ namespace Sudokumb
     public class DatastoreCounterOptions
     {
         public string Kind { get; set; } = "Counter";
+        public TimeSpan CondenseFrequency {get; set;} = TimeSpan.FromDays(1);
     }
 
     public static class DatastoreCounterExtensions
@@ -83,7 +84,83 @@ namespace Sudokumb
             return count;
         }
 
-       // /////////////////////////////////////////////////////////////////////
+        string GetCounterId(string keyName)
+        {
+            int colon = keyName.LastIndexOf(':');
+            return keyName.Substring(colon + 1);
+        }
+
+        public async Task CondenseOldCounters(CancellationToken cancellationToken)
+        {
+            var callSettings = CallSettings.FromCancellationToken(
+                cancellationToken);
+            List<string> oldKeys = new List<string>();
+            DateTime tooOld = DateTime.UtcNow - _options.Value.CondenseFrequency;
+            var query = new Query(_options.Value.Kind)
+            {
+                Filter = Filter.LessThan(TIMESTAMP, tooOld),
+                Projection = { "__key__" }
+            };
+            var lazyResults = _datastore.RunQueryLazilyAsync(query,
+                callSettings:callSettings).GetEnumerator();
+            while (await lazyResults.MoveNext())
+            {
+                oldKeys.Add(lazyResults.Current.Key.Path.Last().Name);
+            }
+            oldKeys.Sort();
+            // Find groups of old keys with matching counter ids.
+            int firstInGroup = 0;
+            for(int i = 1; i < oldKeys.Count; ++i)
+            {
+                int groupSize = i - firstInGroup;
+                if (GetCounterId(oldKeys[i]) == GetCounterId(oldKeys[firstInGroup])
+                    && groupSize < 10)
+                {
+                    // Same group.  Continue search for next group boundary.
+                }
+                else if (groupSize == 1)
+                {
+                    // Group of size one, nothing to do.
+                    firstInGroup = i;
+                }
+                else
+                {
+                    await CondenseOldCounters(
+                        oldKeys.GetRange(firstInGroup, groupSize),
+                        callSettings);
+                    firstInGroup = i;
+                }
+            }
+        }
+
+        async Task CondenseOldCounters(IEnumerable<string> keyNames,
+            CallSettings callSettings)
+        {
+            var keys = keyNames.Select((keyName) => _keyFactory.CreateKey(keyName));
+            long sum = 0;
+            using (var transaction = await _datastore.BeginTransactionAsync())
+            {
+                var entities = (await transaction.LookupAsync(keys, callSettings))
+                    .Where(e => e != null);
+                if (entities.Count() < 2)
+                {
+                    return;  // Nothing to condense.
+                }
+                foreach (Entity entity in entities)
+                {
+                    sum += (long)entity[COUNT];
+                }
+                Entity first = entities.First();
+                first[COUNT] = sum;
+                first[COUNT].ExcludeFromIndexes = true;
+                first[TIMESTAMP] = DateTime.UtcNow;
+                transaction.Update(first);
+                transaction.Delete(entities.Skip(1));
+                await transaction.CommitAsync();
+            }
+        }
+
+        // /////////////////////////////////////////////////////////////////////
         // IHostedService implementation periodically saves
         // counts to datastore.
         public Task StartAsync(CancellationToken cancellationToken)

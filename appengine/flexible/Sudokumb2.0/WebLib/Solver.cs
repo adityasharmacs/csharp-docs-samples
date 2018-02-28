@@ -44,14 +44,14 @@ namespace Sudokumb
     /// </summary>
     public class Solver : IHostedService, ISolveRequester
     {
-        readonly PublisherServiceApiClient publisherApi_;
-        readonly PublisherClient publisherClient_;
-        readonly SubscriberClient subscriberClient_;
+        readonly PublisherServiceApiClient _publisherApi;
+        readonly PublisherClient _publisherClient;
+        readonly SubscriberClient _subscriberClient;
 
-        readonly SolveStateStore solveStateStore_;
+        readonly SolveStateStore _solveStateStore;
         readonly ILogger<Solver> _logger;
-        readonly IOptions<SolverOptions> options_;
-        readonly IDumb idumb_;
+        readonly IOptions<SolverOptions> _options;
+        readonly IDumb _idumb;
 
         readonly ICounter counter_;
 
@@ -79,15 +79,15 @@ namespace Sudokumb
             ICounter counter)
         {
             _logger = logger;
-            options_ = options;
-            idumb_ = idumb;
-            solveStateStore_ = solveStateStore;
+            _options = options;
+            _idumb = idumb;
+            _solveStateStore = solveStateStore;
             counter_ = counter;
-            publisherApi_ = PublisherServiceApiClient.Create();
+            _publisherApi = PublisherServiceApiClient.Create();
             var subscriberApi = SubscriberServiceApiClient.Create();
-            publisherClient_ = PublisherClient.Create(MyTopic,
-                new [] { publisherApi_});
-            subscriberClient_ = SubscriberClient.Create(MySubscription,
+            _publisherClient = PublisherClient.Create(MyTopic,
+                new [] { _publisherApi});
+            _subscriberClient = SubscriberClient.Create(MySubscription,
                 new [] {subscriberApi}, new SubscriberClient.Settings()
                 {
                     StreamAckDeadline = TimeSpan.FromMinutes(1)
@@ -96,7 +96,8 @@ namespace Sudokumb
             // Create the Topic and Subscription.
             try
             {
-                publisherApi_.CreateTopic(MyTopic);
+                _publisherApi.CreateTopic(MyTopic);
+                _logger.LogInformation("Created {0}.", MyTopic.ToString());
             }
             catch (RpcException e)
             when (e.Status.StatusCode == StatusCode.AlreadyExists)
@@ -108,7 +109,8 @@ namespace Sudokumb
             {
                 subscriberApi.CreateSubscription(MySubscription, MyTopic,
                     pushConfig: null, ackDeadlineSeconds: 10);
-
+                _logger.LogInformation("Created {0}.",
+                    MySubscription.ToString());
             }
             catch (RpcException e)
             when (e.Status.StatusCode == StatusCode.AlreadyExists)
@@ -121,7 +123,7 @@ namespace Sudokumb
         {
              get
              {
-                 var opts = options_.Value;
+                 var opts = _options.Value;
                  return new TopicName(opts.ProjectId, opts.TopicId);
              }
         }
@@ -130,7 +132,7 @@ namespace Sudokumb
         {
              get
              {
-                 var opts = options_.Value;
+                 var opts = _options.Value;
                  return new SubscriptionName(opts.ProjectId,
                     opts.SubscriptionId);
              }
@@ -159,7 +161,7 @@ namespace Sudokumb
             }
             var moves = new Stack<GameBoard>();
             moves.Push(message.Board);
-            bool isDumb = await idumb_.IsDumbAsync();
+            bool isDumb = await _idumb.IsDumbAsync();
             while (moves.Count > 0)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -169,13 +171,13 @@ namespace Sudokumb
                     return SubscriberClient.Reply.Nack;
                 }
                 counter_.Increase(1);
-                solveStateStore_.IncreaseExaminedBoardCount(
+                _solveStateStore.IncreaseExaminedBoardCount(
                     message.SolveRequestId, 1);
                 GameBoard board = moves.Pop();
                 if (!board.HasEmptyCell())
                 {
                     // Solved!
-                    await solveStateStore_.SetAsync(message.SolveRequestId,
+                    await _solveStateStore.SetAsync(message.SolveRequestId,
                         board);
                     return SubscriberClient.Reply.Ack;
                 }
@@ -221,18 +223,18 @@ namespace Sudokumb
                 Data = ByteString.CopyFromUtf8(JsonConvert.SerializeObject(
                     message))
             });
-            await publisherApi_.PublishAsync(MyTopic, pubsubMessages);
+            await _publisherApi.PublishAsync(MyTopic, pubsubMessages);
         }
 
         public Task<SolveState> GetProgress(string solveRequestId,
             CancellationToken cancellationToken) =>
-            solveStateStore_.GetAsync(solveRequestId, cancellationToken);
+            _solveStateStore.GetAsync(solveRequestId, cancellationToken);
 
         Task IHostedService.StartAsync(CancellationToken cancellationToken) =>
-            subscriberClient_.StartAsync(
+            _subscriberClient.StartAsync(
                 (message, token) => ProcessOneMessage(message, token));
 
         Task IHostedService.StopAsync(CancellationToken cancellationToken) =>
-            subscriberClient_.StopAsync(cancellationToken);
+            _subscriberClient.StopAsync(cancellationToken);
     }
 }
