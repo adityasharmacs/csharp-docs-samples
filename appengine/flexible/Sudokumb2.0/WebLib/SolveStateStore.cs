@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Sudokumb;
 
 namespace Sudokumb
@@ -33,15 +34,18 @@ namespace Sudokumb
         readonly DatastoreCounter _datastoreCounter;
         CancellationTokenSource _cancelHostedService;
         Task _hostedService;
+        ILogger _logger;
 
         ConcurrentDictionary<string, ICounter> _examinedBoardCounts
              = new ConcurrentDictionary<string, ICounter>();
 
         public SolveStateStore(DatastoreDb datastore,
-            DatastoreCounter datastoreCounter)
+            DatastoreCounter datastoreCounter,
+            ILogger<SolveStateStore> logger)
         {
             _datastore = datastore;
             _datastoreCounter = datastoreCounter;
+            _logger = logger;
             _solutionKeyFactory = new KeyFactory(datastore.ProjectId,
                 datastore.NamespaceId, SOLUTION_KIND);
         }
@@ -126,12 +130,21 @@ namespace Sudokumb
         public async Task HostedServiceMainAsync(
             CancellationToken cancellationToken)
         {
+            _logger.LogInformation("SolveStateStore.HostedServiceMainAsync()");
             while (true)
             {
                 if (cancellationToken.IsCancellationRequested)
                     return;
-                await Task.Delay(1000, cancellationToken);
-                await ReportExaminedBoardCountsAsync(cancellationToken);
+                try 
+                {
+                    await Task.Delay(1000, cancellationToken);
+                    await ReportExaminedBoardCountsAsync(cancellationToken);
+                }
+                catch (Exception e)
+                when (!(e is OperationCanceledException))
+                {
+                    _logger.LogError(1, e, "Error while reporting examined board count.");
+                }
             }
         }
     }
