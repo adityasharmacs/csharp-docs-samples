@@ -9,140 +9,99 @@ namespace Sudokumb
     {
         void Increase(long amount);
         long Count {get; }
-
-        // Returns the current count, and resets the value to 0;.
-        long Reset();
     }
 
     public class UnsynchronizedCounter : ICounter
     {
-        long _count = 0;
-        public long Count => _count;
-        public void Increase(long amount) => _count += amount;
-        public long Reset()
+        long count_ = 0;
+        public long Count => count_;
+        public void Increase(long amount)
         {
-            long count = _count;
-            _count = 0;
-            return count;
+            count_ += 1;
         }
-
     }
 
     public class LockingCounter : ICounter
     {
-        long _count = 0;
-        object _thisLock = new object();
+        long count_ = 0;
+        object thisLock = new object();
 
         public long Count
         {
             get
             {
-                lock(_thisLock)
+                lock(thisLock)
                 {
-                    return _count;
+                    return count_;
                 }
-            }
-        }
-
-        public long Reset()
-        {
-            lock(_thisLock)
-            {
-                long count = _count;
-                _count = 0;
-                return count;
             }
         }
 
         public void Increase(long amount)
         {
-            lock(_thisLock)
+            lock(thisLock)
             {
-                _count += amount;
+                count_ += amount;
             }
         }
     }
 
     public class InterlockedCounter : ICounter
     {
-        long _count = 0;
+        long count_ = 0;
 
-        public long Count => Interlocked.CompareExchange(ref _count, 0, 0);
+        public long Count => Interlocked.CompareExchange(ref count_, 0, 0);
 
         public void Increase(long amount)
         {
-            Interlocked.Add(ref _count, amount);
-        }
-
-        public long Reset()
-        {
-            long count;
-            do
-            {
-                count = _count;
-            }
-            while (count != Interlocked.CompareExchange(ref _count, 0, count));
-            return count;
+            Interlocked.Add(ref count_, amount);
         }
     }
 
     public class ShardedCounter : ICounter
     {
-        object _thisLock = new object();
-        long _partialSum = 0;
-        List<Shard> _shards = new List<Shard>();
-        readonly LocalDataStoreSlot _slot = Thread.AllocateDataSlot();
+        object thisLock_ = new object();
+        long deadShardSum_ = 0;
+        List<Shard> shards_ = new List<Shard>();
+        readonly LocalDataStoreSlot slot_ = Thread.AllocateDataSlot();
 
-        public long Count => GetCount(reset: false);
-
-        public long Reset() => GetCount(reset: true);
-
-        long GetCount(bool reset)
+        public long Count
         {
-            // Clean out dead shards as we calculate the count.
-            long liveSum = 0;
-            long deadSum = 0;
-            long result;
-            List<Shard> livingShards = new List<Shard>();
-            lock (_thisLock)
+            get
             {
-                foreach (Shard shard in _shards)
+                long sum = deadShardSum_;
+                List<Shard> livingShards_ = new List<Shard>();
+                lock (thisLock_)
                 {
-                    if (shard.Owner.IsAlive)
+                    foreach (Shard shard in shards_)
                     {
-                        livingShards.Add(shard);
-                        liveSum += shard.Count;
+                        sum += shard.Count;
+                        if (shard.Owner.IsAlive)
+                        {
+                            livingShards_.Add(shard);
+                        }
+                        else
+                        {
+                            deadShardSum_ += shard.Count;
+                        }
                     }
-                    else
-                    {
-                        deadSum += shard.Count;
-                    }
+                    shards_ = livingShards_;
                 }
-                _shards = livingShards;
-                result = liveSum + deadSum + _partialSum;
-                if (reset)
-                {
-                    _partialSum = -liveSum;
-                }
-                else
-                {
-                    _partialSum += deadSum;
-                }
+                return sum;
             }
-            return result;
         }
 
         public void Increase(long amount)
         {
-            Shard counter = Thread.GetData(_slot) as Shard;
+            Shard counter = Thread.GetData(slot_) as Shard;
             if (null == counter)
             {
                 counter = new Shard()
                 {
                     Owner = Thread.CurrentThread
                 };
-                Thread.SetData(_slot, counter);
-                lock (_thisLock) _shards.Add(counter);
+                Thread.SetData(slot_, counter);
+                lock (thisLock_) shards_.Add(counter);
             }
             counter.Increase(amount);
         }

@@ -80,17 +80,21 @@ namespace Sudokumb
             counter.Increase(amount);
         }
 
-        public async Task ReportExaminedBoardCountsAsync(CancellationToken
+        async Task ReportExaminedBoardCountsAsync(CancellationToken
             cancellationToken)
         {
             List<Task> tasks = new List<Task>();
             foreach (var keyValue in _examinedBoardCounts)
             {
-                long count = keyValue.Value.Reset();
+                long count = keyValue.Value.Count;
                 if (count > 0)
                 {
-                    tasks.Add(_datastoreCounter.IncreaseAsync(keyValue.Key,
-                        count, cancellationToken));
+                    tasks.Add(Task.Run(async() =>
+                    {
+                        await _datastoreCounter.IncreaseAsync(keyValue.Key,
+                            count, cancellationToken);
+                        keyValue.Value.Increase(-count);  // Reset to 0.
+                    }));
                 }
             }
             foreach (Task task in tasks)
