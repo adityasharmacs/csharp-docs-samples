@@ -22,7 +22,7 @@ namespace Sudokumb
         /// How many game boards have been examined while searching for the
         /// solution?
         /// </summary>
-        public int BoardsExaminedCount { get; set; }
+        public long BoardsExaminedCount { get; set; }
     }
 
     public class SolveStateStore : IHostedService
@@ -46,13 +46,15 @@ namespace Sudokumb
                 datastore.NamespaceId, SOLUTION_KIND);
         }
 
-        public async Task<SolveState> GetAsync(string solveRequestId)
+        public async Task<SolveState> GetAsync(string solveRequestId,
+            CancellationToken cancellationToken)
         {
             Entity entity = await _datastore.LookupAsync(
                 _solutionKeyFactory.CreateKey(solveRequestId));
             var solveState = new SolveState()
             {
-                BoardsExaminedCount = 7
+                BoardsExaminedCount = await _datastoreCounter
+                    .GetCountAsync(solveRequestId, cancellationToken)
             };
             if (null != entity && entity.Properties.ContainsKey(SOLUTION_KIND))
             {
@@ -70,6 +72,24 @@ namespace Sudokumb
                 [SOLUTION_KIND] = gameBoard.Board
             };
             return _datastore.UpsertAsync(entity);
+        }
+
+        // /////////////////////////////////////////////////////////////////////
+        // IHostedService implementation periodically saves examined game board
+        // counts to datastore.
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            System.Diagnostics.Debug.Assert(null == _cancelHostedService);
+            _cancelHostedService = new CancellationTokenSource();
+            _hostedService = Task.Run(async() => await HostedServiceMainAsync(
+                _cancelHostedService.Token));
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _cancelHostedService.Cancel();
+            return _hostedService;
         }
 
         public void IncreaseExaminedBoardCount(string solveRequestId,
@@ -113,21 +133,6 @@ namespace Sudokumb
                 await Task.Delay(1000, cancellationToken);
                 await ReportExaminedBoardCountsAsync(cancellationToken);
             }
-        }
-
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            System.Diagnostics.Debug.Assert(null == _cancelHostedService);
-            _cancelHostedService = new CancellationTokenSource();
-            _hostedService = Task.Run(async() => await HostedServiceMainAsync(
-                _cancelHostedService.Token));
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            _cancelHostedService.Cancel();
-            return _hostedService;
         }
     }
 }

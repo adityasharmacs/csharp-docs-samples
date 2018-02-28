@@ -35,6 +35,7 @@ namespace WebSolver
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<IDumb, AdminSettings>();
             services.AddSingleton<ICounter, InterlockedCounter>();
+            services.AddSingleton<IHostedService, SolveStateStore>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -35,7 +35,8 @@ namespace Sudokumb
     public interface ISolveRequester
     {
         Task<string> StartSolving(GameBoard gameBoard);
-        Task<SolveState> GetProgress(string solveRequestId);
+        Task<SolveState> GetProgress(string solveRequestId,
+            CancellationToken cancellationToken);
     }
 
     /// <summary>
@@ -163,6 +164,8 @@ namespace Sudokumb
                     return SubscriberClient.Reply.Nack;
                 }
                 counter_.Increase(1);
+                solveStateStore_.IncreaseExaminedBoardCount(
+                    message.SolveRequestId, 1);
                 GameBoard board = moves.Pop();
                 if (!board.HasEmptyCell())
                 {
@@ -216,8 +219,9 @@ namespace Sudokumb
             await publisherApi_.PublishAsync(MyTopic, pubsubMessages);
         }
 
-        public Task<SolveState> GetProgress(string solveRequestId) =>
-            solveStateStore_.GetAsync(solveRequestId);
+        public Task<SolveState> GetProgress(string solveRequestId,
+            CancellationToken cancellationToken) =>
+            solveStateStore_.GetAsync(solveRequestId, cancellationToken);
 
         Task IHostedService.StartAsync(CancellationToken cancellationToken) =>
             subscriberClient_.StartAsync(

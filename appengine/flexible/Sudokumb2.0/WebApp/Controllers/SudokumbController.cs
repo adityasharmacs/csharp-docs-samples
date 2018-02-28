@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -49,9 +50,10 @@ namespace WebApp.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Solve(string id)
+        public async Task<IActionResult> Solve(string id,
+            CancellationToken cancellationToken)
         {
-            SolveState state = await solver_.GetProgress(id);
+            SolveState state = await solver_.GetProgress(id, cancellationToken);
             return new JsonResult(new
             {
                 BoardsExaminedCount = state.BoardsExaminedCount,
