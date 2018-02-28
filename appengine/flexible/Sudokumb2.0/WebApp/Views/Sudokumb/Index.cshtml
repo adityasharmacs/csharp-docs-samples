@@ -54,15 +54,14 @@
         <script>
 
         function handleSolveResponse(response) {
+            $("#solvingMessage").text(
+                "Examined " + response.boardsExaminedCount + " boards...");
             if (response.solution) {
                 $("#solutionPre").text(response.solution);
-                $("#solvingMessage").hide(1000);
                 $("#solutionPre").show(1000);
             }
             else {
-                $("#solvingMessage").text(
-                    "Examined " + response.boardsExaminedCount + " boards...");
-                setTimeout(scheduleStatusCheck, 5000);
+                setTimeout(scheduleStatusCheck, 2000);
             }
         }
 
