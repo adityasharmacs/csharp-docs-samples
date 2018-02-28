@@ -52,6 +52,7 @@
     @if (solving)
     {
         <script>
+        let delayMs = 2000;
 
         function handleSolveResponse(response) {
             $("#solvingMessage").text(
@@ -61,7 +62,8 @@
                 $("#solutionPre").show(1000);
             }
             else {
-                setTimeout(scheduleStatusCheck, 2000);
+                setTimeout(scheduleStatusCheck, delayMs);
+                delayMs = delayMs * 1.2;  // backoff
             }
         }
 
