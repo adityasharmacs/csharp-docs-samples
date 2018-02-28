@@ -26,7 +26,7 @@ namespace Sudokumb
         public long BoardsExaminedCount { get; set; }
     }
 
-    public class SolveStateStore : IHostedService
+    public class SolveStateStore
     {
         const string SOLUTION_KIND = "Solution";
         readonly DatastoreDb _datastore;
@@ -36,8 +36,6 @@ namespace Sudokumb
         Task _hostedService;
         ILogger _logger;
 
-        ConcurrentDictionary<string, ICounter> _examinedBoardCounts
-             = new ConcurrentDictionary<string, ICounter>();
 
         public SolveStateStore(DatastoreDb datastore,
             DatastoreCounter datastoreCounter,
@@ -78,71 +76,10 @@ namespace Sudokumb
             return _datastore.UpsertAsync(entity);
         }
 
-        // /////////////////////////////////////////////////////////////////////
-        // IHostedService implementation periodically saves examined game board
-        // counts to datastore.
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            System.Diagnostics.Debug.Assert(null == _cancelHostedService);
-            _cancelHostedService = new CancellationTokenSource();
-            _hostedService = Task.Run(async() => await HostedServiceMainAsync(
-                _cancelHostedService.Token));
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            _cancelHostedService.Cancel();
-            return _hostedService;
-        }
-
         public void IncreaseExaminedBoardCount(string solveRequestId,
             long amount)
         {
-            ICounter counter = _examinedBoardCounts.GetOrAdd(solveRequestId,
-                (key) => (ICounter) new InterlockedCounter());
-            counter.Increase(amount);
-        }
-
-        async Task ReportExaminedBoardCountsAsync(CancellationToken
-            cancellationToken)
-        {
-            Dictionary<string, long> snapshot = new Dictionary<string, long>();
-            List<Task> tasks = new List<Task>();
-            foreach (var keyValue in _examinedBoardCounts)
-            {
-                long count = snapshot[keyValue.Key] = keyValue.Value.Count;
-                if (count > 0)
-                {
-                    tasks.Add(_datastoreCounter.SetCountAsync(keyValue.Key,
-                        count, cancellationToken));
-                }
-            }
-            foreach (Task task in tasks)
-            {
-                await task;
-            }
-        }
-
-        public async Task HostedServiceMainAsync(
-            CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("SolveStateStore.HostedServiceMainAsync()");
-            while (true)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    return;
-                try 
-                {
-                    await Task.Delay(1000, cancellationToken);
-                    await ReportExaminedBoardCountsAsync(cancellationToken);
-                }
-                catch (Exception e)
-                when (!(e is OperationCanceledException))
-                {
-                    _logger.LogError(1, e, "Error while reporting examined board count.");
-                }
-            }
+            _datastoreCounter.GetLocalCounter(solveRequestId).Increase(amount);
         }
     }
 }
