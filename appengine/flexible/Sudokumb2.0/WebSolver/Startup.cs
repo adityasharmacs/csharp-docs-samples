@@ -32,12 +32,12 @@ namespace WebSolver
                 Configuration["Google:ProjectId"],
                 Configuration["Google:NamespaceId"] ?? ""));
             services.AddSingleton<SolveStateStore, SolveStateStore>();
+            services.AddSingleton<IHostedService>(
+                (p) => p.GetService<DatastoreCounter>());
             services.AddSingleton<IHostedService, Solver>();
             services.AddSingleton<IDumb, AdminSettings>();
             services.AddSingleton<ICounter, InterlockedCounter>();
             services.AddSingleton<DatastoreCounter, DatastoreCounter>();
-            services.AddSingleton<IHostedService>(
-                (x) => x.GetService<DatastoreCounter>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

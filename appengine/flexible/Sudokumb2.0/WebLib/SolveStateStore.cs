@@ -32,8 +32,6 @@ namespace Sudokumb
         readonly DatastoreDb _datastore;
         KeyFactory _solutionKeyFactory;
         readonly DatastoreCounter _datastoreCounter;
-        CancellationTokenSource _cancelHostedService;
-        Task _hostedService;
         ILogger _logger;
 
 
