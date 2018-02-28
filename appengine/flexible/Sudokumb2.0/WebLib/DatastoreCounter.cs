@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Api.Gax.Grpc;
@@ -13,7 +14,6 @@ namespace Sudokumb
     public class DatastoreCounterOptions
     {
         public string Kind { get; set; } = "Counter";
-        public int Shards { get; set; } = 32;
     }
 
     public class DatastoreCounter
@@ -25,7 +25,7 @@ namespace Sudokumb
 
         readonly KeyFactory _keyFactory;
 
-        [ThreadStatic] static readonly Random s_random = new Random();
+        readonly string _shard = Guid.NewGuid().ToString();
 
         public DatastoreCounter(DatastoreDb datastore,
             IOptions<DatastoreCounterOptions> options)
@@ -35,34 +35,19 @@ namespace Sudokumb
             var opts = options.Value;
             _keyFactory = new KeyFactory(datastore.ProjectId,
                 datastore.NamespaceId, opts.Kind);
-            System.Diagnostics.Debug.Assert(opts.Shards > 0);
         }
 
-        public async Task IncreaseAsync(string key, long amount,
+        public Task SetCountAsync(string key, long value,
             CancellationToken cancellationToken)
         {
-            int randomShard = s_random.Next(0, _options.Value.Shards);
-            Key dkey = _keyFactory.CreateKey($"{randomShard}:{key}");
-            var callSettings = CallSettings.FromCancellationToken(
-                cancellationToken);
-            using (var transaction =
-                await _datastore.BeginTransactionAsync(callSettings))
+            Entity entity = new Entity()
             {
-                Entity entity = await transaction.LookupAsync(dkey,
-                    callSettings);
-                if (null == entity || null == entity[COUNT])
-                {
-                    entity[COUNT] = amount;
-                    entity.Key = dkey;
-                }
-                else
-                {
-                    entity[COUNT] = amount + (long)entity[COUNT];
-                }
-                entity[COUNT].ExcludeFromIndexes = true;
-                transaction.Upsert(entity);
-                await transaction.CommitAsync(callSettings);
-            }
+                Key = _keyFactory.CreateKey($"{key}:{_shard}"),
+                [COUNT] = value
+            };
+            entity[COUNT].ExcludeFromIndexes = true;
+            return _datastore.UpsertAsync(entity, CallSettings
+                .FromCancellationToken(cancellationToken));
         }
 
         public async Task<long> GetCountAsync(string key,
@@ -70,19 +55,22 @@ namespace Sudokumb
         {
             var callSettings = CallSettings.FromCancellationToken(
                 cancellationToken);
-            Key[] keys = new Key[_options.Value.Shards];
-            for (int i = 0; i < keys.Length; ++i)
+            var query = new Query(_options.Value.Kind)
             {
-                keys[i] = _keyFactory.CreateKey($"{i}:{key}");
-            }
+                Filter = Filter.GreaterThan("__key__", _keyFactory.CreateKey(key)),
+                Order = { { "__key__", PropertyOrder.Types.Direction.Ascending } }
+            };
             long count = 0;
-            foreach (Entity entity in await _datastore.LookupAsync(keys,
-                    callSettings: callSettings))
+            var lazyResults = _datastore.RunQueryLazilyAsync(query, 
+                callSettings:callSettings).GetEnumerator();
+            while (await lazyResults.MoveNext())
             {
-                if (null != entity && null != entity[COUNT])
+                Entity entity = lazyResults.Current;
+                if (!entity.Key.Path.First().Name.StartsWith(key))
                 {
-                    count += (long)entity[COUNT];
+                    break;
                 }
+                count += (long)entity[COUNT];
             }
             return count;
         }

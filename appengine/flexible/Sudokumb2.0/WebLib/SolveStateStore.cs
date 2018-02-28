@@ -107,18 +107,15 @@ namespace Sudokumb
         async Task ReportExaminedBoardCountsAsync(CancellationToken
             cancellationToken)
         {
+            Dictionary<string, long> snapshot = new Dictionary<string, long>();
             List<Task> tasks = new List<Task>();
             foreach (var keyValue in _examinedBoardCounts)
             {
-                long count = keyValue.Value.Count;
+                long count = snapshot[keyValue.Key] = keyValue.Value.Count;
                 if (count > 0)
                 {
-                    tasks.Add(Task.Run(async() =>
-                    {
-                        await _datastoreCounter.IncreaseAsync(keyValue.Key,
-                            count, cancellationToken);
-                        keyValue.Value.Increase(-count);  // Reset to 0.
-                    }));
+                    tasks.Add(_datastoreCounter.SetCountAsync(keyValue.Key,
+                        count, cancellationToken));
                 }
             }
             foreach (Task task in tasks)
