@@ -25,11 +25,11 @@ namespace Sudokumb
         /// <summary>
         /// The Pub/sub subscription from which solve messages are read.
         /// </summary>
-        public string SubscriptionId { get; set; } = "sudokumb";
+        public string SubscriptionId { get; set; } = "sudokumb2";
         /// <summary>
         /// The Pub/sub topic where solve messages are written.
         /// </summary>
-        public string TopicId { get; set; } = "sudokumb";
+        public string TopicId { get; set; } = "sudokumb2";
     }
 
     public interface ISolveRequester
@@ -49,7 +49,7 @@ namespace Sudokumb
         readonly SubscriberClient subscriberClient_;
 
         readonly SolveStateStore solveStateStore_;
-        readonly ILogger<Solver> logger_;
+        readonly ILogger<Solver> _logger;
         readonly IOptions<SolverOptions> options_;
         readonly IDumb idumb_;
 
@@ -78,7 +78,7 @@ namespace Sudokumb
             ILogger<Solver> logger,
             ICounter counter)
         {
-            logger_ = logger;
+            _logger = logger;
             options_ = options;
             idumb_ = idumb;
             solveStateStore_ = solveStateStore;
@@ -88,7 +88,10 @@ namespace Sudokumb
             publisherClient_ = PublisherClient.Create(MyTopic,
                 new [] { publisherApi_});
             subscriberClient_ = SubscriberClient.Create(MySubscription,
-                new [] {subscriberApi});
+                new [] {subscriberApi}, new SubscriberClient.Settings()
+                {
+                    StreamAckDeadline = TimeSpan.FromMinutes(1)
+                });
 
             // Create the Topic and Subscription.
             try
@@ -150,7 +153,7 @@ namespace Sudokumb
             }
             catch (Exception e)
             {
-                logger_.LogError(e, "Bad message in subscription {0}\n{1}",
+                _logger.LogError(e, "Bad message in subscription {0}\n{1}",
                     MySubscription, text);
                 return SubscriberClient.Reply.Ack;
             }
@@ -161,6 +164,8 @@ namespace Sudokumb
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
+                    _logger.LogInformation(
+                        "Cancellation requested in ProcessOneMessage().");
                     return SubscriberClient.Reply.Nack;
                 }
                 counter_.Increase(1);

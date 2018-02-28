@@ -105,7 +105,7 @@ namespace Sudokumb
             _localCounters.GetOrAdd(id,
                 (key) => (ICounter) new InterlockedCounter());
 
-        Task UpdateDatastoreFromLocalCountersAsync(CancellationToken
+        async Task UpdateDatastoreFromLocalCountersAsync(CancellationToken
             cancellationToken)
         {
             Dictionary<string, long> snapshot = new Dictionary<string, long>();
@@ -126,15 +126,11 @@ namespace Sudokumb
                     entities.Add(entity);
                 }
             }
-            _localCountersSnapshot = snapshot;
             if (entities.Count > 0)
             {
-                return _datastore.UpsertAsync(entities, CallSettings
+                await _datastore.UpsertAsync(entities, CallSettings
                     .FromCancellationToken(cancellationToken));
-            }
-            else
-            {
-                return Task.CompletedTask;
+                _localCountersSnapshot = snapshot;
             }
         }
 
