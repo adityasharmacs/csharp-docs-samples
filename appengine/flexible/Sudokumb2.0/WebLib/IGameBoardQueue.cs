@@ -1,0 +1,37 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+
+namespace Sudokumb
+{
+    public class GameBoardMessage
+    {
+        public string SolveRequestId { get; set; }
+        public GameBoard Board { get; set; }
+    }
+
+    public interface IGameBoardQueue : IHostedService
+    {
+        Task Publish(string solveRequestId, IEnumerable<GameBoard> gameBoards,
+            CancellationToken cancellationToken);
+        Func<GameBoardMessage, CancellationToken, Task<bool>>
+             GameBoardMessageHandler { get; set; }
+    }
+
+    public static class IGameBoardQueueExtensions
+    {
+        public static async Task<string> StartSolving(
+            this IGameBoardQueue queue, GameBoard gameBoard,
+            CancellationToken cancellationToken)
+        {
+            // Create a new request and publish it to pubsub.
+            string solveRequestId = Guid.NewGuid().ToString();
+            await queue.Publish(solveRequestId, new [] { gameBoard },
+                cancellationToken);
+            return solveRequestId;
+        }
+
+    }
+}
