@@ -20,14 +20,75 @@ namespace Sudokumb
         public TimeSpan CondenseFrequency {get; set;} = TimeSpan.FromDays(1);
     }
 
+    // Rolls over the DatastoreCounter at half the CondenseFrequency.
+    // Prevents race condition when a counter key gets cleaned up during
+    // condensation, and later counter gets written again.
+    internal class DatastoreCounterSingleton : IHostedService
+    {
+        readonly DatastoreDb _datastore;
+        readonly IOptions<DatastoreCounterOptions> _options;
+        ILogger<DatastoreCounter> _logger;
+
+        object _thisLock = new object();
+        DatastoreCounter _counter;
+        DatastoreCounter _oldCounter;
+
+        DateTime _counterBirthday;
+
+        public DatastoreCounterSingleton(DatastoreDb datastore,
+            IOptions<DatastoreCounterOptions> options,
+            ILogger<DatastoreCounter> logger)
+        {
+            _datastore = datastore;
+            _options = options;
+            _logger = logger;
+            _counter = new DatastoreCounter(datastore, options, logger);
+            _counterBirthday = DateTime.UtcNow;
+        }
+
+        public DatastoreCounter DaCounter
+        {
+            get
+            {
+                DateTime now = DateTime.UtcNow;
+                lock(_thisLock)
+                {
+                    if (now - _counterBirthday >
+                        (_options.Value.CondenseFrequency / 2))
+                    {
+                        // Time to roll over the counter.
+                        if (_oldCounter != null)
+                        {
+                            _oldCounter.StopAsync(CancellationToken.None);
+                        }
+                        _counterBirthday = now;
+                        _oldCounter = _counter;
+                        _counter = new DatastoreCounter(
+                            _datastore, _options, _logger);
+                        _counter.StartAsync(CancellationToken.None);
+                    }
+                    return _counter;
+                }
+            }
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken) =>
+            DaCounter.StartAsync(cancellationToken);
+
+        public Task StopAsync(CancellationToken cancellationToken) =>
+            DaCounter.StartAsync(cancellationToken);
+    }
+
     public static class DatastoreCounterExtensions
     {
         public static IServiceCollection AddDatastoreCounter(
             this IServiceCollection services)
         {
-            services.AddSingleton<DatastoreCounter, DatastoreCounter>();
+            services.AddSingleton<DatastoreCounterSingleton, DatastoreCounterSingleton>();
             services.AddSingleton<IHostedService>(
-                (p) => p.GetService<DatastoreCounter>());
+                (p) => p.GetService<DatastoreCounterSingleton>());
+            services.AddScoped<DatastoreCounter>(
+                (p) => p.GetService<DatastoreCounterSingleton>().DaCounter);
             return services;
         }
     }
@@ -47,7 +108,7 @@ namespace Sudokumb
         Dictionary<string, long> _localCountersSnapshot
             = new Dictionary<string, long>();
 
-        public DatastoreCounter(DatastoreDb datastore,
+        internal DatastoreCounter(DatastoreDb datastore,
             IOptions<DatastoreCounterOptions> options,
             ILogger<DatastoreCounter> logger)
         {
