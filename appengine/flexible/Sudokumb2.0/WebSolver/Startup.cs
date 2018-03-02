@@ -26,14 +26,14 @@ namespace WebSolver
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddOptions();
-            services.Configure<SolverOptions>(
+            services.Configure<PubsubGameBoardQueueOptions>(
                 Configuration.GetSection("Google"));
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:ProjectId"],
                 Configuration["Google:NamespaceId"] ?? ""));
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddDatastoreCounter();
-            services.AddSingleton<IHostedService, Solver>();
+            services.AddSingleton<Solver>();
             services.AddSingleton<IDumb, AdminSettings>();
             services.AddSingleton<ICounter, InterlockedCounter>();
         }

@@ -14,10 +14,10 @@ namespace Sudokumb
 
     public interface IGameBoardQueue : IHostedService
     {
-        Task Publish(string solveRequestId, IEnumerable<GameBoard> gameBoards,
+        // Returns true if the puzzle was solved immediately.
+        Task<bool> Publish(string solveRequestId,
+            IEnumerable<GameBoard> gameBoards,
             CancellationToken cancellationToken);
-        Func<GameBoardMessage, CancellationToken, Task<bool>>
-             GameBoardMessageHandler { get; set; }
     }
 
     public static class IGameBoardQueueExtensions
@@ -32,6 +32,5 @@ namespace Sudokumb
                 cancellationToken);
             return solveRequestId;
         }
-
     }
 }

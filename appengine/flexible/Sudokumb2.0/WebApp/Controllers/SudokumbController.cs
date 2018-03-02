@@ -12,14 +12,17 @@ namespace WebApp.Controllers
 {
     public class SudokumbController : Controller
     {
-        readonly ISolveRequester solver_;
-        readonly AdminSettings adminSettings_;
+        readonly IGameBoardQueue _gameBoardQueue;
+        readonly AdminSettings _adminSettings;
+        readonly SolveStateStore _solveStateStore;
 
-        public SudokumbController(ISolveRequester solver,
-            AdminSettings adminSettings)
+        public SudokumbController(IGameBoardQueue gameBoardQueue,
+            AdminSettings adminSettings,
+            SolveStateStore solveStateStore)
         {
-            solver_ = solver;
-            adminSettings_ = adminSettings;
+            _gameBoardQueue = gameBoardQueue;
+            _adminSettings = adminSettings;
+            _solveStateStore = solveStateStore;
         }
 
         public IActionResult Index()
@@ -37,14 +40,16 @@ namespace WebApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Index(IndexViewForm form)
+        public async Task<IActionResult> Index(IndexViewForm form,
+            CancellationToken cancellationToken)
         {
             var model = new IndexViewModel { Form = form };
             if (ModelState.IsValid)
             {
                 // Solve the puzzle.
                 GameBoard board = GameBoard.ParseHandInput(form.Puzzle);
-                model.SolveRequestId = await solver_.StartSolving(board);
+                model.SolveRequestId = await _gameBoardQueue.StartSolving(
+                    board, cancellationToken);
             }
             return View(model);
         }
@@ -53,7 +58,8 @@ namespace WebApp.Controllers
         public async Task<IActionResult> Solve(string id,
             CancellationToken cancellationToken)
         {
-            SolveState state = await solver_.GetProgress(id, cancellationToken);
+            SolveState state = await _solveStateStore.GetAsync(id,
+                cancellationToken);
             return new JsonResult(new
             {
                 BoardsExaminedCount = state.BoardsExaminedCount,
@@ -68,7 +74,7 @@ namespace WebApp.Controllers
         {
             AdminViewModel model = new AdminViewModel()
             {
-                Dumb = await adminSettings_.IsDumbAsync()
+                Dumb = await _adminSettings.IsDumbAsync()
             };
             return View(model);
         }
@@ -77,7 +83,7 @@ namespace WebApp.Controllers
         [Authorize(Roles="admin")]
         public async Task<IActionResult> Admin(AdminViewModel model)
         {
-            await adminSettings_.SetDumbAsync(model.Dumb);
+            await _adminSettings.SetDumbAsync(model.Dumb);
             return View(model);
         }
     }

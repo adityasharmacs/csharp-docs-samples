@@ -40,14 +40,17 @@ namespace Sudokumb
         readonly SolveStateStore _solveStateStore;
         readonly ILogger<PubsubGameBoardQueue> _logger;
         readonly IOptions<PubsubGameBoardQueueOptions> _options;
+        readonly Solver _solver;
 
 
         public PubsubGameBoardQueue(
             IOptions<PubsubGameBoardQueueOptions> options,
-            ILogger<PubsubGameBoardQueue> logger)
+            ILogger<PubsubGameBoardQueue> logger,
+            Solver solver)
         {
             _logger = logger;
             _options = options;
+            _solver = solver;
             _publisherApi = PublisherServiceApiClient.Create();
             var subscriberApi = SubscriberServiceApiClient.Create();
             _publisherClient = PublisherClient.Create(MyTopic,
@@ -106,7 +109,7 @@ namespace Sudokumb
         public Func<GameBoardMessage, CancellationToken,
             Task<bool>> GameBoardMessageHandler { get; set; }
 
-        public async Task Publish(string solveRequestId,
+        public async Task<bool> Publish(string solveRequestId,
             IEnumerable<GameBoard> gameBoards,
             CancellationToken cancellationToken)
         {
@@ -122,9 +125,10 @@ namespace Sudokumb
             });
             await _publisherApi.PublishAsync(MyTopic, pubsubMessages,
                 CallSettings.FromCancellationToken(cancellationToken));
+            return false;
         }
 
-       /// <summary>
+        /// <summary>
         /// Solve one sudoku puzzle.
         /// </summary>
         /// <param name="pubsubMessage">The message as it arrived from Pub/Sub.
@@ -145,8 +149,9 @@ namespace Sudokumb
                     MySubscription, text);
                 return SubscriberClient.Reply.Ack;
             }
-            return await GameBoardArrived(message, cancellationToken) ?
-                SubscriberClient.Reply.Ack : SubscriberClient.Reply.Nack;
+            await _solver.ExamineGameBoard(message, this, cancellationToken);
+            return cancellationToken.IsCancellationRequested ?
+                SubscriberClient.Reply.Nack : SubscriberClient.Reply.Ack;
         }
 
         Task IHostedService.StartAsync(CancellationToken cancellationToken) =>

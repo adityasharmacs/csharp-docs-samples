@@ -32,7 +32,7 @@ namespace WebApp
             services.AddOptions();
             services.Configure<Models.AccountViewModels.AccountOptions>(
                 Configuration.GetSection("Account"));
-            services.Configure<SolverOptions>(
+            services.Configure<PubsubGameBoardQueueOptions>(
                 Configuration.GetSection("Google"));
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:ProjectId"],
@@ -47,8 +47,11 @@ namespace WebApp
                 DatastoreRoleStore<IdentityRole>>();
             services.AddSingleton<SolveStateStore, SolveStateStore>();
             services.AddDatastoreCounter();
-            services.AddSingleton<ISolveRequester, Solver>();
-            services.AddSingleton<AdminSettings, AdminSettings>();
+            services.AddSingleton<Solver>();
+            services.AddSingleton<IGameBoardQueue, InMemoryGameBoardStack>();
+            services.AddSingleton<AdminSettings>();
+            services.AddSingleton<ICounter, InterlockedCounter>();
+            services.AddSingleton<DatastoreCounter>();
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddMvc();
