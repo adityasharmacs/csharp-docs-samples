@@ -50,8 +50,6 @@ namespace WebApp
             services.AddSingleton<Solver>();
             services.AddSingleton<IGameBoardQueue, InMemoryGameBoardStack>();
             services.AddSingleton<AdminSettings>();
-            services.AddSingleton<ICounter, InterlockedCounter>();
-            services.AddSingleton<DatastoreCounter>();
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddMvc();

@@ -22,14 +22,10 @@ namespace Sudokumb
     public class Solver
     {
         readonly SolveStateStore _solveStateStore;
-        readonly ICounter _counter;
 
-        public Solver(
-            SolveStateStore solveStateStore,
-            ICounter counter)
+        public Solver(SolveStateStore solveStateStore)
         {
             _solveStateStore = solveStateStore;
-            _counter = counter;
         }
 
         public async Task<bool> ExamineGameBoard(GameBoardMessage message,
@@ -39,7 +35,6 @@ namespace Sudokumb
             {
                 return false;
             }
-            _counter.Increase(1);
             _solveStateStore.IncreaseExaminedBoardCount(
                 message.SolveRequestId, 1);
             if (!message.Board.HasEmptyCell())

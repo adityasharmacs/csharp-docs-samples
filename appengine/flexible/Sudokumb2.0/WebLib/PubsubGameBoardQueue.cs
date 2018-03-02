@@ -36,8 +36,6 @@ namespace Sudokumb
         readonly PublisherServiceApiClient _publisherApi;
         readonly PublisherClient _publisherClient;
         readonly SubscriberClient _subscriberClient;
-
-        readonly SolveStateStore _solveStateStore;
         readonly ILogger<PubsubGameBoardQueue> _logger;
         readonly IOptions<PubsubGameBoardQueueOptions> _options;
         readonly Solver _solver;

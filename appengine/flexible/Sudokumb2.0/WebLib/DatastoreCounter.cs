@@ -87,7 +87,7 @@ namespace Sudokumb
             services.AddSingleton<DatastoreCounterSingleton, DatastoreCounterSingleton>();
             services.AddSingleton<IHostedService>(
                 (p) => p.GetService<DatastoreCounterSingleton>());
-            services.AddScoped<DatastoreCounter>(
+            services.AddSingleton<DatastoreCounter>(
                 (p) => p.GetService<DatastoreCounterSingleton>().DaCounter);
             return services;
         }

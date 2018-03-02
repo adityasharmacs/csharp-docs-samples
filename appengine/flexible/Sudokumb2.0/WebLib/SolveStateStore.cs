@@ -30,10 +30,16 @@ namespace Sudokumb
     {
         const string SOLUTION_KIND = "Solution";
         readonly DatastoreDb _datastore;
-        KeyFactory _solutionKeyFactory;
+        readonly KeyFactory _solutionKeyFactory;
         readonly DatastoreCounter _datastoreCounter;
-        ILogger _logger;
+        readonly ILogger _logger;
+        readonly ICounter _locallyExaminedBoardCount = new InterlockedCounter();
 
+        public long LocallyExaminedBoardCount
+        {
+            get => _locallyExaminedBoardCount.Count;
+            private set {}
+        }
 
         public SolveStateStore(DatastoreDb datastore,
             DatastoreCounter datastoreCounter,
@@ -77,6 +83,7 @@ namespace Sudokumb
         public void IncreaseExaminedBoardCount(string solveRequestId,
             long amount)
         {
+            _locallyExaminedBoardCount.Increase(amount);
             _datastoreCounter.GetLocalCounter(solveRequestId).Increase(amount);
         }
     }

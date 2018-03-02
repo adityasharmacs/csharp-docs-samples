@@ -62,9 +62,9 @@
                 $("#solutionPre").show(1000);
             }
             else {
-                setTimeout(scheduleStatusCheck, delayMs);
                 delayMs = delayMs * 1.2;  // backoff
             }
+            setTimeout(scheduleStatusCheck, delayMs);
         }
 
         function scheduleStatusCheck() {
