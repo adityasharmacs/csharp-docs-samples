@@ -6,10 +6,10 @@ using Microsoft.Extensions.Hosting;
 
 namespace Sudokumb
 {
-    public class InMemoryGameBoardStack : IGameBoardQueue
+    public class InMemoryGameBoardStackImpl
     {
         readonly Solver _solver;
-        public InMemoryGameBoardStack(Solver solver)
+        public InMemoryGameBoardStackImpl(Solver solver)
         {
             _solver = solver;
         }
@@ -25,7 +25,7 @@ namespace Sudokumb
             foreach (GameBoard gameBoard in gameBoards)
             {
                 message.Board = gameBoard;
-                bool solved = await _solver.ExamineGameBoard(message, this,
+                bool solved = await _solver.ExamineGameBoard(message,
                     cancellationToken);
                 if (solved)
                 {
@@ -34,5 +34,13 @@ namespace Sudokumb
             }
             return false;
         }
+    }
+
+    public class InMemoryGameBoardStack : InMemoryGameBoardStackImpl, IGameBoardQueue
+    {
+        public InMemoryGameBoardStack(Solver solver) : base(solver)
+        {
+             solver.Queue = this;
+       }
     }
 }

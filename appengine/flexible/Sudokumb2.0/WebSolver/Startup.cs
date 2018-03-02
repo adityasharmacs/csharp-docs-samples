@@ -34,8 +34,8 @@ namespace WebSolver
             services.AddSingleton<SolveStateStore>();
             services.AddDatastoreCounter();
             services.AddSingleton<Solver>();
-            services.AddPubsubGameBoardQueue();
-            services.AddSingleton<IDumb, AdminSettings>();
+            services.AddSwitchingGameBoardQueue(runHostedServices:true);
+            services.AddAdminSettings();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

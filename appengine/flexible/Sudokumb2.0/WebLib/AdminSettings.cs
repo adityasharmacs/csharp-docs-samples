@@ -2,9 +2,23 @@ using System;
 using System.Threading.Tasks;
 using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Sudokumb
 {
+    public static class AdminSettingsExtensions
+    {
+        public static IServiceCollection AddAdminSettings(
+            this IServiceCollection services)
+        {
+            services.AddSingleton<AdminSettings>();
+            services.AddSingleton<IDumb, AdminSettings>(
+                provider => provider.GetService<AdminSettings>()
+            );
+            return services;
+        }
+    }
+
     /// <summary>
     /// Stores settings readable by everyone, but should only be set by
     /// administrators.

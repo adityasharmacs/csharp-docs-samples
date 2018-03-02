@@ -28,8 +28,10 @@ namespace Sudokumb
             _solveStateStore = solveStateStore;
         }
 
+        public IGameBoardQueue Queue { get; set; }
+
         public async Task<bool> ExamineGameBoard(GameBoardMessage message,
-            IGameBoardQueue queue, CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -50,7 +52,7 @@ namespace Sudokumb
                 return false;
             }
             // Enumerate the next possible board states.
-            return await queue.Publish(message.SolveRequestId,
+            return await Queue.Publish(message.SolveRequestId,
                 nextMoves, cancellationToken);
         }
     }

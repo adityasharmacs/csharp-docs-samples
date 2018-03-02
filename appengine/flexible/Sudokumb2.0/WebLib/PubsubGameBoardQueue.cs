@@ -48,19 +48,19 @@ namespace Sudokumb
         }
     }
 
-    public class PubsubGameBoardQueue : IGameBoardQueue, IHostedService
+    public class PubsubGameBoardQueueImpl
     {
         readonly PublisherServiceApiClient _publisherApi;
         readonly PublisherClient _publisherClient;
         readonly SubscriberClient _subscriberClient;
-        readonly ILogger<PubsubGameBoardQueue> _logger;
+        readonly ILogger<PubsubGameBoardQueueImpl> _logger;
         readonly IOptions<PubsubGameBoardQueueOptions> _options;
         readonly Solver _solver;
 
 
-        public PubsubGameBoardQueue(
+        public PubsubGameBoardQueueImpl(
             IOptions<PubsubGameBoardQueueOptions> options,
-            ILogger<PubsubGameBoardQueue> logger,
+            ILogger<PubsubGameBoardQueueImpl> logger,
             Solver solver)
         {
             _logger = logger;
@@ -164,16 +164,35 @@ namespace Sudokumb
                     MySubscription, text);
                 return SubscriberClient.Reply.Ack;
             }
-            await _solver.ExamineGameBoard(message, this, cancellationToken);
+            await _solver.ExamineGameBoard(message, cancellationToken);
             return cancellationToken.IsCancellationRequested ?
                 SubscriberClient.Reply.Nack : SubscriberClient.Reply.Ack;
         }
 
-        Task IHostedService.StartAsync(CancellationToken cancellationToken) =>
-            _subscriberClient.StartAsync(
-                (message, token) => ProcessOneMessage(message, token));
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            Task.Run(async() =>
+            {
+                // This potentially hammers the CPU, so wait until everthing
+                // else starts up.
+                await Task.Delay(TimeSpan.FromSeconds(10));
+                await _subscriberClient.StartAsync(
+                    (message, token) => ProcessOneMessage(message, token));
+            });
+            return Task.CompletedTask;
+        }
 
-        Task IHostedService.StopAsync(CancellationToken cancellationToken) =>
+        public Task StopAsync(CancellationToken cancellationToken) =>
             _subscriberClient.StopAsync(cancellationToken);
      }
+
+    public class PubsubGameBoardQueue : PubsubGameBoardQueueImpl, IGameBoardQueue, IHostedService
+    {
+        public PubsubGameBoardQueue(IOptions<PubsubGameBoardQueueOptions> options,
+             ILogger<PubsubGameBoardQueueImpl> logger, Solver solver)
+             : base(options, logger, solver)
+        {
+            solver.Queue = this;
+        }
+    }
 }
