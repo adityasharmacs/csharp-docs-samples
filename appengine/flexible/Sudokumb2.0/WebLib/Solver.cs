@@ -31,7 +31,7 @@ namespace Sudokumb
         public IGameBoardQueue Queue { get; set; }
 
         public async Task<bool> ExamineGameBoard(string solveRequestId,
-            GameBoard board,
+            GameBoard board, int gameSearchTreeDepth,
             CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -53,7 +53,7 @@ namespace Sudokumb
             }
             // Enumerate the next possible board states.
             return await Queue.Publish(solveRequestId, nextMoves,
-                cancellationToken);
+                gameSearchTreeDepth + 1, cancellationToken);
         }
     }
 }

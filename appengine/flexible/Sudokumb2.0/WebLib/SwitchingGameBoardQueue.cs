@@ -46,18 +46,18 @@ namespace Sudokumb
         }
 
         public async Task<bool> Publish(string solveRequestId,
-            IEnumerable<GameBoard> gameBoards,
+            IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
             CancellationToken cancellationToken)
         {
             if (await _idumb.IsDumbAsync())
             {
                 return await _gameBoardQueue.Publish(solveRequestId, gameBoards,
-                    cancellationToken);
+                    gameSearchTreeDepth, cancellationToken);
             }
             else
             {
                 return await _gameBoardStack.Publish(solveRequestId, gameBoards,
-                    cancellationToken);
+                    gameSearchTreeDepth, cancellationToken);
             }
         }
 

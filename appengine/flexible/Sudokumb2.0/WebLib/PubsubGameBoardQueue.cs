@@ -125,13 +125,14 @@ namespace Sudokumb
             Task<bool>> GameBoardMessageHandler { get; set; }
 
         public async Task<bool> Publish(string solveRequestId,
-            IEnumerable<GameBoard> gameBoards,
+            IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
             CancellationToken cancellationToken)
         {
             var messages = gameBoards.Select(board => new GameBoardMessage()
             {
                 SolveRequestId = solveRequestId,
-                Board = board
+                Board = board,
+                GameSearchTreeDepth = gameSearchTreeDepth + 1
             });
             var pubsubMessages = messages.Select(message => new PubsubMessage()
             {
@@ -165,7 +166,7 @@ namespace Sudokumb
                 return SubscriberClient.Reply.Ack;
             }
             await _solver.ExamineGameBoard(message.SolveRequestId, message.Board,
-                cancellationToken);
+                message.GameSearchTreeDepth, cancellationToken);
             return cancellationToken.IsCancellationRequested ?
                 SubscriberClient.Reply.Nack : SubscriberClient.Reply.Ack;
         }
@@ -201,6 +202,7 @@ namespace Sudokumb
     {
         public string SolveRequestId { get; set; }
         public GameBoard Board { get; set; }
+        public int GameSearchTreeDepth { get; set; }
     }
 }
 

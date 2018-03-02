@@ -15,13 +15,13 @@ namespace Sudokumb
         }
 
         public async Task<bool> Publish(string solveRequestId,
-            IEnumerable<GameBoard> gameBoards,
+            IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
             CancellationToken cancellationToken)
         {
             foreach (GameBoard board in gameBoards)
             {
                 bool solved = await _solver.ExamineGameBoard(solveRequestId,
-                    board, cancellationToken);
+                    board, gameSearchTreeDepth, cancellationToken);
                 if (solved)
                 {
                     return true;
