@@ -30,7 +30,8 @@ namespace Sudokumb
 
         public IGameBoardQueue Queue { get; set; }
 
-        public async Task<bool> ExamineGameBoard(GameBoardMessage message,
+        public async Task<bool> ExamineGameBoard(string solveRequestId,
+            GameBoard board,
             CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -38,22 +39,21 @@ namespace Sudokumb
                 return false;
             }
             _solveStateStore.IncreaseExaminedBoardCount(
-                message.SolveRequestId, 1);
-            if (!message.Board.HasEmptyCell())
+                solveRequestId, 1);
+            if (!board.HasEmptyCell())
             {
                 // Solved!
-                await _solveStateStore.SetAsync(message.SolveRequestId,
-                    message.Board);
+                await _solveStateStore.SetAsync(solveRequestId, board);
                 return true;
             }
-            var nextMoves = message.Board.FillNextEmptyCell();
+            var nextMoves = board.FillNextEmptyCell();
             if (nextMoves.Count() == 0)
             {
                 return false;
             }
             // Enumerate the next possible board states.
-            return await Queue.Publish(message.SolveRequestId,
-                nextMoves, cancellationToken);
+            return await Queue.Publish(solveRequestId, nextMoves,
+                cancellationToken);
         }
     }
 }

@@ -18,15 +18,10 @@ namespace Sudokumb
             IEnumerable<GameBoard> gameBoards,
             CancellationToken cancellationToken)
         {
-            GameBoardMessage message = new GameBoardMessage()
+            foreach (GameBoard board in gameBoards)
             {
-                SolveRequestId = solveRequestId
-            };
-            foreach (GameBoard gameBoard in gameBoards)
-            {
-                message.Board = gameBoard;
-                bool solved = await _solver.ExamineGameBoard(message,
-                    cancellationToken);
+                bool solved = await _solver.ExamineGameBoard(solveRequestId,
+                    board, cancellationToken);
                 if (solved)
                 {
                     return true;

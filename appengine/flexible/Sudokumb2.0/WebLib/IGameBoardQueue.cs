@@ -6,12 +6,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace Sudokumb
 {
-    public class GameBoardMessage
-    {
-        public string SolveRequestId { get; set; }
-        public GameBoard Board { get; set; }
-    }
-
     public interface IGameBoardQueue
     {
         // Returns true if the puzzle was solved immediately.

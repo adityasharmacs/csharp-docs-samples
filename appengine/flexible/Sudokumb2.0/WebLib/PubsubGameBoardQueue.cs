@@ -164,7 +164,8 @@ namespace Sudokumb
                     MySubscription, text);
                 return SubscriberClient.Reply.Ack;
             }
-            await _solver.ExamineGameBoard(message, cancellationToken);
+            await _solver.ExamineGameBoard(message.SolveRequestId, message.Board,
+                cancellationToken);
             return cancellationToken.IsCancellationRequested ?
                 SubscriberClient.Reply.Nack : SubscriberClient.Reply.Ack;
         }
@@ -195,4 +196,11 @@ namespace Sudokumb
             solver.Queue = this;
         }
     }
+
+    public class GameBoardMessage
+    {
+        public string SolveRequestId { get; set; }
+        public GameBoard Board { get; set; }
+    }
 }
+

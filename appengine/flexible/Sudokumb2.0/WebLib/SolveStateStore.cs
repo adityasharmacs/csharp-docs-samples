@@ -77,6 +77,7 @@ namespace Sudokumb
                 Key = _solutionKeyFactory.CreateKey(solveRequestId),
                 [SOLUTION_KIND] = gameBoard.Board
             };
+            entity[SOLUTION_KIND].ExcludeFromIndexes = true;
             return _datastore.UpsertAsync(entity);
         }
 
