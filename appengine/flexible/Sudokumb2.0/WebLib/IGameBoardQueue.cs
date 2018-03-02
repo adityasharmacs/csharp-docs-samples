@@ -12,7 +12,7 @@ namespace Sudokumb
         public GameBoard Board { get; set; }
     }
 
-    public interface IGameBoardQueue : IHostedService
+    public interface IGameBoardQueue
     {
         // Returns true if the puzzle was solved immediately.
         Task<bool> Publish(string solveRequestId,

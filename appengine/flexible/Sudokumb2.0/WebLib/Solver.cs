@@ -44,9 +44,14 @@ namespace Sudokumb
                     message.Board);
                 return true;
             }
+            var nextMoves = message.Board.FillNextEmptyCell();
+            if (nextMoves.Count() == 0)
+            {
+                return false;
+            }
             // Enumerate the next possible board states.
             return await queue.Publish(message.SolveRequestId,
-                message.Board.FillNextEmptyCell(), cancellationToken);
+                nextMoves, cancellationToken);
         }
     }
 }

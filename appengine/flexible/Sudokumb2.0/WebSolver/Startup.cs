@@ -31,11 +31,11 @@ namespace WebSolver
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:ProjectId"],
                 Configuration["Google:NamespaceId"] ?? ""));
-            services.AddSingleton<SolveStateStore, SolveStateStore>();
+            services.AddSingleton<SolveStateStore>();
             services.AddDatastoreCounter();
             services.AddSingleton<Solver>();
+            services.AddPubsubGameBoardQueue();
             services.AddSingleton<IDumb, AdminSettings>();
-            services.AddSingleton<ICounter, InterlockedCounter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -48,7 +48,7 @@ namespace WebSolver
             app.Run(async (context) =>
             {
                 long count = app.ApplicationServices
-                    .GetService<ICounter>().Count;
+                    .GetService<SolveStateStore>().LocallyExaminedBoardCount;
                 await context.Response.WriteAsync(string.Format(
                     "Examined {0} sudoku boards.", count));
             });

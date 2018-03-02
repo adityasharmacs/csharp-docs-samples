@@ -8,6 +8,7 @@ using Google.Api.Gax.Grpc;
 using Google.Cloud.PubSub.V1;
 using Google.Protobuf;
 using Grpc.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -31,7 +32,23 @@ namespace Sudokumb
         public string TopicId { get; set; } = "sudokumb";
     }
 
-    public class PubsubGameBoardQueue : IGameBoardQueue
+    public static class PubsubGameBoardQueueExtensions
+    {
+        public static IServiceCollection AddPubsubGameBoardQueue(
+            this IServiceCollection services)
+        {
+            services.AddSingleton<PubsubGameBoardQueue>();
+            services.AddSingleton<IGameBoardQueue, PubsubGameBoardQueue>(
+                provider => provider.GetService<PubsubGameBoardQueue>()
+            );
+            services.AddSingleton<IHostedService, PubsubGameBoardQueue>(
+                provider => provider.GetService<PubsubGameBoardQueue>()
+            );
+            return services;
+        }
+    }
+
+    public class PubsubGameBoardQueue : IGameBoardQueue, IHostedService
     {
         readonly PublisherServiceApiClient _publisherApi;
         readonly PublisherClient _publisherClient;
