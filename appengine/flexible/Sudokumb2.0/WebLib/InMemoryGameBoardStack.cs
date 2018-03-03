@@ -9,22 +9,38 @@ namespace Sudokumb
     public class InMemoryGameBoardStackImpl
     {
         readonly Solver _solver;
-        public InMemoryGameBoardStackImpl(Solver solver)
+        private readonly SolveStateStore _solveStateStore;
+
+        public InMemoryGameBoardStackImpl(Solver solver,
+            SolveStateStore solveStateStore)
         {
             _solver = solver;
+            _solveStateStore = solveStateStore;
         }
 
         public async Task<bool> Publish(string solveRequestId,
             IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
             CancellationToken cancellationToken)
         {
-            foreach (GameBoard board in gameBoards)
+            Stack<GameBoard> stack = new Stack<GameBoard>(gameBoards);
+            while (stack.Count > 0)
             {
-                bool solved = await _solver.ExamineGameBoard(solveRequestId,
-                    board, gameSearchTreeDepth, cancellationToken);
-                if (solved)
+                if (cancellationToken.IsCancellationRequested)
                 {
+                    return false;
+                }
+                _solveStateStore.IncreaseExaminedBoardCount(solveRequestId, 1);
+                GameBoard board = stack.Pop();
+                IEnumerable<GameBoard> nextMoves;
+                if (_solver.ExamineGameBoard(board, out nextMoves))
+                {
+                    await _solveStateStore.SetAsync(solveRequestId, board,
+                        cancellationToken);
                     return true;
+                }
+                foreach (GameBoard gameBoard in nextMoves)
+                {
+                    stack.Push(gameBoard);
                 }
             }
             return false;
@@ -33,9 +49,10 @@ namespace Sudokumb
 
     public class InMemoryGameBoardStack : InMemoryGameBoardStackImpl, IGameBoardQueue
     {
-        public InMemoryGameBoardStack(Solver solver) : base(solver)
+        public InMemoryGameBoardStack(Solver solver,
+            SolveStateStore solveStateStore)
+            : base(solver, solveStateStore)
         {
-             solver.Queue = this;
-       }
+        }
     }
 }

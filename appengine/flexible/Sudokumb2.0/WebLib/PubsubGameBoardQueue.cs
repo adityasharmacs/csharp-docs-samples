@@ -25,11 +25,11 @@ namespace Sudokumb
         /// <summary>
         /// The Pub/sub subscription from which solve messages are read.
         /// </summary>
-        public string SubscriptionId { get; set; } = "sudokumb";
+        public string SubscriptionId { get; set; } = "sudokumb3";
         /// <summary>
         /// The Pub/sub topic where solve messages are written.
         /// </summary>
-        public string TopicId { get; set; } = "sudokumb";
+        public string TopicId { get; set; } = "sudokumb3";
     }
 
     public static class PubsubGameBoardQueueExtensions
@@ -54,6 +54,7 @@ namespace Sudokumb
         readonly PublisherClient _publisherClient;
         readonly SubscriberClient _subscriberClient;
         readonly ILogger<PubsubGameBoardQueueImpl> _logger;
+        private readonly SolveStateStore _solveStateStore;
         readonly IOptions<PubsubGameBoardQueueOptions> _options;
         readonly Solver _solver;
 
@@ -61,9 +62,11 @@ namespace Sudokumb
         public PubsubGameBoardQueueImpl(
             IOptions<PubsubGameBoardQueueOptions> options,
             ILogger<PubsubGameBoardQueueImpl> logger,
+            SolveStateStore solveStateStore,
             Solver solver)
         {
             _logger = logger;
+            _solveStateStore = solveStateStore;
             _options = options;
             _solver = solver;
             _publisherApi = PublisherServiceApiClient.Create();
@@ -131,7 +134,7 @@ namespace Sudokumb
             var messages = gameBoards.Select(board => new GameBoardMessage()
             {
                 SolveRequestId = solveRequestId,
-                Board = board,
+                Boards = new [] { board },
                 GameSearchTreeDepth = gameSearchTreeDepth + 1
             });
             var pubsubMessages = messages.Select(message => new PubsubMessage()
@@ -153,6 +156,7 @@ namespace Sudokumb
         async Task<SubscriberClient.Reply> ProcessOneMessage(
             PubsubMessage pubsubMessage, CancellationToken cancellationToken)
         {
+            // Unpack the pubsub message.
             string text = pubsubMessage.Data.ToString(Encoding.UTF8);
             GameBoardMessage message;
             try
@@ -165,17 +169,52 @@ namespace Sudokumb
                     MySubscription, text);
                 return SubscriberClient.Reply.Ack;
             }
-            await _solver.ExamineGameBoard(message.SolveRequestId, message.Board,
-                message.GameSearchTreeDepth, cancellationToken);
-            return cancellationToken.IsCancellationRequested ?
-                SubscriberClient.Reply.Nack : SubscriberClient.Reply.Ack;
+            if (message.Boards == null || message.Boards.Length == 0 ||
+                string.IsNullOrEmpty(message.SolveRequestId))
+            {
+                _logger.LogError("Bad message in subscription {0}\n{1}",
+                    MySubscription, text);
+                return SubscriberClient.Reply.Ack;
+            }
+            // Examine the board.
+            IEnumerable<GameBoard> nextMoves;
+            _solveStateStore.IncreaseExaminedBoardCount(
+                message.SolveRequestId, 1);
+            if (_solver.ExamineGameBoard(message.Boards.Last(), out nextMoves))
+            {
+                await _solveStateStore.SetAsync(message.SolveRequestId,
+                    message.Boards.Last(), cancellationToken);
+                return SubscriberClient.Reply.Ack;
+            }
+            // Append new boards to the stack.
+            message.GameSearchTreeDepth += 1;
+            List<GameBoard> stack =
+                new List<GameBoard>(message.Boards.SkipLast(1));
+            stack.AddRange(nextMoves);
+            message.Boards = stack.ToArray();
+            // Republish the message with the new stack.
+            string newText = JsonConvert.SerializeObject(message);
+            /*
+            await _publisherApi.PublishAsync(MyTopic, new []
+            {
+                new PubsubMessage()
+                {
+                    Data = ByteString.CopyFromUtf8(newText)
+                }
+            }, cancellationToken);
+            */
+            await _publisherClient.PublishAsync(new PubsubMessage()
+            {
+                Data = ByteString.CopyFromUtf8(newText)
+            });
+            return SubscriberClient.Reply.Ack;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
             Task.Run(async() =>
             {
-                // This potentially hammers the CPU, so wait until everthing
+                // This potentially hammers the CPU, so wait until everything
                 // else starts up.
                 await Task.Delay(TimeSpan.FromSeconds(10));
                 await _subscriberClient.StartAsync(
@@ -186,23 +225,25 @@ namespace Sudokumb
 
         public Task StopAsync(CancellationToken cancellationToken) =>
             _subscriberClient.StopAsync(cancellationToken);
-     }
+    }
 
     public class PubsubGameBoardQueue : PubsubGameBoardQueueImpl, IGameBoardQueue, IHostedService
     {
-        public PubsubGameBoardQueue(IOptions<PubsubGameBoardQueueOptions> options,
-             ILogger<PubsubGameBoardQueueImpl> logger, Solver solver)
-             : base(options, logger, solver)
+        public PubsubGameBoardQueue(
+            IOptions<PubsubGameBoardQueueOptions> options,
+            ILogger<PubsubGameBoardQueueImpl> logger,
+            SolveStateStore solveStateStore, Solver solver)
+            : base(options, logger, solveStateStore, solver)
         {
-            solver.Queue = this;
         }
     }
 
     public class GameBoardMessage
     {
         public string SolveRequestId { get; set; }
-        public GameBoard Board { get; set; }
+        public GameBoard[] Boards { get; set; }
         public int GameSearchTreeDepth { get; set; }
     }
 }
+
 

@@ -21,39 +21,16 @@ namespace Sudokumb
     /// </summary>
     public class Solver
     {
-        readonly SolveStateStore _solveStateStore;
-
-        public Solver(SolveStateStore solveStateStore)
+        public bool ExamineGameBoard(GameBoard board,
+            out IEnumerable<GameBoard> nextMoves)
         {
-            _solveStateStore = solveStateStore;
-        }
-
-        public IGameBoardQueue Queue { get; set; }
-
-        public async Task<bool> ExamineGameBoard(string solveRequestId,
-            GameBoard board, int gameSearchTreeDepth,
-            CancellationToken cancellationToken)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return false;
-            }
-            _solveStateStore.IncreaseExaminedBoardCount(
-                solveRequestId, 1);
             if (!board.HasEmptyCell())
             {
-                // Solved!
-                await _solveStateStore.SetAsync(solveRequestId, board);
+                nextMoves = null;
                 return true;
             }
-            var nextMoves = board.FillNextEmptyCell();
-            if (nextMoves.Count() == 0)
-            {
-                return false;
-            }
-            // Enumerate the next possible board states.
-            return await Queue.Publish(solveRequestId, nextMoves,
-                gameSearchTreeDepth + 1, cancellationToken);
+            nextMoves = board.FillNextEmptyCell();
+            return false;
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Datastore.V1;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sudokumb;
@@ -35,6 +36,8 @@ namespace Sudokumb
         readonly ILogger _logger;
         readonly ICounter _locallyExaminedBoardCount = new InterlockedCounter();
 
+        // TODO: use a cache of some kind to avoid slamming datastore when
+        // we switch from dumb mode to smart mode.
         public long LocallyExaminedBoardCount
         {
             get => _locallyExaminedBoardCount.Count;
@@ -70,7 +73,8 @@ namespace Sudokumb
             return solveState;
         }
 
-        public Task SetAsync(string solveRequestId, GameBoard gameBoard)
+        public Task SetAsync(string solveRequestId, GameBoard gameBoard,
+            CancellationToken cancellationToken)
         {
             Entity entity = new Entity()
             {
@@ -78,7 +82,8 @@ namespace Sudokumb
                 [SOLUTION_KIND] = gameBoard.Board
             };
             entity[SOLUTION_KIND].ExcludeFromIndexes = true;
-            return _datastore.UpsertAsync(entity);
+            return _datastore.UpsertAsync(entity,
+                CallSettings.FromCancellationToken(cancellationToken));
         }
 
         public void IncreaseExaminedBoardCount(string solveRequestId,

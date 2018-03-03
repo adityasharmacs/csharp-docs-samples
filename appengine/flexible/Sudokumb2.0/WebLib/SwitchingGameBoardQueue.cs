@@ -42,7 +42,6 @@ namespace Sudokumb
             this._gameBoardStack = gameBoardStack;
             this._gameBoardQueue = gameBoardQueue;
             this._idumb = idumb;
-            solver.Queue = this;
         }
 
         public async Task<bool> Publish(string solveRequestId,

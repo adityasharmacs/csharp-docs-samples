@@ -47,7 +47,7 @@ namespace WebApp
                 DatastoreRoleStore<IdentityRole>>();
             services.AddSingleton<SolveStateStore>();
             services.AddDatastoreCounter();
-            services.AddSwitchingGameBoardQueue(runHostedServices:false);
+            services.AddPubsubGameBoardQueue();
             services.AddAdminSettings();
             services.AddSingleton<Solver>();
             services.AddTransient<IEmailSender, EmailSender>();
