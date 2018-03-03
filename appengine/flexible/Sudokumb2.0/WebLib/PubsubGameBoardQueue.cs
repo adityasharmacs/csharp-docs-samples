@@ -57,7 +57,7 @@ namespace Sudokumb
         private readonly SolveStateStore _solveStateStore;
         readonly IOptions<PubsubGameBoardQueueOptions> _options;
         readonly Solver _solver;
-
+        const int MAX_STACKS = -1;
 
         public PubsubGameBoardQueueImpl(
             IOptions<PubsubGameBoardQueueOptions> options,
@@ -135,7 +135,7 @@ namespace Sudokumb
             {
                 SolveRequestId = solveRequestId,
                 Boards = new [] { board },
-                GameSearchTreeDepth = gameSearchTreeDepth + 1
+                Stacks = 1,
             });
             var pubsubMessages = messages.Select(message => new PubsubMessage()
             {
@@ -186,27 +186,38 @@ namespace Sudokumb
                     message.Boards.Last(), cancellationToken);
                 return SubscriberClient.Reply.Ack;
             }
-            // Append new boards to the stack.
-            message.GameSearchTreeDepth += 1;
-            List<GameBoard> stack =
-                new List<GameBoard>(message.Boards.SkipLast(1));
-            stack.AddRange(nextMoves);
-            message.Boards = stack.ToArray();
-            // Republish the message with the new stack.
-            string newText = JsonConvert.SerializeObject(message);
-            /*
-            await _publisherApi.PublishAsync(MyTopic, new []
+            int stacks = nextMoves.Count();
+            List<Task> tasks = new List<Task>();
+            if (stacks * message.Stacks > MAX_STACKS) 
             {
-                new PubsubMessage()
+                // Too many stacks.  Don't fork again.            
+                List<GameBoard> stack =
+                    new List<GameBoard>(message.Boards.SkipLast(1));
+                stack.AddRange(nextMoves);
+                message.Boards = stack.ToArray();
+                // Republish the message with the new stack.
+                string newText = JsonConvert.SerializeObject(message);
+                tasks.Add(_publisherClient.PublishAsync(new PubsubMessage()
                 {
                     Data = ByteString.CopyFromUtf8(newText)
-                }
-            }, cancellationToken);
-            */
-            await _publisherClient.PublishAsync(new PubsubMessage()
+                }));
+            }
+            else
             {
-                Data = ByteString.CopyFromUtf8(newText)
-            });
+                // Fork this one stack into multiple stacks.
+                message.Stacks *= stacks;
+                foreach (GameBoard move in nextMoves)
+                {
+                    message.Boards[message.Boards.Length -1] = move;
+                    // Republish the message with the new stack.
+                    string newText = JsonConvert.SerializeObject(message);
+                    tasks.Add(_publisherClient.PublishAsync(new PubsubMessage()
+                    {
+                        Data = ByteString.CopyFromUtf8(newText)
+                    }));
+                }
+            }
+            foreach (Task task in tasks) await task;
             return SubscriberClient.Reply.Ack;
         }
 
@@ -242,7 +253,7 @@ namespace Sudokumb
     {
         public string SolveRequestId { get; set; }
         public GameBoard[] Boards { get; set; }
-        public int GameSearchTreeDepth { get; set; }
+        public int Stacks { get; set; }
     }
 }
 
