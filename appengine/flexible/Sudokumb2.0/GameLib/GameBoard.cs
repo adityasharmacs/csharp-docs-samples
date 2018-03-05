@@ -151,7 +151,7 @@ namespace Sudokumb
         {
             var nextGameBoards = new List<GameBoard>();
             int i = _board.IndexOf(' ');
-            if (i > 0)
+            if (i >= 0)
             {
                 int rowNumber = i / 9;
                 int colNumber = i % 9;
