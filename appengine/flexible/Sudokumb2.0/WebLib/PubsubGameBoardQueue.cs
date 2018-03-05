@@ -25,16 +25,22 @@ namespace Sudokumb
         /// <summary>
         /// The Pub/sub subscription from which solve messages are read.
         /// </summary>
-        public string SubscriptionId { get; set; } = "sudokumb3";
+        public string SubscriptionId { get; set; } = "sudokumb4";
         /// <summary>
         /// The Pub/sub topic where solve messages are written.
         /// </summary>
-        public string TopicId { get; set; } = "sudokumb3";
+        public string TopicId { get; set; } = "sudokumb4";
+        /// <summary>
+        /// When exploring the game tree, the number of branches that should
+        /// be explored in parallel.
+        /// </summary>
+        /// <returns></returns>
+        public int MaxParallelBranches { get; set; } = 10;
     }
 
     public static class PubsubGameBoardQueueExtensions
     {
-        public static IServiceCollection AddPubsubGameBoardQueue(
+        public static IServiceCollection AddPubsubGameBoardQueueAndSolver(
             this IServiceCollection services)
         {
             services.AddSingleton<PubsubGameBoardQueue>();
@@ -48,6 +54,8 @@ namespace Sudokumb
         }
     }
 
+    // Implements a GameBoardQueue using Pub/sub.  The next boards to be
+    // evaluated are published to a Pub/sub topic.
     public class PubsubGameBoardQueueImpl
     {
         readonly PublisherServiceApiClient _publisherApi;
@@ -57,7 +65,6 @@ namespace Sudokumb
         private readonly SolveStateStore _solveStateStore;
         readonly IOptions<PubsubGameBoardQueueOptions> _options;
         readonly Solver _solver;
-        const int MAX_GAME_TREE_WIDTH = 50;
 
         public PubsubGameBoardQueueImpl(
             IOptions<PubsubGameBoardQueueOptions> options,
@@ -131,7 +138,7 @@ namespace Sudokumb
             var messages = gameBoards.Select(board => new GameBoardMessage()
             {
                 SolveRequestId = solveRequestId,
-                Stack = new [] {new BoardAndWidth { Board = board, GameTreeWidth = 1} },
+                Stack = new [] {new BoardAndWidth { Board = board, ParallelBranches = 1} },
             });
             var pubsubMessages = messages.Select(message => new PubsubMessage()
             {
@@ -179,22 +186,26 @@ namespace Sudokumb
             BoardAndWidth top = message.Stack.Last();
             if (_solver.ExamineGameBoard(top.Board, out nextMoves))
             {
+                // Yay!  Solved the game.
                 await _solveStateStore.SetAsync(message.SolveRequestId,
                     top.Board, cancellationToken);
                 return SubscriberClient.Reply.Ack;
             }
+            // Explore the next possible moves.
             List<Task> tasks = new List<Task>();
             List<GameBoard> stackMoves = new List<GameBoard>();
-            int nextLevelWidth = (1 + nextMoves.Count()) * top.GameTreeWidth;
-            if (nextLevelWidth > MAX_GAME_TREE_WIDTH) 
+            int parallelBranches = top.ParallelBranches.GetValueOrDefault(
+                _options.Value.MaxParallelBranches);
+            int nextLevelWidth = (1 + nextMoves.Count()) * parallelBranches;
+            if (nextLevelWidth > _options.Value.MaxParallelBranches) 
             {
-                // Too many stacks.  Don't fork again.            
+                // Too many branches already.  Explore this branch linearly.            
                 List<BoardAndWidth> stack =
                     new List<BoardAndWidth>(message.Stack.SkipLast(1));
                 stack.AddRange(nextMoves.Select(move => new BoardAndWidth 
                 { 
                     Board = move, 
-                    GameTreeWidth = top.GameTreeWidth
+                    ParallelBranches = top.ParallelBranches
                 }));
                 message.Stack = stack.ToArray();
                 // Republish the message with the new stack.
@@ -206,8 +217,8 @@ namespace Sudokumb
             }
             else
             {
-                // Fork this one stack into multiple stacks.
-                top.GameTreeWidth = nextLevelWidth;
+                // Branch out.
+                top.ParallelBranches = nextLevelWidth;
                 foreach (GameBoard move in nextMoves)
                 {
                     top.Board = move;
@@ -265,7 +276,7 @@ namespace Sudokumb
     class BoardAndWidth
     {
         public GameBoard Board { get; set; }
-        public int GameTreeWidth { get; set; }
+        public int? ParallelBranches { get; set; }
     }
 
     class GameBoardMessage
