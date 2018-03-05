@@ -35,7 +35,7 @@ namespace Sudokumb
         /// be explored in parallel.
         /// </summary>
         /// <returns></returns>
-        public int MaxParallelBranches { get; set; } = 10;
+        public int MaxParallelBranches { get; set; } = 20;
     }
 
     public static class PubsubGameBoardQueueExtensions
