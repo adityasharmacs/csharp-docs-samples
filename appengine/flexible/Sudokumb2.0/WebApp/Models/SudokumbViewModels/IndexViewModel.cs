@@ -34,7 +34,18 @@ namespace WebApp.Models.SudokumbViewModels
 
     public class IndexViewForm
     {
-        public const string SamplePuzzle = "1 2 3   . . .   7 8 9\n. . .   . . .   . . .\n. . .   . . .   . . .\n\n. . .   4 . .   . . .                \n. 7 .   . 5 .   . . .\n. . .   . . 6   . 2 .\n\n. . 1   . . .   . . .\n. 5 .   . . 3   . . .\n3 . .   . . .   1 . .\n";
+        public const string SamplePuzzle = @". . .  . 3 2  . . 7
+9 2 7  . . .  . . .
+. . 5  . . .  2 6 .
+
+. . .  . 2 6  . . .
+. 8 9  . 5 .  3 4 .
+. . .  8 9 .  . . .
+
+. 9 3  . . .  8 . .
+. . .  . . .  1 5 6
+5 . .  7 8 .  . . .
+";
 
         [Required]
         [Puzzle]
