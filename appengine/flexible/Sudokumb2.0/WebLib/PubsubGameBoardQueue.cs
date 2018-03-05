@@ -40,42 +40,34 @@ namespace Sudokumb
 
     public static class PubsubGameBoardQueueExtensions
     {
-        public static IServiceCollection AddPubsubGameBoardQueueAndSolver(
+        public static IServiceCollection AddPubsubGameBoardQueueSolver(
             this IServiceCollection services)
         {
-            services.AddSingleton<PubsubGameBoardQueue>();
-            services.AddSingleton<IGameBoardQueue, PubsubGameBoardQueue>(
-                provider => provider.GetService<PubsubGameBoardQueue>()
+            services.AddSingleton<PubsubGameBoardQueueSolver>();
+            services.AddSingleton<IGameBoardQueue, PubsubGameBoardQueueSolver>(
+                provider => provider.GetService<PubsubGameBoardQueueSolver>()
             );
-            services.AddSingleton<IHostedService, PubsubGameBoardQueue>(
-                provider => provider.GetService<PubsubGameBoardQueue>()
+            services.AddSingleton<IHostedService, PubsubGameBoardQueueSolver>(
+                provider => provider.GetService<PubsubGameBoardQueueSolver>()
             );
             return services;
         }
     }
 
-    // Implements a GameBoardQueue using Pub/sub.  The next boards to be
-    // evaluated are published to a Pub/sub topic.
-    public class PubsubGameBoardQueueImpl
+    public class PubsubGameBoardQueue : IGameBoardQueue
     {
-        readonly PublisherServiceApiClient _publisherApi;
-        readonly PublisherClient _publisherClient;
-        readonly SubscriberClient _subscriberClient;
-        readonly ILogger<PubsubGameBoardQueueImpl> _logger;
-        private readonly SolveStateStore _solveStateStore;
-        readonly IOptions<PubsubGameBoardQueueOptions> _options;
-        readonly Solver _solver;
+        public readonly PublisherServiceApiClient _publisherApi;
+        public readonly PublisherClient _publisherClient;
+        public readonly SubscriberClient _subscriberClient;
+        public readonly IOptions<PubsubGameBoardQueueOptions> _options;
+        public readonly ILogger _logger;
 
-        public PubsubGameBoardQueueImpl(
+        public PubsubGameBoardQueue(
             IOptions<PubsubGameBoardQueueOptions> options,
-            ILogger<PubsubGameBoardQueueImpl> logger,
-            SolveStateStore solveStateStore,
-            Solver solver)
+            ILogger<PubsubGameBoardQueue> logger)
         {
-            _logger = logger;
-            _solveStateStore = solveStateStore;
             _options = options;
-            _solver = solver;
+            _logger = logger;
             _publisherApi = PublisherServiceApiClient.Create();
             var subscriberApi = SubscriberServiceApiClient.Create();
             _publisherClient = PublisherClient.Create(MyTopic,
@@ -132,7 +124,7 @@ namespace Sudokumb
         }
 
         public async Task<bool> Publish(string solveRequestId,
-            IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
+            IEnumerable<GameBoard> gameBoards,
             CancellationToken cancellationToken)
         {
             var messages = gameBoards.Select(board => new GameBoardMessage()
@@ -148,6 +140,30 @@ namespace Sudokumb
             await _publisherApi.PublishAsync(MyTopic, pubsubMessages,
                 CallSettings.FromCancellationToken(cancellationToken));
             return false;
+        }
+    }
+
+
+    // Implements a GameBoardQueue using Pub/sub.  The next boards to be
+    // evaluated are published to a Pub/sub topic.
+    public class PubsubGameBoardQueueSolver : PubsubGameBoardQueue, IHostedService
+    {
+        private readonly SolveStateStore _solveStateStore;
+        private readonly IDumb _idumb;
+        private readonly InMemoryGameBoardStackImpl _inMemoryGameBoardStack;
+        readonly Solver _solver;
+
+        public PubsubGameBoardQueueSolver(
+            IOptions<PubsubGameBoardQueueOptions> options,
+            ILogger<PubsubGameBoardQueueSolver> logger,
+            SolveStateStore solveStateStore, IDumb idumb,
+            InMemoryGameBoardStackImpl inMemoryGameBoardStack,
+            Solver solver) : base(options, logger)
+        {
+            _solveStateStore = solveStateStore;
+            _idumb = idumb;
+            _inMemoryGameBoardStack = inMemoryGameBoardStack;
+            _solver = solver;
         }
 
         /// <summary>
@@ -177,6 +193,13 @@ namespace Sudokumb
             {
                 _logger.LogError("Bad message in subscription {0}\n{1}",
                     MySubscription, text);
+                return SubscriberClient.Reply.Ack;
+            }
+            if (!await _idumb.IsDumbAsync())
+            {
+                // Solve the puzzle the smart way.
+                await _inMemoryGameBoardStack.Publish(message.SolveRequestId, 
+                    message.Stack.Select(x => x.Board), cancellationToken);
                 return SubscriberClient.Reply.Ack;
             }
             // Examine the board.
@@ -260,17 +283,6 @@ namespace Sudokumb
 
         public Task StopAsync(CancellationToken cancellationToken) =>
             _subscriberClient.StopAsync(cancellationToken);
-    }
-
-    public class PubsubGameBoardQueue : PubsubGameBoardQueueImpl, IGameBoardQueue, IHostedService
-    {
-        public PubsubGameBoardQueue(
-            IOptions<PubsubGameBoardQueueOptions> options,
-            ILogger<PubsubGameBoardQueueImpl> logger,
-            SolveStateStore solveStateStore, Solver solver)
-            : base(options, logger, solveStateStore, solver)
-        {
-        }
     }
 
     class BoardAndWidth

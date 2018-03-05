@@ -19,16 +19,13 @@ namespace Sudokumb
         }
 
         public async Task<bool> Publish(string solveRequestId,
-            IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
+            IEnumerable<GameBoard> gameBoards,
             CancellationToken cancellationToken)
         {
             Stack<GameBoard> stack = new Stack<GameBoard>(gameBoards);
             while (stack.Count > 0)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return false;
-                }
+                cancellationToken.ThrowIfCancellationRequested();
                 _solveStateStore.IncreaseExaminedBoardCount(solveRequestId, 1);
                 GameBoard board = stack.Pop();
                 IEnumerable<GameBoard> nextMoves;

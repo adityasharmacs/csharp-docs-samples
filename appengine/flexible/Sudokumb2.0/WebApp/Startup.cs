@@ -45,11 +45,10 @@ namespace WebApp
                 DatastoreUserStore<ApplicationUser>>();
             services.AddTransient<IRoleStore<IdentityRole>,
                 DatastoreRoleStore<IdentityRole>>();
-            services.AddSingleton<SolveStateStore>();
             services.AddDatastoreCounter();
-            services.AddPubsubGameBoardQueueAndSolver();
+            services.AddSingleton<SolveStateStore>();
+            services.AddSingleton<IGameBoardQueue, PubsubGameBoardQueue>();
             services.AddAdminSettings();
-            services.AddSingleton<Solver>();
             services.AddTransient<IEmailSender, EmailSender>();
             services.AddMvc();
         }

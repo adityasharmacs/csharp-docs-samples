@@ -10,7 +10,7 @@ namespace Sudokumb
     {
         // Returns true if the puzzle was solved immediately.
         Task<bool> Publish(string solveRequestId,
-            IEnumerable<GameBoard> gameBoards, int gameSearchTreeDepth,
+            IEnumerable<GameBoard> gameBoards,
             CancellationToken cancellationToken);
     }
 
@@ -22,7 +22,7 @@ namespace Sudokumb
         {
             // Create a new request and publish it to pubsub.
             string solveRequestId = Guid.NewGuid().ToString();
-            await queue.Publish(solveRequestId, new [] { gameBoard }, 0,
+            await queue.Publish(solveRequestId, new [] { gameBoard },
                 cancellationToken);
             return solveRequestId;
         }

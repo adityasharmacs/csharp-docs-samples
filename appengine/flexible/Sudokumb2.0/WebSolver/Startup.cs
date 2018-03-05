@@ -34,7 +34,8 @@ namespace WebSolver
             services.AddSingleton<SolveStateStore>();
             services.AddDatastoreCounter();
             services.AddSingleton<Solver>();
-            services.AddPubsubGameBoardQueueAndSolver();
+            services.AddSingleton<InMemoryGameBoardStackImpl>();
+            services.AddPubsubGameBoardQueueSolver();
             services.AddAdminSettings();
         }
 
