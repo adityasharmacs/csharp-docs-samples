@@ -33,11 +33,10 @@ namespace Sudokumb
         readonly DatastoreDb _datastore;
         readonly KeyFactory _solutionKeyFactory;
         readonly DatastoreCounter _datastoreCounter;
+        readonly IMemoryCache _cache;
         readonly ILogger _logger;
         readonly ICounter _locallyExaminedBoardCount = new InterlockedCounter();
 
-        // TODO: use a cache of some kind to avoid slamming datastore when
-        // we switch from dumb mode to smart mode.
         public long LocallyExaminedBoardCount
         {
             get => _locallyExaminedBoardCount.Count;
@@ -45,11 +44,12 @@ namespace Sudokumb
         }
 
         public SolveStateStore(DatastoreDb datastore,
-            DatastoreCounter datastoreCounter,
+            DatastoreCounter datastoreCounter, IMemoryCache cache,
             ILogger<SolveStateStore> logger)
         {
             _datastore = datastore;
             _datastoreCounter = datastoreCounter;
+            _cache = cache;
             _logger = logger;
             _solutionKeyFactory = new KeyFactory(datastore.ProjectId,
                 datastore.NamespaceId, SOLUTION_KIND);
@@ -71,6 +71,17 @@ namespace Sudokumb
                     (string)entity[SOLUTION_KIND]);
             }
             return solveState;
+        }
+
+        public Task<SolveState> GetCachedAsync(string solveRequestId,
+            CancellationToken cancellationToken)
+        {
+            return _cache.GetOrCreate<Task<SolveState>>(solveRequestId,
+            entry =>
+            {
+                entry.SlidingExpiration = TimeSpan.FromSeconds(1);
+                return GetAsync(solveRequestId, cancellationToken);
+            });
         }
 
         public Task SetAsync(string solveRequestId, GameBoard gameBoard,

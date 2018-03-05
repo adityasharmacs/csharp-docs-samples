@@ -37,6 +37,7 @@ namespace WebSolver
             services.AddSingleton<InMemoryGameBoardStackImpl>();
             services.AddPubsubGameBoardQueueSolver();
             services.AddAdminSettings();
+            services.AddMemoryCache();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -195,13 +195,20 @@ namespace Sudokumb
                     MySubscription, text);
                 return SubscriberClient.Reply.Ack;
             }
+            if (null != (await _solveStateStore.GetCachedAsync(
+                message.SolveRequestId, cancellationToken))?.Solution)
+            {
+                // Already solved.
+                return SubscriberClient.Reply.Ack;
+            }
             if (!await _idumb.IsDumbAsync())
             {
                 // Solve the puzzle the smart way.
-                await _inMemoryGameBoardStack.Publish(message.SolveRequestId, 
+                await _inMemoryGameBoardStack.Publish(message.SolveRequestId,
                     message.Stack.Select(x => x.Board), cancellationToken);
                 return SubscriberClient.Reply.Ack;
             }
+            // Solve the puzzle the dumb way.
             // Examine the board.
             IEnumerable<GameBoard> nextMoves;
             _solveStateStore.IncreaseExaminedBoardCount(
@@ -220,14 +227,14 @@ namespace Sudokumb
             int parallelBranches = top.ParallelBranches.GetValueOrDefault(
                 _options.Value.MaxParallelBranches);
             int nextLevelWidth = (1 + nextMoves.Count()) * parallelBranches;
-            if (nextLevelWidth > _options.Value.MaxParallelBranches) 
+            if (nextLevelWidth > _options.Value.MaxParallelBranches)
             {
-                // Too many branches already.  Explore this branch linearly.            
+                // Too many branches already.  Explore this branch linearly.
                 List<BoardAndWidth> stack =
                     new List<BoardAndWidth>(message.Stack.SkipLast(1));
-                stack.AddRange(nextMoves.Select(move => new BoardAndWidth 
-                { 
-                    Board = move, 
+                stack.AddRange(nextMoves.Select(move => new BoardAndWidth
+                {
+                    Board = move,
                     ParallelBranches = top.ParallelBranches
                 }));
                 message.Stack = stack.ToArray();
