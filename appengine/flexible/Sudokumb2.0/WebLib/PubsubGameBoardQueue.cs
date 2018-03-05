@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -283,6 +285,28 @@ namespace Sudokumb
 
         public Task StopAsync(CancellationToken cancellationToken) =>
             _subscriberClient.StopAsync(cancellationToken);
+
+        static byte[] Deflate(string text)
+        {
+            MemoryStream memStream = new MemoryStream();
+            DeflateStream deflateStream = new DeflateStream(memStream,
+                CompressionMode.Compress);
+            TextWriter textWriter = new StreamWriter(deflateStream);
+            textWriter.Write(text);
+            textWriter.Flush();
+            memStream.Seek(0, SeekOrigin.Begin);
+            return memStream.GetBuffer();
+        }
+
+        static string Inflate(byte[] buffer)
+        {
+            MemoryStream memStream = new MemoryStream(buffer);
+            DeflateStream deflateStream = 
+                new DeflateStream(memStream, CompressionMode.Decompress);
+            TextReader textReader = new StreamReader(deflateStream);
+            return textReader.ReadToEnd();
+        }
+
     }
 
     class BoardAndWidth
