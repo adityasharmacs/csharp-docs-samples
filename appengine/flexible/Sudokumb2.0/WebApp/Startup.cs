@@ -14,6 +14,7 @@ using Sudokumb;
 using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Hosting;
 using System.Runtime.CompilerServices;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace WebApp
 {
@@ -36,7 +37,9 @@ namespace WebApp
                 Configuration.GetSection("Google"));
             services.AddSingleton<DatastoreDb>(provider => DatastoreDb.Create(
                 Configuration["Google:ProjectId"],
-                Configuration["Google:NamespaceId"] ?? ""));
+            Configuration["Google:NamespaceId"] ?? ""));
+            services.Configure<KmsDataProtectionProviderOptions>(
+                Configuration.GetSection("Google"));
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddDefaultTokenProviders();
             services.AddTransient<IUserStore<ApplicationUser>,
@@ -50,6 +53,8 @@ namespace WebApp
             services.AddSingleton<IGameBoardQueue, PubsubGameBoardQueue>();
             services.AddAdminSettings();
             services.AddTransient<IEmailSender, EmailSender>();
+            services.AddSingleton<IDataProtectionProvider,
+                KmsDataProtectionProvider>();
             services.AddMvc();
         }
 
