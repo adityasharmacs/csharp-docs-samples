@@ -18,5 +18,10 @@
     <ProjectReference Include="..\WebLib\WebLib.csproj" />
     <ProjectReference Include="..\Counters\Counters.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="app.yaml">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

@@ -23,4 +23,9 @@
     <ProjectReference Include="..\GameLib\GameLib.csproj" />
     <ProjectReference Include="..\WebLib\WebLib.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="app.yaml">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 </Project>
