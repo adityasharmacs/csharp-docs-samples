@@ -93,7 +93,7 @@ namespace Sudokumb
             return _cache.GetOrCreate<Task<SolveState>>(solveRequestId,
             entry =>
             {
-                entry.SlidingExpiration = TimeSpan.FromSeconds(1);
+                entry.SlidingExpiration = TimeSpan.FromSeconds(5);
                 return GetAsync(solveRequestId, cancellationToken);
             });
         }
