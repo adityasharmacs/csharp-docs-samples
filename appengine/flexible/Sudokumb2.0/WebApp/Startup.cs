@@ -91,19 +91,16 @@ namespace WebApp
 
             app.UseAuthentication();
 
-            // Configure redirects to HTTPS.
+            // Require HTTPS on App Engine.
             var instance = Google.Api.Gax.Platform.Instance();
-            var rewriteOptions = new RewriteOptions();
-            if (null == instance.GaeDetails)
+            if (null != instance.GaeDetails)
             {
-                rewriteOptions.AddRedirectToHttps(302, 44393);
+                var rewriteOptions = new RewriteOptions()
+                { 
+                    Rules = {new RewriteHttpsOnAppEngine(HttpsPolicy.Required)}
+                };
+                app.UseRewriter(rewriteOptions);
             }
-            else
-            {
-                rewriteOptions.Add(new RewriteHttpsOnAppEngine(
-                    HttpsPolicy.Required));
-            }
-            app.UseRewriter(rewriteOptions);
 
             app.UseMvc(routes =>
             {
