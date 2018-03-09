@@ -1,11 +1,11 @@
 // Copyright (c) 2018 Google LLC.
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not
 // use this file except in compliance with the License. You may obtain a copy of
 // the License at
-// 
+//
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -29,6 +29,7 @@ using Google.Cloud.Datastore.V1;
 using Microsoft.Extensions.Hosting;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Rewrite;
 
 namespace WebApp
 {
@@ -69,6 +70,7 @@ namespace WebApp
             services.AddTransient<IEmailSender, EmailSender>();
             services.AddSingleton<IDataProtectionProvider,
                 KmsDataProtectionProvider>();
+
             services.AddMvc();
         }
 
@@ -88,6 +90,20 @@ namespace WebApp
             app.UseStaticFiles();
 
             app.UseAuthentication();
+
+            // Configure redirects to HTTPS.
+            var instance = Google.Api.Gax.Platform.Instance();
+            var rewriteOptions = new RewriteOptions();
+            if (null == instance.GaeDetails)
+            {
+                rewriteOptions.AddRedirectToHttps(302, 44393);
+            }
+            else
+            {
+                rewriteOptions.Add(new RewriteHttpsOnAppEngine(
+                    HttpsPolicy.Required));
+            }
+            app.UseRewriter(rewriteOptions);
 
             app.UseMvc(routes =>
             {
