@@ -22,43 +22,72 @@ using System.Threading;
 
 namespace GoogleCloudSamples
 {
-    public class DatastoreTest : IDisposable
+    public class DatastoreTestFixture : IDisposable
     {
-        private readonly string _projectId;
-        private readonly DatastoreDb _db;
-        private readonly Entity _sampleTask;
-        private readonly KeyFactory _keyFactory;
-        private readonly DateTime _includedDate =
-            new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
-        private readonly DateTime _startDate =
-            new DateTime(1998, 4, 18, 0, 0, 0, DateTimeKind.Utc);
-        private readonly DateTime _endDate =
-            new DateTime(2013, 4, 18, 0, 0, 0, DateTimeKind.Utc);
-        // [START retry]
-        private readonly int _retryCount = 3;
-        private readonly int _retryDelayMs = 500;
-        // [END retry]
-        private readonly RetryRobot _retryRobot = new RetryRobot()
+        public DatastoreTestFixture()
         {
-            RetryWhenExceptions = new[] { typeof(Xunit.Sdk.XunitException) },
-            // Eventually consistency can take a long time.
-            MaxTryCount = 8
-        };
-
-        public DatastoreTest()
-        {
-            _projectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
-            _db = DatastoreDb.Create(_projectId, TestUtil.RandomName());
-            _keyFactory = _db.CreateKeyFactory("Task");
-            _sampleTask = new Entity()
+            ProjectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
+            Db = DatastoreDb.Create(ProjectId, TestUtil.RandomName());
+            KeyFactory = Db.CreateKeyFactory("Task");
+            SampleTask = new Entity()
             {
-                Key = _keyFactory.CreateKey("sampleTask"),
+                Key = KeyFactory.CreateKey("sampleTask"),
             };
+        }
+
+        public void ClearTasks()
+        {
+            var deadEntities = Db.RunQuery(new Query("Task"));
+            if (deadEntities.Entities.Count > 0)
+            {
+                Db.Delete(deadEntities.Entities);
+            }
         }
 
         public void Dispose()
         {
             ClearTasks();
+        }
+
+        public string ProjectId { get; set; }
+        public DatastoreDb Db { get; set; }
+        public Entity SampleTask { get; set; }
+        public KeyFactory KeyFactory { get; set; }
+
+    }
+
+    public class DatastoreTestBase : IClassFixture<DatastoreTestFixture>,
+        IDisposable
+    {
+        protected readonly string _projectId;
+        protected readonly DatastoreDb _db;
+        protected readonly Entity _sampleTask;
+        protected readonly KeyFactory _keyFactory;
+        protected readonly DateTime _includedDate =
+            new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        protected readonly DateTime _startDate =
+            new DateTime(1998, 4, 18, 0, 0, 0, DateTimeKind.Utc);
+        protected readonly DateTime _endDate =
+            new DateTime(2013, 4, 18, 0, 0, 0, DateTimeKind.Utc);
+        // [START retry]
+        protected readonly int _retryCount = 3;
+        protected readonly int _retryDelayMs = 500;
+        // [END retry]
+        protected readonly RetryRobot _retryRobot = new RetryRobot()
+        {
+            RetryWhenExceptions = new[] { typeof(Xunit.Sdk.XunitException) },
+            // Eventually consistency can take a long time.
+            MaxTryCount = 8
+        };
+        protected readonly DatastoreTestFixture _testFixture;
+
+        public DatastoreTestBase(DatastoreTestFixture testFixture)
+        {
+            _projectId = testFixture.ProjectId;
+            _db = testFixture.Db;
+            _keyFactory = testFixture.KeyFactory;
+            _sampleTask = testFixture.SampleTask;
+            _testFixture = testFixture;
         }
 
         /// <summary>
@@ -67,10 +96,9 @@ namespace GoogleCloudSamples
         /// an entity and then query it afterward, but may not find it immediately.
         /// </summary>
         /// <param name="action"></param>
-        private void Eventually(Action action) => _retryRobot.Eventually(action);
+        protected void Eventually(Action action) => _retryRobot.Eventually(action);
 
-
-        private bool IsValidKey(Key key)
+        protected bool IsValidKey(Key key)
         {
             foreach (var element in key.Path)
             {
@@ -80,6 +108,44 @@ namespace GoogleCloudSamples
                     return false;
             }
             return true;
+        }
+
+        protected void ClearTasks()
+        {
+            var deadEntities = _db.RunQuery(new Query("Task"));
+            _db.Delete(deadEntities.Entities);
+        }
+
+        protected string UpsertTaskList()
+        {
+            string taskListKeyName = TestUtil.RandomName();
+            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey(taskListKeyName);
+            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("someTask");
+            Entity task = new Entity()
+            {
+                Key = taskKey,
+                ["category"] = "Personal",
+                ["done"] = false,
+                ["completed"] = false,
+                ["priority"] = 4,
+                ["created"] = _includedDate,
+                ["percent_complete"] = 10.0,
+                ["description"] = new Value()
+                {
+                    StringValue = "Learn Cloud Datastore",
+                    ExcludeFromIndexes = true
+                },
+                ["tag"] = new ArrayValue() { Values = { "fun", "l", "programming" } }
+            };
+            _db.Upsert(task);
+            // Datastore is, after all, eventually consistent.
+            System.Threading.Thread.Sleep(1000);
+            return taskListKeyName;
+        }
+
+        public void Dispose()
+        {
+            _testFixture.ClearTasks();
         }
 
         [Fact]
@@ -122,7 +188,7 @@ namespace GoogleCloudSamples
             Assert.True(IsValidKey(key));
         }
 
-        private void AssertValidEntity(Entity original)
+        protected void AssertValidEntity(Entity original)
         {
             _db.Upsert(original);
             Assert.Equal(original, _db.Lookup(original.Key));
@@ -271,7 +337,7 @@ namespace GoogleCloudSamples
             Assert.Null(_db.Lookup(_sampleTask.Key));
         }
 
-        private Entity[] UpsertBatch(Key taskKey1, Key taskKey2)
+        protected Entity[] UpsertBatch(Key taskKey1, Key taskKey2)
         {
             var taskList = new[]
             {
@@ -359,40 +425,7 @@ namespace GoogleCloudSamples
             Assert.Null(lookups[1]);
         }
 
-        private void ClearTasks()
-        {
-            var deadEntities = _db.RunQuery(new Query("Task"));
-            _db.Delete(deadEntities.Entities);
-        }
-
-        private string UpsertTaskList()
-        {
-            string taskListKeyName = TestUtil.RandomName();
-            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey(taskListKeyName);
-            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("someTask");
-            Entity task = new Entity()
-            {
-                Key = taskKey,
-                ["category"] = "Personal",
-                ["done"] = false,
-                ["completed"] = false,
-                ["priority"] = 4,
-                ["created"] = _includedDate,
-                ["percent_complete"] = 10.0,
-                ["description"] = new Value()
-                {
-                    StringValue = "Learn Cloud Datastore",
-                    ExcludeFromIndexes = true
-                },
-                ["tag"] = new ArrayValue() { Values = { "fun", "l", "programming" } }
-            };
-            _db.Upsert(task);
-            // Datastore is, after all, eventually consistent.
-            System.Threading.Thread.Sleep(1000);
-            return taskListKeyName;
-        }
-
-        private static bool IsEmpty(DatastoreQueryResults results) =>
+        protected static bool IsEmpty(DatastoreQueryResults results) =>
             results.Entities.Count == 0;
 
         [Fact(Skip = "https://github.com/GoogleCloudPlatform/google-cloud-dotnet/issues/304")]
@@ -915,7 +948,7 @@ namespace GoogleCloudSamples
             });
         }
 
-        private string CursorPaging(int pageSize, string pageCursor)
+        protected string CursorPaging(int pageSize, string pageCursor)
         {
             // [START cursor_paging]
             Query query = new Query("Task")
@@ -929,7 +962,7 @@ namespace GoogleCloudSamples
             // [END cursor_paging]
         }
 
-        private IReadOnlyList<Key> UpsertBalances()
+        protected IReadOnlyList<Key> UpsertBalances()
         {
             KeyFactory keyFactory = _db.CreateKeyFactory("People");
             Entity from = new Entity()
@@ -949,7 +982,7 @@ namespace GoogleCloudSamples
         }
 
         // [START transactional_update]
-        private void TransferFunds(Key fromKey, Key toKey, long amount)
+        protected void TransferFunds(Key fromKey, Key toKey, long amount)
         {
             using (var transaction = _db.BeginTransaction())
             {
@@ -962,7 +995,7 @@ namespace GoogleCloudSamples
         }
         // [END transactional_update]
 
-        private void TransferFunds(Key fromKey, Key toKey, long amount,
+        protected void TransferFunds(Key fromKey, Key toKey, long amount,
             DatastoreTransaction transaction)
         {
             var entities = transaction.Lookup(fromKey, toKey);
@@ -1002,7 +1035,7 @@ namespace GoogleCloudSamples
         /// <summary>
         /// Retry the action when a Grpc.Core.RpcException is thrown.
         /// </summary>
-        private T RetryRpc<T>(Func<T> action)
+        protected T RetryRpc<T>(Func<T> action)
         {
             List<Grpc.Core.RpcException> exceptions = null;
             var delayMs = _retryDelayMs;
@@ -1024,7 +1057,7 @@ namespace GoogleCloudSamples
             throw new AggregateException(exceptions);
         }
 
-        private void RetryRpc(Action action)
+        protected void RetryRpc(Action action)
         {
             RetryRpc(() => { action(); return 0; });
         }
