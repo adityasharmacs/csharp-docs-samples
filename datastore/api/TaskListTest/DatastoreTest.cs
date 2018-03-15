@@ -49,22 +49,52 @@ namespace GoogleCloudSamples
             ClearTasks();
         }
 
+        public string UpsertTaskList()
+        {
+            string taskListKeyName = TestUtil.RandomName();
+            Key taskListKey = Db.CreateKeyFactory("TaskList").CreateKey(taskListKeyName);
+            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("someTask");
+            Entity task = new Entity()
+            {
+                Key = taskKey,
+                ["category"] = "Personal",
+                ["done"] = false,
+                ["completed"] = false,
+                ["priority"] = 4,
+                ["created"] = new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+                ["percent_complete"] = 10.0,
+                ["description"] = new Value()
+                {
+                    StringValue = "Learn Cloud Datastore",
+                    ExcludeFromIndexes = true
+                },
+                ["tag"] = new ArrayValue() { Values = { "fun", "l", "programming" } }
+            };
+            Db.Upsert(task);
+            return taskListKeyName;
+        }
+
         public string ProjectId { get; set; }
         public DatastoreDb Db { get; set; }
         public Entity SampleTask { get; set; }
         public KeyFactory KeyFactory { get; set; }
+    }
+
+    class DatastoreTestFixtureWithTaskList : DatastoreTestFixture
+    {
+        public DatastoreTestFixtureWithTaskList()
+        {
+        }
+
 
     }
 
-    public class DatastoreTestBase : IClassFixture<DatastoreTestFixture>,
-        IDisposable
+    public class DatastoreTestBase : IClassFixture<DatastoreTestFixture>
     {
         protected readonly string _projectId;
         protected readonly DatastoreDb _db;
         protected readonly Entity _sampleTask;
         protected readonly KeyFactory _keyFactory;
-        protected readonly DateTime _includedDate =
-            new DateTime(1999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
         protected readonly DateTime _startDate =
             new DateTime(1998, 4, 18, 0, 0, 0, DateTimeKind.Utc);
         protected readonly DateTime _endDate =
@@ -110,37 +140,11 @@ namespace GoogleCloudSamples
             return true;
         }
 
-        protected void ClearTasks()
-        {
-            var deadEntities = _db.RunQuery(new Query("Task"));
-            _db.Delete(deadEntities.Entities);
-        }
+    }
 
-        protected string UpsertTaskList()
+    public class ReadOnlyDatastoreTests : DatastoreTestBase {
+        public ReadOnlyDatastoreTests(DatastoreTestFixture testFixture) : base(testFixture)
         {
-            string taskListKeyName = TestUtil.RandomName();
-            Key taskListKey = _db.CreateKeyFactory("TaskList").CreateKey(taskListKeyName);
-            Key taskKey = new KeyFactory(taskListKey, "Task").CreateKey("someTask");
-            Entity task = new Entity()
-            {
-                Key = taskKey,
-                ["category"] = "Personal",
-                ["done"] = false,
-                ["completed"] = false,
-                ["priority"] = 4,
-                ["created"] = _includedDate,
-                ["percent_complete"] = 10.0,
-                ["description"] = new Value()
-                {
-                    StringValue = "Learn Cloud Datastore",
-                    ExcludeFromIndexes = true
-                },
-                ["tag"] = new ArrayValue() { Values = { "fun", "l", "programming" } }
-            };
-            _db.Upsert(task);
-            // Datastore is, after all, eventually consistent.
-            System.Threading.Thread.Sleep(1000);
-            return taskListKeyName;
         }
 
         public void Dispose()
@@ -698,7 +702,6 @@ namespace GoogleCloudSamples
         [Fact]
         public void TestPropertyByKindRunQuery()
         {
-            ClearTasks();
             UpsertTaskList();
             Eventually(() =>
             {
