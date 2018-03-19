@@ -30,6 +30,8 @@ using Microsoft.Extensions.Hosting;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Rewrite;
+using Google.Cloud.Diagnostics.AspNetCore;
+using Microsoft.Extensions.Logging;
 
 namespace WebApp
 {
@@ -46,6 +48,23 @@ namespace WebApp
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddOptions();
+
+            // Add exception logging.
+            services.AddGoogleExceptionLogging(options =>
+            {
+                options.ProjectId = Configuration["Google:ProjectId"];
+                options.ServiceName = Configuration["Google:AppEngine:ServiceName"] ?? "WebApp";
+                options.Version = Configuration["Google:AppEngine:Version"] ?? "0.0";
+            });
+            // Add trace service.
+            services.AddGoogleTrace(options =>
+            {
+                options.ProjectId = Configuration["Google:ProjectId"];
+                options.Options = Google.Cloud.Diagnostics.Common.TraceOptions.Create(
+                    bufferOptions: Google.Cloud.Diagnostics.Common.BufferOptions.NoBuffer());
+            });
+
+
             services.Configure<Models.AccountViewModels.AccountOptions>(
                 Configuration.GetSection("Account"));
             services.Configure<PubsubGameBoardQueueOptions>(
@@ -75,8 +94,18 @@ namespace WebApp
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env,
+            ILoggerFactory loggerFactory)
         {
+            // Configure logging service.
+            loggerFactory.AddGoogle(Configuration["Google:ProjectId"]);
+
+            // Configure error reporting service.
+            app.UseGoogleExceptionLogging();
+
+            // Configure trace service.
+            app.UseGoogleTrace();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -96,7 +125,7 @@ namespace WebApp
             if (null != instance.GaeDetails)
             {
                 var rewriteOptions = new RewriteOptions()
-                { 
+                {
                     Rules = {new RewriteHttpsOnAppEngine(HttpsPolicy.Required)}
                 };
                 app.UseRewriter(rewriteOptions);
