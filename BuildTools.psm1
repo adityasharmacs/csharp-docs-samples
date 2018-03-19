@@ -767,7 +767,7 @@ function Run-CasperJs($TestJs='test.js', $Url) {
     $sleepSeconds = 2
     for ($tryCount = 0; $tryCount -lt 5; $tryCount++) {
         Start-Sleep -Seconds $sleepSeconds  # Wait for web process to start up.
-        $casperOut = casperjs $TestJs $Url
+        $casperOut = casperjs --xunit="$tryCount-sponge_log.xml" $TestJs $Url
         if ($LASTEXITCODE -eq 0) {
             $casperOut | Write-Host
             return
