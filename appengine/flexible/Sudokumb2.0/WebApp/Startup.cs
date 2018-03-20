@@ -100,9 +100,6 @@ namespace WebApp
             // Configure logging service.
             loggerFactory.AddGoogle(Configuration["Google:ProjectId"]);
 
-            // Configure error reporting service.
-            app.UseGoogleExceptionLogging();
-
             // Configure trace service.
             app.UseGoogleTrace();
 
@@ -114,6 +111,8 @@ namespace WebApp
             else
             {
                 app.UseExceptionHandler("/Home/Error");
+                // Configure error reporting service.
+                app.UseGoogleExceptionLogging();
             }
 
             app.UseStaticFiles();
