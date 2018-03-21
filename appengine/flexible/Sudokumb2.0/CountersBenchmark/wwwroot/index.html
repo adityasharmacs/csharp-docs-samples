@@ -1,0 +1,55 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Graph2d | Bar Graphs Side by Side Example with Groups</title>
+
+    <style type="text/css">
+        body, html {
+            font-family: sans-serif;
+        }
+    </style>
+
+    <script src="vis.min.js"></script>
+    <link href="vis.min.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<h2>Counters</h2>
+
+<div id="visualization"></div>
+
+<script type="text/javascript">
+
+    var container = document.getElementById('visualization');
+    var groupItems = [
+        {id: 0, content: "UnsynchronizedCounter"},
+        {id: 1, content: "LockingCounter"},
+        {id: 2, content: "InterlockedCounter"},
+        {id: 3, content: "ShardedCounter"}
+    ];
+    var groups = new vis.DataSet(groupItems);
+
+    var items = [{"x":1,"y":3596654793,"group":0},{"x":1,"y":429481803,"group":1},{"x":1,"y":1252405394,"group":2},{"x":1,"y":380230206,"group":3},{"x":2,"y":426409155,"group":1},{"x":2,"y":333536127,"group":2},{"x":2,"y":750326162,"group":3},{"x":4,"y":421298559,"group":1},{"x":4,"y":264468920,"group":2},{"x":4,"y":1393846022,"group":3},{"x":8,"y":362769873,"group":1},{"x":8,"y":299593376,"group":2},{"x":8,"y":2181455899,"group":3},{"x":16,"y":253923611,"group":1},{"x":16,"y":318155914,"group":2},{"x":16,"y":2293445356,"group":3}];
+    var dataset = new vis.DataSet(items);
+    var options = {
+        style:'bar',
+        stack:false,
+        barChart: {width:150, align:'right', sideBySide:true}, // align: left, center, right
+        drawPoints: false,
+        dataAxis: {
+            icons:true
+        },
+        orientation:'top',
+        legend: {
+            enabled: true,
+            position: 'top-right'
+        },
+        start: 1,
+        end: 17,
+        hiddenDates: [{start: 3, end: 4}, {start: 5, end: 8}, {start: 9, end:16 }],
+        showMajorLabels: false,
+    };
+    var graph2d = new vis.Graph2d(container, items, groups, options);
+
+</script>
+</body>
+</html>
