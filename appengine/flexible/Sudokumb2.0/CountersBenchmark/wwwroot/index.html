@@ -20,15 +20,10 @@
 <script type="text/javascript">
 
     var container = document.getElementById('visualization');
-    var groupItems = [
-        {id: 0, content: "UnsynchronizedCounter"},
-        {id: 1, content: "LockingCounter"},
-        {id: 2, content: "InterlockedCounter"},
-        {id: 3, content: "ShardedCounter"}
-    ];
+    var groupItems = GROUPS;
     var groups = new vis.DataSet(groupItems);
 
-    var items = [{"x":1,"y":3596654793,"group":0},{"x":1,"y":429481803,"group":1},{"x":1,"y":1252405394,"group":2},{"x":1,"y":380230206,"group":3},{"x":2,"y":426409155,"group":1},{"x":2,"y":333536127,"group":2},{"x":2,"y":750326162,"group":3},{"x":4,"y":421298559,"group":1},{"x":4,"y":264468920,"group":2},{"x":4,"y":1393846022,"group":3},{"x":8,"y":362769873,"group":1},{"x":8,"y":299593376,"group":2},{"x":8,"y":2181455899,"group":3},{"x":16,"y":253923611,"group":1},{"x":16,"y":318155914,"group":2},{"x":16,"y":2293445356,"group":3}];
+    var items = ITEMS;
     var dataset = new vis.DataSet(items);
     var options = {
         style:'bar',

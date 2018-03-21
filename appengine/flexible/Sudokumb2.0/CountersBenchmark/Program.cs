@@ -20,16 +20,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Microsoft.Extensions.FileProviders;
+using System.Reflection;
 
 namespace Sudokumb
 {
-    class Record
-    {
-        public int x { get; set; }
-        public long y { get; set; }
-        public int group { get; set; }
-    }
-
     class Program
     {
         static void Main(string[] args)
@@ -41,29 +36,37 @@ namespace Sudokumb
                 typeof(InterlockedCounter),
                 typeof(ShardedCounter)
             };
-            List<Record> records = new List<Record>();
+            // Record results so we can render them with Visjs.
+            List<VisItem> visItems = new List<VisItem>();
+            List<VisGroup> visGroups = new List<VisGroup>();
             int groupNumber = 0;
             foreach (var type in counterTypes)
             {
-                records.Add(RunBenchmark(1, type, groupNumber++));
+                visGroups.Add(new VisGroup()
+                {
+                    id = groupNumber,
+                    content = type.Name
+                });
+                visItems.Add(RunBenchmark(1, type, groupNumber++));
             }
             foreach (int taskCount in new int [] {2, 4, 8, 16})
             {
                 groupNumber = 1;
                 foreach (var type in counterTypes.Skip(1))
                 {
-                    records.Add(RunBenchmark(taskCount, type, groupNumber++));
+                    visItems.Add(RunBenchmark(taskCount, type, groupNumber++));
                 }
             }
-            Console.WriteLine(JsonConvert.SerializeObject(records));
+            string indexPath = RenderResults(visItems, visGroups);
+            Console.WriteLine(new System.Uri(indexPath).AbsoluteUri);
         }
 
-        static Record RunBenchmark(int taskCount, Type counterType,
+        static VisItem RunBenchmark(int taskCount, Type counterType,
             int groupNumber)
         {
             long count = RunBenchmark(taskCount,
                 (ICounter) Activator.CreateInstance(counterType));
-            return new Record()
+            return new VisItem()
             {
                 x = taskCount,
                 y = count,
@@ -86,7 +89,7 @@ namespace Sudokumb
                 });
             }
             long count = 0;
-            for (int i = 0; i < 10; ++ i)
+            for (int i = 0; i < 3; ++ i)
             {
                 Thread.Sleep(1000);
                 count = counter.Count;
@@ -96,5 +99,62 @@ namespace Sudokumb
             Task.WaitAll(tasks);
             return count;
         }
+
+        static string RenderResults(IEnumerable<VisItem> items,
+            IEnumerable<VisGroup> groups)
+        {
+            string tempDir = Path.GetTempFileName();
+            File.Delete(tempDir);
+            Directory.CreateDirectory(tempDir);
+            UnpackEmbeddedFile("wwwroot.vis.min.css",
+                Path.Combine(tempDir, "vis.min.css"));
+            UnpackEmbeddedFile("wwwroot.vis.min.js",
+                Path.Combine(tempDir, "vis.min.js"));
+            string text = ReadEmbeddedFile("wwwroot.index.html");
+            text = text.Replace("ITEMS", JsonConvert.SerializeObject(items));
+            text = text.Replace("GROUPS", JsonConvert.SerializeObject(groups));
+            string indexHtml = Path.Combine(tempDir, "index.html");
+            File.WriteAllText(indexHtml, text);
+            return indexHtml;
+        }
+
+        static string ReadEmbeddedFile(string name)
+        {
+            var embeddedProvider = new EmbeddedFileProvider(
+                Assembly.GetEntryAssembly());
+            var info = embeddedProvider.GetFileInfo(name);
+            var buffer = new byte[info.Length];
+            var reader = new StreamReader(info.CreateReadStream());
+            return reader.ReadToEnd();
+        }
+
+        static void UnpackEmbeddedFile(string name, string outputPath)
+        {
+            var embeddedProvider = new EmbeddedFileProvider(
+                Assembly.GetEntryAssembly());
+            var info = embeddedProvider.GetFileInfo(name);
+            var buffer = new byte[info.Length];
+            info.CreateReadStream().Read(buffer, 0, buffer.Length);
+            File.WriteAllBytes(outputPath, buffer);
+        }
+    }
+
+    /// <summary>
+    /// A Visjs data point.
+    /// </summary>
+    class VisItem
+    {
+        public int x { get; set; }
+        public long y { get; set; }
+        public int group { get; set; }
+    }
+
+    /// <summary>
+    /// A Visjs group definition.
+    /// </summary>
+    class VisGroup
+    {
+        public int id { get; set; }
+        public string content { get; set; }
     }
 }
