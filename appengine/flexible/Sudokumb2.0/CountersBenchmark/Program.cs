@@ -1,11 +1,11 @@
 // Copyright (c) 2018 Google LLC.
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not
 // use this file except in compliance with the License. You may obtain a copy of
 // the License at
-// 
+//
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -13,54 +13,62 @@
 // the License.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Sudokumb
 {
+    class Record
+    {
+        public int x { get; set; }
+        public long y { get; set; }
+        public int group { get; set; }
+    }
+
     class Program
     {
         static void Main(string[] args)
         {
-            MemoryStream csvStream = new MemoryStream();
-            TextWriter csv = new StreamWriter(csvStream);
-            csv.WriteLine("Tasks\tCounter\tCount");
-
-            foreach (var type in new []
+            var counterTypes = new []
             {
                 typeof(UnsynchronizedCounter),
                 typeof(LockingCounter),
                 typeof(InterlockedCounter),
                 typeof(ShardedCounter)
-            })
+            };
+            List<Record> records = new List<Record>();
+            int groupNumber = 0;
+            foreach (var type in counterTypes)
             {
-                RunBenchmark(1, type, csv);
+                records.Add(RunBenchmark(1, type, groupNumber++));
             }
             foreach (int taskCount in new int [] {2, 4, 8, 16})
             {
-                foreach (var type in new []
+                groupNumber = 1;
+                foreach (var type in counterTypes.Skip(1))
                 {
-                    typeof(LockingCounter),
-                    typeof(InterlockedCounter),
-                    typeof(ShardedCounter)
-                })
-                {
-                    RunBenchmark(taskCount, type, csv);
+                    records.Add(RunBenchmark(taskCount, type, groupNumber++));
                 }
             }
-            csv.Flush();
-            csvStream.Seek(0, SeekOrigin.Begin);
-            Console.WriteLine();
-            csvStream.CopyTo(Console.OpenStandardOutput());
+            Console.WriteLine(JsonConvert.SerializeObject(records));
         }
 
-        static void RunBenchmark(int taskCount, Type counterType, TextWriter csv)
+        static Record RunBenchmark(int taskCount, Type counterType,
+            int groupNumber)
         {
             long count = RunBenchmark(taskCount,
                 (ICounter) Activator.CreateInstance(counterType));
-            csv.WriteLine("{0}\t{1}\t{2}", taskCount, counterType.FullName, count);
+            return new Record()
+            {
+                x = taskCount,
+                y = count,
+                group = groupNumber
+            };
         }
 
         static long RunBenchmark(int taskCount, ICounter counter)
