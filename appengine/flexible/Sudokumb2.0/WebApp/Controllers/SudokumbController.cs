@@ -86,9 +86,14 @@ namespace WebApp.Controllers
         [Authorize(Roles="admin")]
         public async Task<IActionResult> Admin()
         {
+            DateTime? dumbExpires = await _adminSettings.GetDumbExpiresAsync();
+            DateTime now = DateTime.UtcNow;
             AdminViewModel model = new AdminViewModel()
             {
-                Dumb = await _adminSettings.IsDumbAsync()
+                CurrentDumbHours =
+                    !dumbExpires.HasValue || dumbExpires.Value <  now
+                    ? 0 : (dumbExpires.Value - now).TotalHours,
+                DumbHours = 1
             };
             return View(model);
         }
@@ -97,7 +102,13 @@ namespace WebApp.Controllers
         [Authorize(Roles="admin")]
         public async Task<IActionResult> Admin(AdminViewModel model)
         {
-            await _adminSettings.SetDumbAsync(model.Dumb);
+            if (model.DumbHours < 0)
+            {
+                model.DumbHours = 0;
+            }
+            await _adminSettings.SetDumbExpiresAsync(
+                DateTime.UtcNow.AddHours(model.DumbHours));
+            model.CurrentDumbHours = model.DumbHours;
             return View(model);
         }
 

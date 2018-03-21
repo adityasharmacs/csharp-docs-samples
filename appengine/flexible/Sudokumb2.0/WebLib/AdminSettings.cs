@@ -1,11 +1,11 @@
 // Copyright (c) 2018 Google LLC.
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not
 // use this file except in compliance with the License. You may obtain a copy of
 // the License at
-// 
+//
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -63,7 +63,7 @@ namespace Sudokumb
         }
 
         const string ENTITY_KIND = "AdminSettings",
-            DUMB = "dumb";
+            DUMB_EXPIRES = "dumbExpires";
 
         /// <summary>
         /// Dumb means every next possible move on the sudoku board gets
@@ -71,8 +71,9 @@ namespace Sudokumb
         /// </summary>
         public async Task<bool> IsDumbAsync()
         {
-            var entity = await LookupEntityAsync();
-            return null == entity ? false : (bool)entity[DUMB];
+            var dumbExpires = (DateTime) await GetDumbExpiresAsync();
+            return dumbExpires == null ? false :
+                dumbExpires > DateTime.UtcNow;
         }
 
         Task<Entity> LookupEntityAsync()
@@ -89,12 +90,12 @@ namespace Sudokumb
             }
         }
 
-        public Task SetDumbAsync(bool dumb)
+        public Task SetDumbExpiresAsync(DateTime when)
         {
             Entity entity = new Entity()
             {
                 Key = key_,
-                [DUMB] = dumb
+                [DUMB_EXPIRES] = when
             };
             lock(cachedEntityLock_)
             {
@@ -102,6 +103,16 @@ namespace Sudokumb
                 cachedEntityExpires_ = DateTime.Now.AddSeconds(10);
             }
             return datastore_.UpsertAsync(entity);
+        }
+
+        public async Task<DateTime?> GetDumbExpiresAsync()
+        {
+            var entity = await LookupEntityAsync();
+            if (null == entity)
+            {
+                return null;
+            }
+            return (DateTime?) entity[DUMB_EXPIRES];
         }
     }
 }
