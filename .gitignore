@@ -17,3 +17,7 @@ project.lock.json
 secrets.ps1
 google_application_credentials.json
 **/Properties/launchSettings.json
+**/wwwroot/lib/
+**/kmsCipher.key
+/tmpB19A.tmp
+/dlp/tmp6849.tmp

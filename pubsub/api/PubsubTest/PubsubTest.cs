@@ -115,17 +115,29 @@ namespace GoogleCloudSamples
             return output;
         }
 
+        /// <summary>
+        /// Returns true if an action should be retried when an exception is
+        /// thrown.
+        /// </summary>
+        static bool ShouldRetry(Exception e)
+        {
+            AggregateException aggregateException = e as AggregateException;
+            if (aggregateException != null)
+            {
+                return ShouldRetry(aggregateException.InnerExceptions
+                    .LastOrDefault());
+            }
+            if (e is Xunit.Sdk.XunitException)
+            {
+                return true;
+            }
+            var rpcException = e as Grpc.Core.RpcException;
+            return rpcException?.Status.StatusCode == StatusCode.NotFound;
+        }
+
         private readonly RetryRobot _retryRobot = new RetryRobot()
         {
-            ShouldRetry = (Exception e) =>
-            {
-                if (e is Xunit.Sdk.XunitException)
-                {
-                    return true;
-                }
-                var rpcException = e as Grpc.Core.RpcException;
-                return rpcException?.Status.StatusCode == StatusCode.NotFound;
-            }
+            ShouldRetry = (Exception e) => ShouldRetry(e)
         };
 
         void Eventually(Action action) => _retryRobot.Eventually(action);
@@ -148,13 +160,15 @@ namespace GoogleCloudSamples
         {
             // Initialize values for backoff settings to be used
             // by the CallSettings for RPC retries
-            TimeSpan delay = TimeSpan.FromMilliseconds(500);
-            TimeSpan maxDelay = TimeSpan.FromSeconds(3);
-            double delayMultiplier = 2;
-            var backoff = new BackoffSettings(delay, maxDelay, delayMultiplier);
+            var backoff = new BackoffSettings(
+                delay: TimeSpan.FromSeconds(3),
+                maxDelay: TimeSpan.FromSeconds(10), delayMultiplier: 2);
+            var timeout = new BackoffSettings(
+                delay: TimeSpan.FromSeconds(10),
+                maxDelay: TimeSpan.FromSeconds(30), delayMultiplier: 1.5);
 
             return new CallSettings(null, null,
-                CallTiming.FromRetry(new RetrySettings(backoff, backoff,
+                CallTiming.FromRetry(new RetrySettings(backoff, timeout,
                 Google.Api.Gax.Expiration.None,
                   (RpcException e) => (
                         StatusCode.OK != e.Status.StatusCode
@@ -168,12 +182,12 @@ namespace GoogleCloudSamples
         public PubsubTest()
         {
             // [START create_publisher_client]
-            // By default, the Google.Pubsub.V1 library client will authenticate 
-            // using the service account file (created in the Google Developers 
-            // Console) specified by the GOOGLE_APPLICATION_CREDENTIALS 
-            // environment variable and it will use the project specified by 
+            // By default, the Google.Pubsub.V1 library client will authenticate
+            // using the service account file (created in the Google Developers
+            // Console) specified by the GOOGLE_APPLICATION_CREDENTIALS
+            // environment variable and it will use the project specified by
             // the GOOGLE_PROJECT_ID environment variable. If you are running on
-            // a Google Compute Engine VM, authentication is completely 
+            // a Google Compute Engine VM, authentication is completely
             // automatic.
             _projectId = Environment.GetEnvironmentVariable("GOOGLE_PROJECT_ID");
             // [END create_publisher_client]
@@ -253,13 +267,12 @@ namespace GoogleCloudSamples
             try
             {
                 // Subscribe to Topic
-                // This may fail if the Subscription already exists or 
-                // the Topic has not yet been created.  In those cases, don't
+                // This may fail if the Subscription already exists.  Don't
                 // retry, because a retry would fail the same way.
                 subscriber.CreateSubscription(subscriptionName, topicName,
                     pushConfig: null, ackDeadlineSeconds: 60,
-                    callSettings: newRetryCallSettings(3, StatusCode.AlreadyExists,
-                        StatusCode.NotFound));
+                    callSettings: newRetryCallSettings(3,
+                        StatusCode.AlreadyExists));
             }
             catch (RpcException e)
             when (e.Status.StatusCode == StatusCode.AlreadyExists)
@@ -499,9 +512,12 @@ namespace GoogleCloudSamples
             string subscriptionId = "testSubscriptionForRpcRetry" + TestUtil.RandomName();
             _tempTopicIds.Add(topicId);
             _tempSubscriptionIds.Add(subscriptionId);
-            RpcRetry(topicId, subscriptionId, _publisher, _subscriber);
-            var topicDetails = Run("getTopic", _projectId, topicId);
-            Assert.Contains($"{topicId}", topicDetails.Stdout);
+            Eventually(() =>
+            {
+                RpcRetry(topicId, subscriptionId, _publisher, _subscriber);
+                var topicDetails = Run("getTopic", _projectId, topicId);
+                Assert.Contains($"{topicId}", topicDetails.Stdout);
+            });
         }
 
         [Fact]
