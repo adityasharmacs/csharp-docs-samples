@@ -71,8 +71,8 @@ namespace Sudokumb
         /// </summary>
         public async Task<bool> IsDumbAsync()
         {
-            var dumbExpires = (DateTime) await GetDumbExpiresAsync();
-            return dumbExpires == null ? false :
+            var dumbExpires = await GetDumbExpiresAsync();
+            return !dumbExpires.HasValue ? false :
                 dumbExpires > DateTime.UtcNow;
         }
 
