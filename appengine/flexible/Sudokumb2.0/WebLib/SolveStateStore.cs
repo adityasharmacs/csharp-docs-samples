@@ -1,11 +1,11 @@
 // Copyright (c) 2018 Google LLC.
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not
 // use this file except in compliance with the License. You may obtain a copy of
 // the License at
-// 
+//
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -72,13 +72,14 @@ namespace Sudokumb
         public async Task<SolveState> GetAsync(string solveRequestId,
             CancellationToken cancellationToken)
         {
-            Entity entity = await _datastore.LookupAsync(
+            var lookupTask = _datastore.LookupAsync(
                 _solutionKeyFactory.CreateKey(solveRequestId));
             var solveState = new SolveState()
             {
                 BoardsExaminedCount = await _datastoreCounter
                     .GetCountAsync(solveRequestId, cancellationToken)
             };
+            Entity entity = await lookupTask;
             if (null != entity && entity.Properties.ContainsKey(SOLUTION_KIND))
             {
                 solveState.Solution = GameBoard.Create(

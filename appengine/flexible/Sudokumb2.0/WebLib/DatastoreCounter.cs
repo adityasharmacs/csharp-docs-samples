@@ -1,11 +1,11 @@
 // Copyright (c) 2018 Google LLC.
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not
 // use this file except in compliance with the License. You may obtain a copy of
 // the License at
-// 
+//
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 // WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -20,6 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Datastore.V1;
+using Google.Cloud.Diagnostics.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -41,9 +42,9 @@ namespace Sudokumb
     {
         readonly DatastoreDb _datastore;
         readonly IOptions<DatastoreCounterOptions> _options;
-        ILogger<DatastoreCounter> _logger;
-
-        object _thisLock = new object();
+        readonly ILogger<DatastoreCounter> _logger;
+        readonly IManagedTracer _tracer;
+        readonly object _thisLock = new object();
         DatastoreCounter _counter;
         DatastoreCounter _oldCounter;
 
@@ -51,12 +52,13 @@ namespace Sudokumb
 
         public DatastoreCounterSingleton(DatastoreDb datastore,
             IOptions<DatastoreCounterOptions> options,
-            ILogger<DatastoreCounter> logger)
+            ILogger<DatastoreCounter> logger, IManagedTracer tracer)
         {
             _datastore = datastore;
             _options = options;
             _logger = logger;
-            _counter = new DatastoreCounter(datastore, options, logger);
+            _tracer = tracer;
+            _counter = new DatastoreCounter(datastore, options, logger, tracer);
             _counterBirthday = DateTime.UtcNow;
         }
 
@@ -78,7 +80,7 @@ namespace Sudokumb
                         _counterBirthday = now;
                         _oldCounter = _counter;
                         _counter = new DatastoreCounter(
-                            _datastore, _options, _logger);
+                            _datastore, _options, _logger, _tracer);
                         _counter.StartAsync(CancellationToken.None);
                     }
                     return _counter;
@@ -116,7 +118,8 @@ namespace Sudokumb
         readonly string _shard = Guid.NewGuid().ToString();
         CancellationTokenSource _cancelHostedService;
         Task _hostedService;
-        ILogger _logger;
+        readonly ILogger _logger;
+        readonly IManagedTracer _tracer;
         ConcurrentDictionary<string, ICounter> _localCounters
              = new ConcurrentDictionary<string, ICounter>();
         Dictionary<string, long> _localCountersSnapshot
@@ -124,11 +127,13 @@ namespace Sudokumb
 
         internal DatastoreCounter(DatastoreDb datastore,
             IOptions<DatastoreCounterOptions> options,
-            ILogger<DatastoreCounter> logger)
+            ILogger<DatastoreCounter> logger,
+            IManagedTracer tracer)
         {
             _datastore = datastore;
             _options = options;
             _logger = logger;
+            _tracer = tracer;
             var opts = options.Value;
             _keyFactory = new KeyFactory(datastore.ProjectId,
                 datastore.NamespaceId, opts.Kind);
@@ -137,26 +142,29 @@ namespace Sudokumb
         public async Task<long> GetCountAsync(string key,
             CancellationToken cancellationToken)
         {
-            var callSettings = CallSettings.FromCancellationToken(
-                cancellationToken);
-            var query = new Query(_options.Value.Kind)
+            using (_tracer.StartSpan(nameof(GetCountAsync)))
             {
-                Filter = Filter.GreaterThan("__key__", _keyFactory.CreateKey(key)),
-                Order = { { "__key__", PropertyOrder.Types.Direction.Ascending } }
-            };
-            long count = 0;
-            var lazyResults = _datastore.RunQueryLazilyAsync(query,
-                callSettings:callSettings).GetEnumerator();
-            while (await lazyResults.MoveNext())
-            {
-                Entity entity = lazyResults.Current;
-                if (!entity.Key.Path.First().Name.StartsWith(key))
+                var callSettings = CallSettings.FromCancellationToken(
+                    cancellationToken);
+                var query = new Query(_options.Value.Kind)
                 {
-                    break;
+                    Filter = Filter.GreaterThan("__key__", _keyFactory.CreateKey(key)),
+                    Order = { { "__key__", PropertyOrder.Types.Direction.Ascending } }
+                };
+                long count = 0;
+                var lazyResults = _datastore.RunQueryLazilyAsync(query,
+                    callSettings:callSettings).GetEnumerator();
+                while (await lazyResults.MoveNext())
+                {
+                    Entity entity = lazyResults.Current;
+                    if (!entity.Key.Path.First().Name.StartsWith(key))
+                    {
+                        break;
+                    }
+                    count += (long)entity[COUNT];
                 }
-                count += (long)entity[COUNT];
+                return count;
             }
-            return count;
         }
 
         string GetCounterId(string keyName)
