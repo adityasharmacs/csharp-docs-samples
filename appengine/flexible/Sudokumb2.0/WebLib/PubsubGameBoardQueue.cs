@@ -227,10 +227,10 @@ namespace Sudokumb
             _solveStateStore.IncreaseExaminedBoardCount(
                 message.SolveRequestId, 1);
             BoardAndWidth top = message.Stack.Last();
-            _logger.LogInformation($"ExaminedDumbBoard: {top.Board.Board}");
             if (_solver.ExamineGameBoard(top.Board, out nextMoves))
             {
                 // Yay!  Solved the game.
+                _logger.LogInformation($"Solution: {top.Board.Board}");
                 await _solveStateStore.SetAsync(message.SolveRequestId,
                     top.Board, cancellationToken);
                 return SubscriberClient.Reply.Ack;
