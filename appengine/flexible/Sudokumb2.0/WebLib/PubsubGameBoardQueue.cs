@@ -191,7 +191,6 @@ namespace Sudokumb
         {
             // Unpack the pubsub message.
             string text = pubsubMessage.Data.ToString(Encoding.UTF8);
-            _logger.LogInformation($"ProcessMessage: {text}");
             GameBoardMessage message;
             try
             {
