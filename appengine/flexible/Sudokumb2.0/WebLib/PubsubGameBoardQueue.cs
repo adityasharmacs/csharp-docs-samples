@@ -157,7 +157,6 @@ namespace Sudokumb
         }
     }
 
-
     // Implements a GameBoardQueue using Pub/sub.  The next boards to be
     // evaluated are published to a Pub/sub topic.
     public class PubsubGameBoardQueueSolver : PubsubGameBoardQueue, IHostedService
@@ -228,6 +227,7 @@ namespace Sudokumb
             _solveStateStore.IncreaseExaminedBoardCount(
                 message.SolveRequestId, 1);
             BoardAndWidth top = message.Stack.Last();
+            _logger.LogInformation($"ExaminedDumbBoard: {top.Board.Board}");
             if (_solver.ExamineGameBoard(top.Board, out nextMoves))
             {
                 // Yay!  Solved the game.
