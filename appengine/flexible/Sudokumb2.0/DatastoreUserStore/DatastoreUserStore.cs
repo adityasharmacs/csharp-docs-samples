@@ -196,7 +196,7 @@ namespace Sudokumb
 
         public Task<string> GetUserIdAsync(U user, CancellationToken cancellationToken)
         {
-            return Task.FromResult(user.Id.ToString());
+            return Task.FromResult(user.Id == null ? null : user.Id.ToString());
         }
 
         public Task<string> GetUserNameAsync(U user, CancellationToken cancellationToken)
