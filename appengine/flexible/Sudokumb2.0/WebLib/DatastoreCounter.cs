@@ -283,6 +283,7 @@ namespace Sudokumb
                         [COUNT] = count,
                         [TIMESTAMP] = now
                     };
+                    entity[COUNT].ExcludeFromIndexes = true;
                     entities.Add(entity);
                 }
             }
